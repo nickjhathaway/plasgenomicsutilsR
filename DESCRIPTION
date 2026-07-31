@@ -29,6 +29,9 @@ Suggests:
     patchwork,
     ggtext
 Config/testthat/edition: 3
-URL: https://github.com/nickjhathaway/plasgenomicsutilsR
+VignetteBuilder: knitr
+URL: https://nickjhathaway.github.io/plasgenomicsutilsR/,
+    https://github.com/nickjhathaway/plasgenomicsutilsR
 BugReports: https://github.com/nickjhathaway/plasgenomicsutilsR/issues
 Config/roxygen2/version: 8.0.0
+Config/Needs/website: pkgdown

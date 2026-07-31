@@ -1,0 +1,43 @@
+url: https://nickjhathaway.github.io/plasgenomicsutilsR/
+
+template:
+  bootstrap: 5
+
+reference:
+- title: IBD results
+  desc: Ingest the Python IBD tool outputs into one container.
+  contents:
+  - IbdResults
+  - ibd_results
+- title: Plots
+  desc: Genome-wide and region-by-region IBD figures.
+  contents:
+  - plot_ibd_manhattan
+  - plot_selection_manhattan
+  - plot_ibd_tugofwar
+  - plot_ibd_region_heatmap
+  - plot_drug_gene_triangles
+- title: Saving and sizing
+  contents:
+  - save_plot
+  - pdf_device
+  - plot_dims
+- title: Example data
+  contents:
+  - example_ibd_results
+  - EXAMPLE_DRUG_GENES
+- title: Reference genome
+  desc: Species- and assembly-specific facts, namespaced so the tools stay general.
+  contents:
+  - get_reference
+  - available_references
+  - normalise_chr
+  - DEFAULT_REFERENCE
+  - PF3D7_CORE_CHROM_LENGTHS_BP
+  - PF3D7_BP_PER_CM
+
+articles:
+- title: Get started
+  navbar: ~
+  contents:
+  - plasgenomicsutilsR
