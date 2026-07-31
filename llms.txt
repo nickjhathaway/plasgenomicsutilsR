@@ -1,0 +1,395 @@
+# plasgenomicsutilsR
+
+> **Version 0.1.0** — early development; APIs, defaults, and outputs may
+> change between versions.
+
+R utilities for **visualizing and analyzing Plasmodium genomics data** —
+the R-side companion to the Python package
+[`plasgenomicsutils`](https://github.com/nickjhathaway/plasgenomicsutils),
+which does the heavy post-processing compute (VCF
+filtering/harmonization, IBD analysis) and writes plain tables that this
+package reads and plots.
+
+Reference-genome facts are namespaced by species (see
+[`get_reference()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/get_reference.md)),
+so the tools generalize beyond *Plasmodium falciparum*.
+
+## Install
+
+``` r
+
+# install.packages("remotes")
+remotes::install_github("nickjhathaway/plasgenomicsutilsR")
+```
+
+That base install pulls only the required (CRAN) dependencies. Every
+plotting and analysis dependency is a **`Suggests`** — so it is optional
+and *not* installed automatically — and each function checks for what it
+needs and prints an install hint if it is missing. You only install what
+you actually use:
+
+- **CRAN** — the plots use `ggplot2`, `scales`, `patchwork`,
+  `ggnewscale`, `ggtext`; the UMAP uses `uwot`.
+- **Bioconductor** — the population-structure tools use **`SNPRelate`**,
+  **`gdsfmt`** (LD-pruning a VCF → genotypes) and **`LEA`** (sNMF
+  admixture).
+
+Because these come from two repositories, install them
+Bioconductor-aware. The simplest one-liner uses `pak`, which reads this
+package’s `biocViews` and resolves CRAN **and** Bioconductor deps
+together:
+
+``` r
+
+# install.packages("pak")
+pak::pak("nickjhathaway/plasgenomicsutilsR", dependencies = TRUE)
+```
+
+Or add the Bioconductor repositories first (your usual `setRepositories`
+trick), then let `remotes` install the suggested packages:
+
+``` r
+
+setRepositories(ind = 1:3)   # CRAN + Bioconductor software + annotation
+remotes::install_github("nickjhathaway/plasgenomicsutilsR", dependencies = TRUE)
+```
+
+Or install the Bioconductor packages explicitly and the CRAN ones
+normally:
+
+``` r
+
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install(c("SNPRelate", "gdsfmt", "LEA"))
+install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uwot"))
+```
+
+(CI installs the full set the same way — `setup-r-dependencies` is
+`biocViews`-aware — so `R CMD check` exercises the SNPRelate/LEA code
+paths, not just the CRAN ones.)
+
+## What’s here
+
+- **`IbdResults` + `plot_*()`** — an R6 container over the tables the
+  Python `plasgenomicsutils ibd` tools emit, and genome-wide plots
+  reading from it:
+  - [`plot_ibd_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_manhattan.md)
+    — per-SNP fraction of pairs IBD along the genome
+  - [`plot_selection_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_selection_manhattan.md)
+    — the IBD selection statistic, with the Bonferroni threshold line
+  - [`plot_ibd_region_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_region_heatmap.md)
+    — region × region IBD as tiles along the genome
+  - [`plot_ibd_tugofwar()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_tugofwar.md)
+    — selection (top) vs IBD (bottom) mirror for one region
+  - [`plot_drug_gene_triangles()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_drug_gene_triangles.md)
+    — region × region IBD-sharing triangles, per gene (SNPs strictly
+    inside the gene, no flanking) or per specific locus via
+    `snps = "Pf3D7_07_v3:403222"`. A gene’s cell aggregates **all** its
+    in-gene SNPs (`agg = "mean"`/`"median"`/`"max"` — nothing is picked
+    or dropped). Returns a faceted grid, or `individual = TRUE` for a
+    list of one-per-feature plots (e.g. a multi-page PDF) with the
+    legend tucked into the empty upper triangle
+
+  ggplot2 / scales are optional (Suggests); each plot returns a ggplot
+  object.
+- **Population structure** — `PopStructure` is an R6 workspace bundling
+  a genotype matrix, its PCA (full `prcomp`), an optional UMAP,
+  per-sample metadata, a **shared colour map**, and an sNMF admixture
+  fit, so PCA / UMAP / admixture colour and order consistently and the
+  whole thing can be `saveRDS`-ed and re-plotted without recomputing. It
+  offers `run_umap()` (PC count *or* a fraction of variance to capture,
+  via
+  [`n_pcs_for_variance()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/n_pcs_for_variance.md)),
+  [`run_snmf()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_snmf.md)
+  (**cached and quiet** — sNMF is slow and noisy),
+  [`subset()`](https://rdrr.io/r/base/subset.html) (down to given
+  samples or a metadata match), `best_k()` /
+  [`q()`](https://rdrr.io/r/base/quit.html), and
+  [`plot_pca()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pca.md)
+  /
+  [`plot_umap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_umap.md)
+  /
+  [`plot_admixture()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.md)
+  (bars ordered once via
+  [`admixture_order()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/admixture_order.md),
+  per-sample borders so near-identical neighbours stay distinct, and a
+  group strip coloured to match the UMAP). `set_levels()` fixes a
+  metadata column’s order once and it flows through every legend, facet,
+  and strip; [`save()`](https://rdrr.io/r/base/save.html) /
+  [`load_pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_pop_structure.md)
+  persist the whole workspace.
+  [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
+  builds the genotype matrix from a VCF (SNPRelate LD-pruning).
+  SNPRelate / uwot / LEA / ggnewscale / patchwork are optional
+  (Suggests).
+- **[`plot_structure_figure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_structure_figure.md)**
+  — the UMAP and sNMF admixture as **one** figure: a shared theme
+  (matching fonts), one region colour map (UMAP points match the
+  admixture colour strips), collected legends, region-faceted bars
+  (colour strip, no text) laid out over configurable `rows`, and
+  `orientation = "vertical"`/`"horizontal"`, auto-sized.
+  [`example_pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_pop_structure.md)
+  ships two **public** demos: `"ghana_cambodia"` (minimal) and
+  `"africa"` (258 East-African samples across DRC / Kenya / Tanzania /
+  Uganda sites).
+- **Population differentiation** —
+  [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)
+  computes a per-SNP differentiation statistic for every pair of
+  metadata groups from the **full, unpruned** genotypes: **Jost’s D**
+  ([`jost_d()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/jost_d.md)),
+  **Nei’s Gst**, **Hedrick’s standardized G′st**, and **Hudson’s Fst**.
+  [`pop_diff_matrix()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_matrix.md)
+  collapses it to a group × group summary and
+  [`plot_diff_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md)
+  draws a triangle heatmap (legend in the empty corner, optional
+  clustering **dendrogram** and one or more metadata **annotation**
+  strips with custom colours), and
+  [`pop_diff_table()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_table.md)
+  returns every statistic × summary per group-pair in one data frame.
+  Because most of the *P. falciparum* genome is barely differentiated, a
+  genome-wide **mean looks near-zero** — use `stat = "top_mean"` (mean
+  of the top few % of SNPs per pair), `"max"`, or a `trans = "sqrt"`
+  fill to see the signal.
+  [`top_differentiating_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.md)
+  picks the most differentiating markers (round-robin across pairs); the
+  `"africa"` example fixture is itself built from them, which sharpens
+  its UMAP/admixture structure. Estimators follow Jost (2008), Nei &
+  Chesser (1983), Hedrick (2005), and Hudson et al. (1992) / Bhatia et
+  al. (2013).
+- Reference registry:
+  [`get_reference()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/get_reference.md),
+  [`available_references()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/available_references.md),
+  [`normalise_chr()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/normalise_chr.md),
+  `PF3D7_CORE_CHROM_LENGTHS_BP`.
+
+Fws is computed by the companion Python package
+(`plasgenomicsutils calculate_fws`), a reimplementation of
+`moimix::getFws`.
+
+A small **public** example dataset (five African countries) ships with
+the package:
+
+``` r
+
+library(plasgenomicsutilsR)
+
+ibd <- example_ibd_results()          # bundled public example
+plot_ibd_manhattan(ibd)
+plot_selection_manhattan(ibd, metric = "neg_log10_p")
+plot_ibd_tugofwar(ibd, region = "Tanzania")
+plot_ibd_region_heatmap(ibd, trans = "log2")   # log2 fill reads best for IBD
+```
+
+The genome-wide plots share a few options:
+
+- **Colour scale** (`plot_ibd_region_heatmap`,
+  `plot_drug_gene_triangles`): `trans` (`"log2"`, `"sqrt"`, …), a custom
+  `colors` ramp, `limits = c(lo, hi)` (extremes squished so a few high
+  values don’t crush the scale), or a full `fill_scale` override. The
+  default is a light single-hue ramp.
+- **Skip chromosomes**: `chroms = c("7", "13")` keeps only those, or
+  `skip_chr = "1"` drops them — the rest are re-laid-out contiguously.
+- **Highlight genes**: gene positions *and* display names come from the
+  `genes` track you pass to
+  [`ibd_results()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_results.md)
+  — a data frame of `name`, `chr`, `start`, `end` (the bundled
+  \[`EXAMPLE_DRUG_GENES`\] is one). The Manhattan, tug-of-war, and
+  region heatmap draw a reference line at each gene;
+  `highlight_genes = c("crt", "dhps")` selects which to show
+  (case-insensitive) and `label_genes = TRUE` labels them (top panel
+  only, just outside the plot). The label text is the track’s `name`, so
+  set it to whatever you want displayed (`"CRT"` vs `"crt"`) by passing
+  your own track:
+
+``` r
+
+my_genes <- data.frame(name = c("CRT", "DHPS"), chr = c("7", "8"),
+                       start = c(403222, 548200), end = c(406317, 550616))
+ibd <- ibd_results(per_snp_region = "...", selection = "...", genes = my_genes)
+plot_selection_manhattan(ibd, chroms = c("7", "8"),
+                         highlight_genes = c("crt", "dhps"), label_genes = TRUE)
+```
+
+On your own data, point
+[`ibd_results()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_results.md)
+at the tables the Python `plasgenomicsutils ibd` tools write:
+
+``` r
+
+ibd <- ibd_results(
+  per_snp_region  = "ibd_analysis.per_snp_per_region.tsv.gz",
+  pairwise_region = "ibd_analysis.per_snp_pairwise_region.tsv.gz",
+  selection       = "ibd_selection_analysis.per_region.selection_stats.tsv.gz",
+  threshold       = "ibd_selection_analysis.per_region.threshold.txt",
+  reference       = "pf3d7"
+)
+save_plot("ibd_manhattan.pdf", plot_ibd_manhattan(ibd), width = 9, height = 4)
+```
+
+[`save_plot()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/save_plot.md)
+wraps
+[`ggplot2::ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html)
+and, for `.pdf` output, defaults to the cairo PDF device (better font
+embedding), falling back to the standard `pdf` device where cairo is
+unavailable or unreliable (e.g. Windows). Force a device with
+`device =`, or use
+[`pdf_device()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pdf_device.md)
+directly with `ggsave()`.
+
+Drug-gene triangles read a `genes` track (`name`, `chr`, `start`, `end`)
+passed to
+[`ibd_results()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_results.md);
+a SNP belongs to a gene when its position falls in the gene interval:
+
+``` r
+
+ibd <- ibd_results(pairwise_region = "...pairwise_region.tsv.gz",
+                   genes = "drug_resistance_genes.tsv")
+plot_drug_gene_triangles(ibd)
+```
+
+## Development
+
+``` r
+
+devtools::load_all()
+devtools::test()
+devtools::document()
+```
+
+## License
+
+GPL-3.
+
+# Package index
+
+## IBD results
+
+Ingest the Python IBD tool outputs into one container.
+
+- [`IbdResults`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/IbdResults.md)
+  : IBD post-analysis results
+- [`ibd_results()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_results.md)
+  : Create an IbdResults object
+
+## Plots
+
+Genome-wide and region-by-region IBD figures.
+
+- [`plot_ibd_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_manhattan.md)
+  : IBD Manhattan plot
+- [`plot_selection_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_selection_manhattan.md)
+  : IBD selection-statistic Manhattan plot
+- [`plot_ibd_tugofwar()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_tugofwar.md)
+  : IBD / selection "tug-of-war" mirror plot
+- [`plot_ibd_region_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_region_heatmap.md)
+  : Region-by-region IBD heatmap along the genome
+- [`plot_drug_gene_triangles()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_drug_gene_triangles.md)
+  : IBD "triangle" panels for genes or specific SNPs
+
+## Population structure
+
+PCA / UMAP and sNMF admixture from genotypes, wrapped in one R6
+workspace.
+
+- [`PopStructure`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.md)
+  : Population-structure workspace (PCA + UMAP + admixture)
+- [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
+  : LD-prune a VCF and return the genotype matrix
+- [`pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_structure.md)
+  : Compute PCA and UMAP from a genotype matrix
+- [`plot_pca()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pca.md)
+  : PCA scatter plot
+- [`plot_umap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_umap.md)
+  : UMAP scatter plot
+- [`n_pcs_for_variance()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/n_pcs_for_variance.md)
+  : Number of PCs explaining a target cumulative variance
+- [`run_snmf()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_snmf.md)
+  : Run sNMF (LEA) admixture on a genotype matrix
+- [`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md)
+  : Pick the best K from an sNMF fit by cross-entropy
+- [`snmf_q()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_q.md)
+  : Best-run Q (ancestry proportion) matrix for a given K
+- [`admixture_order()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/admixture_order.md)
+  : Sample order for admixture bars
+- [`plot_admixture()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.md)
+  : Admixture (STRUCTURE) bar plot from a Q matrix
+- [`plot_structure_figure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_structure_figure.md)
+  : Combined UMAP + admixture figure
+- [`load_pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_pop_structure.md)
+  : Load a saved PopStructure workspace
+- [`example_pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_pop_structure.md)
+  : Public population-structure example datasets
+
+## Population differentiation
+
+Per-SNP allele differentiation between metadata groups (Jost’s D, Nei’s
+Gst, Hedrick’s G’st, Hudson’s Fst), a group summary + triangle heatmap,
+and marker selection.
+
+- [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)
+  : Population differentiation between metadata groups, per SNP
+- [`jost_d()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/jost_d.md)
+  : Per-SNP Jost's D between metadata groups
+- [`pop_diff_matrix()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_matrix.md)
+  [`jost_d_matrix()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_matrix.md)
+  : Group x group differentiation summary matrix
+- [`pop_diff_table()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_table.md)
+  : Group-pair differentiation summary across statistics
+- [`plot_diff_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md)
+  [`plot_jost_d_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md)
+  : Triangle heatmap of group x group differentiation
+- [`top_differentiating_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.md)
+  : The SNPs that most differentiate groups
+
+## Colours
+
+Colour-blind-friendly palettes and a shared level-to-colour map.
+
+- [`meta_colors()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.md)
+  : Assign colours to the levels of metadata columns
+- [`colorPalette_08`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palettes.md)
+  [`colorPalette_12`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palettes.md)
+  [`colorPalette_15`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palettes.md)
+  : Colour-blind-friendly categorical palettes
+
+## Saving and sizing
+
+- [`save_plot()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/save_plot.md)
+  : Save a plot, preferring the cairo PDF device
+- [`pdf_device()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pdf_device.md)
+  : The preferred PDF graphics device
+- [`plot_dims()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_dims.md)
+  : Suggested output dimensions for an IBD plot
+
+## Example data
+
+- [`example_ibd_results()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_ibd_results.md)
+  : Load the bundled example IBD results
+- [`EXAMPLE_DRUG_GENES`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/EXAMPLE_DRUG_GENES.md)
+  : Pf3D7 drug-resistance gene coordinates
+
+## Reference genome
+
+Species- and assembly-specific facts, namespaced so the tools stay
+general.
+
+- [`get_reference()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/get_reference.md)
+  : Look up a reference genome's facts by id
+- [`available_references()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/available_references.md)
+  : List available reference ids
+- [`normalise_chr()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/normalise_chr.md)
+  : Normalise a chromosome name to a bare number string
+- [`DEFAULT_REFERENCE`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/DEFAULT_REFERENCE.md)
+  : Default reference id
+- [`PF3D7_CORE_CHROM_LENGTHS_BP`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_CORE_CHROM_LENGTHS_BP.md)
+  : Pf3D7 core chromosome lengths (bp)
+- [`PF3D7_BP_PER_CM`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_BP_PER_CM.md)
+  : Pf3D7 constant genetic-map rate (bp/cM)
+
+# Articles
+
+### Get started
+
+- [Visualizing IBD results with
+  plasgenomicsutilsR](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/plasgenomicsutilsR.md):
