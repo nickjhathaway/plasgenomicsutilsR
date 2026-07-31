@@ -47,3 +47,10 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# stray R graphics-device output
+Rplots.pdf
+**/Rplots.pdf
+/doc/
+/Meta/
+inst/doc/

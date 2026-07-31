@@ -1,0 +1,43 @@
+Package: plasgenomicsutilsR
+Title: Utilities for Visualizing Plasmodium Genomics Data
+Version: 0.1.0
+Authors@R:
+    person("Nicholas", "Hathaway", email = "nickjhathaway@gmail.com",
+           role = c("aut", "cre"))
+Description: A collection of utilities for visualizing and analyzing the outputs
+    of Plasmodium genomics post processing (IBD analysis, Fws within-host
+    diversity, and related summaries produced by the companion Python package
+    plasgenomicsutils). Reference-genome facts are namespaced by species so the
+    tools generalize beyond Plasmodium falciparum.
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1.0)
+Imports:
+    dplyr,
+    R6,
+    rlang,
+    tibble
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    readr,
+    ggplot2,
+    scales,
+    patchwork,
+    ggtext,
+    SNPRelate,
+    gdsfmt,
+    uwot,
+    LEA,
+    ggnewscale
+biocViews: Software
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://nickjhathaway.github.io/plasgenomicsutilsR/,
+    https://github.com/nickjhathaway/plasgenomicsutilsR
+BugReports: https://github.com/nickjhathaway/plasgenomicsutilsR/issues
+Config/roxygen2/version: 8.0.0
+Config/Needs/website: pkgdown
