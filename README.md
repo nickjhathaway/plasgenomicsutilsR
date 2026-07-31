@@ -20,9 +20,47 @@ tools generalize beyond *Plasmodium falciparum*.
 ## Install
 
 ```r
-# install.packages("devtools")
-devtools::install_github("nickjhathaway/plasgenomicsutilsR")
+# install.packages("remotes")
+remotes::install_github("nickjhathaway/plasgenomicsutilsR")
 ```
+
+That base install pulls only the required (CRAN) dependencies. Every plotting and
+analysis dependency is a **`Suggests`** — so it is optional and *not* installed
+automatically — and each function checks for what it needs and prints an install hint if
+it is missing. You only install what you actually use:
+
+- **CRAN** — the plots use `ggplot2`, `scales`, `patchwork`, `ggnewscale`, `ggtext`; the
+  UMAP uses `uwot`.
+- **Bioconductor** — the population-structure tools use **`SNPRelate`**, **`gdsfmt`**
+  (LD-pruning a VCF → genotypes) and **`LEA`** (sNMF admixture).
+
+Because these come from two repositories, install them Bioconductor-aware. The simplest
+one-liner uses `pak`, which reads this package's `biocViews` and resolves CRAN **and**
+Bioconductor deps together:
+
+```r
+# install.packages("pak")
+pak::pak("nickjhathaway/plasgenomicsutilsR", dependencies = TRUE)
+```
+
+Or add the Bioconductor repositories first (your usual `setRepositories` trick), then let
+`remotes` install the suggested packages:
+
+```r
+setRepositories(ind = 1:3)   # CRAN + Bioconductor software + annotation
+remotes::install_github("nickjhathaway/plasgenomicsutilsR", dependencies = TRUE)
+```
+
+Or install the Bioconductor packages explicitly and the CRAN ones normally:
+
+```r
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install(c("SNPRelate", "gdsfmt", "LEA"))
+install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uwot"))
+```
+
+(CI installs the full set the same way — `setup-r-dependencies` is `biocViews`-aware — so
+`R CMD check` exercises the SNPRelate/LEA code paths, not just the CRAN ones.)
 
 ## What's here
 
