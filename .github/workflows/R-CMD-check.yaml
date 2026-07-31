@@ -1,5 +1,7 @@
-# Run R CMD check (which runs the testthat suite) on push and pull requests.
-# Standard r-lib/actions workflow.
+# Run R CMD check (which runs the testthat suite) across operating systems and R
+# versions. Standard r-lib/actions matrix workflow: macOS + Windows on R release, and
+# Ubuntu on R devel / release / oldrel-1. setup-r-dependencies is biocViews-aware, so the
+# Bioconductor Suggests (SNPRelate, gdsfmt, LEA) are installed and their code paths run.
 on:
   push:
     branches: [main]
@@ -12,7 +14,17 @@ permissions: read-all
 
 jobs:
   R-CMD-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest,   r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'release'}
+          - {os: ubuntu-latest,  r: 'oldrel-1'}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
@@ -23,6 +35,8 @@ jobs:
 
       - uses: r-lib/actions/setup-r@v2
         with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -33,4 +47,4 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          build_args: 'c("--no-manual", "--compact-vignettes=gs+qpdf")'
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
