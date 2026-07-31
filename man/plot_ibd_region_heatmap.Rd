@@ -22,6 +22,11 @@ plot_ibd_region_heatmap(
 
 \item{anchor}{Optional single region to show (one panel) instead of all.}
 
+\item{chroms}{Optional chromosomes to keep (any spelling); others are dropped and
+the remaining ones re-laid-out contiguously.}
+
+\item{skip_chr}{Optional chromosomes to drop (complement of \code{chroms}).}
+
 \item{trans}{Fill-scale transform, e.g. \code{"identity"} (default), \code{"log2"}, \code{"sqrt"}.}
 
 \item{colors}{Optional colour ramp for the fill (defaults to a single-hue

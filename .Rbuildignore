@@ -1,0 +1,9 @@
+^\.github$
+^docs$
+^_pkgdown\.yml$
+^\.gitignore$
+^Rplots\.pdf$
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^LICENSE$

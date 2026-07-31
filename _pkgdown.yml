@@ -17,6 +17,40 @@ reference:
   - plot_ibd_tugofwar
   - plot_ibd_region_heatmap
   - plot_drug_gene_triangles
+- title: Population structure
+  desc: PCA / UMAP and sNMF admixture from genotypes, wrapped in one R6 workspace.
+  contents:
+  - PopStructure
+  - run_ld_prune
+  - pop_structure
+  - plot_pca
+  - plot_umap
+  - n_pcs_for_variance
+  - run_snmf
+  - snmf_best_k
+  - snmf_q
+  - admixture_order
+  - plot_admixture
+  - plot_structure_figure
+  - load_pop_structure
+  - example_pop_structure
+- title: Population differentiation
+  desc: >
+    Per-SNP allele differentiation between metadata groups (Jost's D, Nei's Gst,
+    Hedrick's G'st, Hudson's Fst), a group summary + triangle heatmap, and marker
+    selection.
+  contents:
+  - pop_diff
+  - jost_d
+  - pop_diff_matrix
+  - pop_diff_table
+  - plot_diff_heatmap
+  - top_differentiating_snps
+- title: Colours
+  desc: Colour-blind-friendly palettes and a shared level-to-colour map.
+  contents:
+  - meta_colors
+  - color_palettes
 - title: Saving and sizing
   contents:
   - save_plot

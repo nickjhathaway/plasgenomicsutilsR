@@ -27,7 +27,13 @@ Suggests:
     ggplot2,
     scales,
     patchwork,
-    ggtext
+    ggtext,
+    SNPRelate,
+    gdsfmt,
+    uwot,
+    LEA,
+    ggnewscale
+biocViews: Software
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://nickjhathaway.github.io/plasgenomicsutilsR/,

@@ -26,6 +26,16 @@ or \code{"z_score"}.}
 
 \item{regions}{Optional character vector to keep (needs a \code{region} column).}
 
+\item{chroms}{Optional chromosomes to keep (any spelling); others are dropped and
+the remaining ones re-laid-out contiguously.}
+
+\item{skip_chr}{Optional chromosomes to drop (complement of \code{chroms}).}
+
+\item{highlight_genes}{Optional gene names (from the object's \code{genes} track) to draw
+as reference lines; default all genes in the track.}
+
+\item{label_genes}{Label the highlighted genes (top panel only, outside the plot).}
+
 \item{draw_threshold}{Draw the significance threshold line (only for \code{neg_log10_p}).}
 
 \item{point_size, point_alpha}{Point aesthetics.}

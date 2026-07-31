@@ -11,6 +11,7 @@ A collection of utilities for visualizing and analyzing the outputs of Plasmodiu
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://nickjhathaway.github.io/plasgenomicsutilsR/}
   \item \url{https://github.com/nickjhathaway/plasgenomicsutilsR}
   \item Report bugs at \url{https://github.com/nickjhathaway/plasgenomicsutilsR/issues}
 }

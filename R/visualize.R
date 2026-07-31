@@ -219,6 +219,12 @@ plot_ibd_manhattan <- function(x, regions = NULL, chroms = NULL, skip_chr = NULL
 #' @param metric Which column to plot: `"neg_log10_p"` (default), `"chi2_stat"`,
 #'   or `"z_score"`.
 #' @param regions Optional character vector to keep (needs a `region` column).
+#' @param chroms Optional chromosomes to keep (any spelling); others are dropped and
+#'   the remaining ones re-laid-out contiguously.
+#' @param skip_chr Optional chromosomes to drop (complement of `chroms`).
+#' @param highlight_genes Optional gene names (from the object's `genes` track) to draw
+#'   as reference lines; default all genes in the track.
+#' @param label_genes Label the highlighted genes (top panel only, outside the plot).
 #' @param draw_threshold Draw the significance threshold line (only for `neg_log10_p`).
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours Optional length-2 colour vector for the alternating chromosome bands.
@@ -287,6 +293,9 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
 #'
 #' @param x An [IbdResults] object.
 #' @param anchor Optional single region to show (one panel) instead of all.
+#' @param chroms Optional chromosomes to keep (any spelling); others are dropped and
+#'   the remaining ones re-laid-out contiguously.
+#' @param skip_chr Optional chromosomes to drop (complement of `chroms`).
 #' @param trans Fill-scale transform, e.g. `"identity"` (default), `"log2"`, `"sqrt"`.
 #' @param colors Optional colour ramp for the fill (defaults to a single-hue
 #'   light-to-dark sequential scale that stays readable when most values are near 0).
@@ -525,7 +534,7 @@ plot_ibd_tugofwar <- function(x, region = NULL, metric = "neg_log10_p",
 #'
 #' Draws a region-by-region IBD-sharing triangle per feature: a **gene** (per-SNP
 #' pairwise IBD for SNPs falling strictly inside the gene interval, aggregated) or a
-#' **specific SNP** (the sharing at that single position). One facet per feature — use
+#' **specific SNP** (the sharing at that single position). One facet per feature -- use
 #' it to ask whether a gene or locus is itself shared between regions.
 #'
 #' Genes come from the `genes` track on the [IbdResults] object and membership is

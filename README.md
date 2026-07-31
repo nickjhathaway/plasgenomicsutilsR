@@ -1,5 +1,10 @@
 # plasgenomicsutilsR
 
+<!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
 > **Version 0.1.0** — early development; APIs, defaults, and outputs may change
 > between versions.
 
@@ -36,6 +41,40 @@ devtools::install_github("nickjhathaway/plasgenomicsutilsR")
     multi-page PDF) with the legend tucked into the empty upper triangle
 
   ggplot2 / scales are optional (Suggests); each plot returns a ggplot object.
+- **Population structure** — `PopStructure` is an R6 workspace bundling a genotype
+  matrix, its PCA (full `prcomp`), an optional UMAP, per-sample metadata, a **shared
+  colour map**, and an sNMF admixture fit, so PCA / UMAP / admixture colour and order
+  consistently and the whole thing can be `saveRDS`-ed and re-plotted without
+  recomputing. It offers `run_umap()` (PC count *or* a fraction of variance to capture,
+  via `n_pcs_for_variance()`), `run_snmf()` (**cached and quiet** — sNMF is slow and
+  noisy), `subset()` (down to given samples or a metadata match), `best_k()` / `q()`,
+  and `plot_pca()` / `plot_umap()` / `plot_admixture()` (bars ordered once via
+  `admixture_order()`, per-sample borders so near-identical neighbours stay distinct, and
+  a group strip coloured to match the UMAP). `set_levels()` fixes a metadata column's
+  order once and it flows through every legend, facet, and strip; `save()` /
+  `load_pop_structure()` persist the whole workspace. `run_ld_prune()` builds the genotype
+  matrix from a VCF (SNPRelate LD-pruning). SNPRelate / uwot / LEA / ggnewscale / patchwork
+  are optional (Suggests).
+- **`plot_structure_figure()`** — the UMAP and sNMF admixture as **one** figure: a shared
+  theme (matching fonts), one region colour map (UMAP points match the admixture colour
+  strips), collected legends, region-faceted bars (colour strip, no text) laid out over
+  configurable `rows`, and `orientation = "vertical"`/`"horizontal"`, auto-sized.
+  `example_pop_structure()` ships two **public** demos: `"ghana_cambodia"` (minimal) and
+  `"africa"` (258 East-African samples across DRC / Kenya / Tanzania / Uganda sites).
+- **Population differentiation** — `pop_diff()` computes a per-SNP differentiation
+  statistic for every pair of metadata groups from the **full, unpruned** genotypes:
+  **Jost's D** (`jost_d()`), **Nei's Gst**, **Hedrick's standardized G′st**, and
+  **Hudson's Fst**. `pop_diff_matrix()` collapses it to a group × group summary and
+  `plot_diff_heatmap()` draws a triangle heatmap (legend in the empty corner, optional
+  clustering **dendrogram** and one or more metadata **annotation** strips with custom
+  colours), and `pop_diff_table()` returns every statistic × summary per group-pair in one
+  data frame. Because most of the *P. falciparum* genome is barely differentiated, a
+  genome-wide **mean looks near-zero** — use `stat = "top_mean"` (mean of the top few % of
+  SNPs per pair), `"max"`, or a `trans = "sqrt"` fill to see the signal.
+  `top_differentiating_snps()` picks the most differentiating markers (round-robin across
+  pairs); the `"africa"` example fixture is itself built from them, which sharpens its
+  UMAP/admixture structure. Estimators follow Jost (2008), Nei & Chesser (1983), Hedrick
+  (2005), and Hudson et al. (1992) / Bhatia et al. (2013).
 - Reference registry: `get_reference()`, `available_references()`,
   `normalise_chr()`, `PF3D7_CORE_CHROM_LENGTHS_BP`.
 

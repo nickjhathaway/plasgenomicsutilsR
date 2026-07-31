@@ -56,7 +56,7 @@ A ggplot object (grid), or a named list of ggplot objects when \code{individual}
 \description{
 Draws a region-by-region IBD-sharing triangle per feature: a \strong{gene} (per-SNP
 pairwise IBD for SNPs falling strictly inside the gene interval, aggregated) or a
-\strong{specific SNP} (the sharing at that single position). One facet per feature — use
+\strong{specific SNP} (the sharing at that single position). One facet per feature -- use
 it to ask whether a gene or locus is itself shared between regions.
 }
 \details{
