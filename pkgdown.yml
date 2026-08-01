@@ -2,8 +2,11 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  differentiation: differentiation.html
+  ibd: ibd.html
   plasgenomicsutilsR: plasgenomicsutilsR.html
-last_built: 2026-07-31T09:41Z
+  population-structure: population-structure.html
+last_built: 2026-08-01T18:11Z
 urls:
   reference: https://nickjhathaway.github.io/plasgenomicsutilsR/reference
   article: https://nickjhathaway.github.io/plasgenomicsutilsR/articles

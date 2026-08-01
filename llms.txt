@@ -1,6 +1,6 @@
 # plasgenomicsutilsR
 
-> **Version 0.1.0** — early development; APIs, defaults, and outputs may
+> **Version 0.1.1** — early development; APIs, defaults, and outputs may
 > change between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** —
@@ -391,5 +391,14 @@ general.
 
 ### Get started
 
-- [Visualizing IBD results with
+- [Get started with
   plasgenomicsutilsR](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/plasgenomicsutilsR.md):
+
+### Analyses
+
+- [IBD
+  analysis](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/ibd.md):
+- [Population
+  structure](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/population-structure.md):
+- [Population
+  differentiation](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/differentiation.md):

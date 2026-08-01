@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,16 @@
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="articles/plasgenomicsutilsR.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Analyses</h6></li>
+    <li><a class="dropdown-item" href="articles/ibd.html">IBD analysis</a></li>
+    <li><a class="dropdown-item" href="articles/population-structure.html">Population structure</a></li>
+    <li><a class="dropdown-item" href="articles/differentiation.html">Population differentiation</a></li>
+  </ul>
+</li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -52,7 +62,7 @@
 <!-- badges: start -->
 
 <blockquote>
-<p><strong>Version 0.1.0</strong> — early development; APIs, defaults, and outputs may change between versions.</p>
+<p><strong>Version 0.1.1</strong> — early development; APIs, defaults, and outputs may change between versions.</p>
 </blockquote>
 <p>R utilities for <strong>visualizing and analyzing Plasmodium genomics data</strong> — the R-side companion to the Python package <a href="https://github.com/nickjhathaway/plasgenomicsutils" class="external-link"><code>plasgenomicsutils</code></a>, which does the heavy post-processing compute (VCF filtering/harmonization, IBD analysis) and writes plain tables that this package reads and plots.</p>
 <p>Reference-genome facts are namespaced by species (see <code><a href="reference/get_reference.html">get_reference()</a></code>), so the tools generalize beyond <em>Plasmodium falciparum</em>.</p>
