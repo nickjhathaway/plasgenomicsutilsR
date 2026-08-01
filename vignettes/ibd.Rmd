@@ -1,0 +1,144 @@
+---
+title: "IBD analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{IBD analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+have_ggplot <- requireNamespace("ggplot2", quietly = TRUE) &&
+  requireNamespace("scales", quietly = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
+                      fig.width = 8, fig.height = 5, dpi = 96, eval = have_ggplot)
+library(plasgenomicsutilsR)
+```
+
+`plasgenomicsutilsR` plots identity-by-descent (IBD) results produced by the companion
+Python package. You hand it the per-SNP, pairwise-region, and selection-statistic tables;
+it draws genome-wide tracks, region heatmaps, tug-of-war mirrors, and drug-gene triangles.
+
+## Generating the input tables (`plasgenomicsutils`)
+
+The tables come from the Python IBD tools, run on your `hmmibd-rs` output, a SNP panel, a
+clean BCF, and a sample → region map. The pipeline is:
+
+```bash
+# 1. Binary (pairs x SNPs) IBD matrix from hmmibd-rs blocks + a SNP panel
+plasgenomicsutils build_ibd_matrix \
+  --blocks hmmibd_rs.hmm.tsv.gz --snps panel.vcf.gz --snp-format vcf \
+  --output ibd_matrix.npz
+
+# 2. Per-SNP-per-region and pairwise-region IBD summaries (needs the region map)
+plasgenomicsutils analyze_ibd_matrix \
+  --matrix ibd_matrix.npz --meta sample_regions.tsv --region-col region \
+  --output ibd_analysis
+
+# 3. Global + per-region allele frequencies, single pass over the BCF
+plasgenomicsutils compute_allele_freqs \
+  --bcf clean.snps.bcf --meta sample_regions.tsv --region-col region \
+  --output allele_freqs
+
+# 4. IBD selection statistic (XiR,s), genome-wide and per region
+plasgenomicsutils ibd_selection_statistic \
+  --matrix ibd_matrix.npz \
+  --af allele_freqs.global.tsv.gz --af-region allele_freqs.per_region.tsv.gz \
+  --meta sample_regions.tsv --region-col region \
+  --output ibd_selection
+```
+
+Each command's options are listed by `plasgenomicsutils <command> --help`.
+
+## The IbdResults container
+
+`ibd_results()` ingests those tables (paths or data frames) and precomputes the
+cumulative-genome coordinate the plots share. A small **public** example dataset (five
+African countries) ships with the package:
+
+```{r ingest}
+ibd <- example_ibd_results()
+ibd
+```
+
+On your own data, point it at the tool outputs:
+
+```r
+ibd <- ibd_results(
+  per_snp_region  = "ibd_analysis.per_snp_per_region.tsv.gz",
+  pairwise_region = "ibd_analysis.per_snp_pairwise_region.tsv.gz",
+  selection       = "ibd_selection.per_region.selection_stats.tsv.gz",
+  threshold       = "ibd_selection.per_region.threshold.txt",
+  genes           = EXAMPLE_DRUG_GENES,
+  reference       = "pf3d7"
+)
+```
+
+## Highlighting genes
+
+The `genes` track supplies gene positions **and** display names. `EXAMPLE_DRUG_GENES` is a
+small bundled track of drug-resistance loci:
+
+```{r genes}
+EXAMPLE_DRUG_GENES
+```
+
+Pass `highlight_genes` to pick which to mark and `label_genes = TRUE` to name them (top
+panel only, at each gene's true position — labels are never nudged off-position).
+
+## Genome-wide tracks
+
+Per-SNP IBD along the genome, faceted by region, with two drug genes labelled:
+
+```{r manhattan}
+plot_ibd_manhattan(ibd, highlight_genes = c("crt", "kelch13"), label_genes = TRUE)
+```
+
+The IBD selection statistic with the per-region Bonferroni threshold:
+
+```{r selection}
+plot_selection_manhattan(ibd, metric = "neg_log10_p",
+                         highlight_genes = c("crt", "kelch13"), label_genes = TRUE)
+```
+
+Every genome-wide plot can drop chromosomes (`chroms` / `skip_chr`, the rest re-laid out
+contiguously):
+
+```{r zoom}
+plot_selection_manhattan(ibd, chroms = c("7", "13"),
+                         highlight_genes = c("crt", "kelch13"), label_genes = TRUE)
+```
+
+## Tug-of-war
+
+Selection hangs from the top, IBD rises from the bottom, sharing one colour-coded axis.
+`scale = "common"` keeps panels comparable; `scale = "free"` lets each region use its own
+maximum:
+
+```{r tugofwar, fig.height = 7}
+plot_ibd_tugofwar(ibd, highlight_genes = c("crt", "dhps"), label_genes = TRUE)
+```
+
+## Region-by-region sharing
+
+IBD between region pairs along the genome; `trans = "log2"` and a single-hue ramp keep it
+readable when most values are near zero:
+
+```{r heatmap, fig.height = 6}
+plot_ibd_region_heatmap(ibd, trans = "log2")
+```
+
+Triangles ask whether a gene (or a specific locus) is itself shared. A gene's cell
+aggregates **all** SNPs strictly inside it (`agg = "mean"`/`"median"`/`"max"`):
+
+```r
+plot_drug_gene_triangles(ibd)                              # one facet per gene
+plot_drug_gene_triangles(ibd, snps = "Pf3D7_07_v3:403222") # a single locus
+plot_drug_gene_triangles(ibd, individual = TRUE)           # a list, one plot per feature
+```
+
+## Saving
+
+```r
+save_plot("ibd_tugofwar.pdf", plot_ibd_tugofwar(ibd))   # auto-sized; cairo PDF by default
+```

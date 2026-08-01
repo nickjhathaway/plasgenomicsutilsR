@@ -75,3 +75,9 @@ articles:
   navbar: ~
   contents:
   - plasgenomicsutilsR
+- title: Analyses
+  navbar: Analyses
+  contents:
+  - ibd
+  - population-structure
+  - differentiation

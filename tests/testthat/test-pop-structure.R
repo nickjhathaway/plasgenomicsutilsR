@@ -133,7 +133,7 @@ test_that("the richer 'africa' example loads with multi-region metadata", {
 test_that("set_levels controls the order used across metadata and plots", {
   ps <- example_pop_structure("africa", umap = FALSE)
   ord <- c("Uganda_North", "Uganda_East", "Kenya_West", "Kenya_East",
-           "Tanzania_West", "Tanzania_East", "Uganda_North-East", "DRC")
+           "Tanzania_West", "Tanzania_East", "Uganda_Northeast", "DRC")
   ps$set_levels("site", ord)
   expect_identical(levels(ps$get_meta()$site), ord)
   # colours are re-ordered to the new level order (same colour per level)

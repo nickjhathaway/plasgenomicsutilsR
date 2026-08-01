@@ -83,10 +83,11 @@
 }
 
 .manhattan_theme <- function() {
+  # No grid lines: they read oddly against the alternating grey chromosome bands
+  # (visible on the white bands, hidden on the grey). The bands carry the x reference.
   ggplot2::theme_bw(base_size = 11) +
     ggplot2::theme(
-      panel.grid.minor = ggplot2::element_blank(),
-      panel.grid.major.x = ggplot2::element_blank(),
+      panel.grid = ggplot2::element_blank(),
       legend.position = "none",
       strip.background = ggplot2::element_rect(fill = "grey95", colour = NA)
     )
