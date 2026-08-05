@@ -7,9 +7,10 @@
 pop_diff(
   x,
   group = NULL,
-  statistic = c("jost_d", "gst", "gst_hedrick", "fst"),
+  statistic = c("jost_d", "gst_hedrick", "fst"),
   meta = NULL,
-  clamp = TRUE
+  clamp = TRUE,
+  genotype = NULL
 )
 }
 \arguments{
@@ -19,15 +20,20 @@ genotype matrix (samples x SNPs, 0/1/2, \code{NA}).}
 \item{group}{Metadata column (for a \code{PopStructure}) or a per-sample grouping vector
 (for a matrix).}
 
-\item{statistic}{\code{"jost_d"} (Jost's D, default), \code{"gst"} (Nei's Gst), \code{"gst_hedrick"}
-(Hedrick's standardized G'st), or \code{"fst"} (Hudson's Fst). Gst is strongly deflated
-when within-group diversity is high (typical genome-wide in \emph{P. falciparum}); G'st, D
-and a top-percentile summary counter that -- see \code{\link[=pop_diff_matrix]{pop_diff_matrix()}}.}
+\item{statistic}{\code{"jost_d"} (Jost's D, default), \code{"gst_hedrick"} (Hedrick's
+standardized G'st), or \code{"fst"} (Hudson's Fst); all in [0, 1]. Plain Nei's Gst is not
+offered -- it is strongly deflated when within-group diversity is high (typical
+genome-wide in \emph{P. falciparum}); its standardized form G'st is provided instead.}
 
 \item{meta}{When \code{x} is a matrix, an optional data frame with a \code{sample} column plus
 \code{group}; otherwise \code{group} is a vector aligned to the matrix rows.}
 
 \item{clamp}{Clamp small negative estimates to 0 (default \code{TRUE}).}
+
+\item{genotype}{Optional genotype matrix (samples x SNPs) or \code{\link[=run_ld_prune]{run_ld_prune()}} list to
+use \strong{instead} of a \code{PopStructure}'s stored matrix -- pass the \strong{full, unpruned}
+set here (e.g. \code{run_ld_prune(vcf, prune = FALSE)}) so differentiation is measured on
+every SNP while PCA/UMAP keep using the pruned matrix. Ignored when \code{x} is a matrix.}
 }
 \value{
 A \code{pop_diff} object: a list with \code{D} (a SNP x pair matrix of the statistic),

@@ -7,11 +7,12 @@
 pop_diff_table(
   x,
   group = NULL,
-  statistics = c("jost_d", "gst", "gst_hedrick", "fst"),
+  statistics = c("jost_d", "gst_hedrick", "fst"),
   stats = c("mean", "top_mean", "max"),
   top = 0.05,
   meta = NULL,
-  clamp = TRUE
+  clamp = TRUE,
+  genotype = NULL
 )
 }
 \arguments{
@@ -21,8 +22,8 @@ genotype matrix (samples x SNPs, 0/1/2, \code{NA}).}
 \item{group}{Metadata column (for a \code{PopStructure}) or a per-sample grouping vector
 (for a matrix).}
 
-\item{statistics}{Measures to include (any of \code{"jost_d"}, \code{"gst"}, \code{"gst_hedrick"},
-\code{"fst"}; default all four).}
+\item{statistics}{Measures to include (any of \code{"jost_d"}, \code{"gst_hedrick"}, \code{"fst"};
+default all three). Nei's Gst is not offered -- see \code{\link[=pop_diff]{pop_diff()}}.}
 
 \item{stats}{Per-pair summaries to include (\code{"mean"}, \code{"median"}, \code{"top_mean"},
 \code{"max"}; default mean + top_mean + max).}
@@ -33,6 +34,8 @@ genotype matrix (samples x SNPs, 0/1/2, \code{NA}).}
 \code{group}; otherwise \code{group} is a vector aligned to the matrix rows.}
 
 \item{clamp}{Clamp small negative estimates to 0 (default \code{TRUE}).}
+
+\item{genotype}{Optional full/unpruned genotype override (see \code{\link[=pop_diff]{pop_diff()}}).}
 }
 \value{
 A data frame: \code{a}, \code{b}, \code{n_snps}, then one \code{statistic_stat} column each.

@@ -10,13 +10,22 @@ reference:
   - IbdResults
   - ibd_results
 - title: Plots
-  desc: Genome-wide and region-by-region IBD figures.
+  desc: Genome-wide and group-by-group IBD figures.
   contents:
-  - plot_ibd_manhattan
+  - plot_ibd_sharing_manhattan
   - plot_selection_manhattan
   - plot_ibd_tugofwar
-  - plot_ibd_region_heatmap
-  - plot_drug_gene_triangles
+  - plot_ibd_pairwise_group_heatmap
+  - plot_pairwise_ibd_for_genes
+  - plot_ibd_network
+- title: Gene IBD-block overlap
+  desc: Fraction of pairs whose IBD block overlaps a gene (block-based, not SNP-in-gene).
+  contents:
+  - gene_ibd_overlap
+- title: Selection genes
+  desc: Genes hit by an above-threshold IBD selection signal.
+  contents:
+  - pos_selection_genes
 - title: Population structure
   desc: PCA / UMAP and sNMF admixture from genotypes, wrapped in one R6 workspace.
   contents:
@@ -36,30 +45,39 @@ reference:
   - example_pop_structure
 - title: Population differentiation
   desc: >
-    Per-SNP allele differentiation between metadata groups (Jost's D, Nei's Gst,
-    Hedrick's G'st, Hudson's Fst), a group summary + triangle heatmap, and marker
+    Per-SNP allele differentiation between metadata groups (Jost's D, Hedrick's G'st,
+    Hudson's Fst), a group summary + triangle heatmap, a genome-wide track, and marker
     selection.
   contents:
   - pop_diff
   - jost_d
+  - pop_diff_snps
   - pop_diff_matrix
   - pop_diff_table
   - plot_diff_heatmap
+  - plot_diff_manhattan
   - top_differentiating_snps
 - title: Colours
   desc: Colour-blind-friendly palettes and a shared level-to-colour map.
   contents:
   - meta_colors
-  - color_palettes
+  - color_palette
 - title: Saving and sizing
   contents:
   - save_plot
   - pdf_device
   - plot_dims
-- title: Example data
+- title: Genomic intervals
+  desc: Overlap two BED-style interval tables (genes vs. core / paralog regions, ...).
+  contents:
+  - bed_intersect
+- title: Example & reference data
   contents:
   - example_ibd_results
-  - EXAMPLE_DRUG_GENES
+  - PF3D7_GENES
+  - PF_EXAMPLE_DRUG_GENES
+  - PF3D7_CORE_REGIONS
+  - PF3D7_PARALOG_GENES
 - title: Reference genome
   desc: Species- and assembly-specific facts, namespaced so the tools stay general.
   contents:

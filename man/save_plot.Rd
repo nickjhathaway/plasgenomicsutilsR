@@ -16,7 +16,10 @@ save_plot(
 \arguments{
 \item{filename}{Output path.}
 
-\item{plot}{Plot to save (defaults to the last plot displayed).}
+\item{plot}{A single plot (defaults to the last plot displayed), \strong{or a list/vector of
+plots} -- e.g. the list returned by \code{plot_pairwise_ibd_for_genes(individual = TRUE)}
+-- which is written as a \strong{multi-page PDF}, one plot per page (\code{filename} must end
+in \code{.pdf}).}
 
 \item{device}{Graphics device. \code{NULL} (default) auto-selects for \code{.pdf} output
 (see \code{\link[=pdf_device]{pdf_device()}}); pass \code{grDevices::cairo_pdf}, \code{"pdf"}, or any device
@@ -24,9 +27,11 @@ save_plot(
 
 \item{width, height}{Output size in inches. \code{NULL} (default) uses the size the
 \verb{plot_*()} function attached to the plot (see \code{\link[=plot_dims]{plot_dims()}}), falling back to
-\code{ggsave()}'s default if none is present.}
+\code{ggsave()}'s default if none is present. For a multi-page list, the page size is the
+largest attached size across the plots (one size for every page).}
 
-\item{...}{Passed to \code{\link[ggplot2:ggsave]{ggplot2::ggsave()}} (e.g. \code{dpi}, \code{units}).}
+\item{...}{Passed to \code{\link[ggplot2:ggsave]{ggplot2::ggsave()}} (e.g. \code{dpi}, \code{units}) for a single plot;
+ignored for a multi-page list (which honours only \code{width} / \code{height} / \code{device}).}
 }
 \value{
 \code{filename}, invisibly.
@@ -39,7 +44,10 @@ Non-PDF outputs, and any explicit \code{device}, pass straight through to \code{
 }
 \examples{
 \dontrun{
-# size is chosen automatically from the number of regions / chromosomes drawn
-save_plot("ibd_manhattan.pdf", plot_ibd_manhattan(example_ibd_results()))
+# size is chosen automatically from the number of groups / chromosomes drawn
+save_plot("ibd_manhattan.pdf", plot_ibd_sharing_manhattan(example_ibd_results()))
+# a list of plots -> one multi-page PDF
+save_plot("triangles.pdf",
+          plot_pairwise_ibd_for_genes(example_ibd_results(), individual = TRUE))
 }
 }

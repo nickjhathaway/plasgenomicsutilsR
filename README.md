@@ -66,19 +66,34 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
 
 - **`IbdResults` + `plot_*()`** — an R6 container over the tables the Python
   `plasgenomicsutils ibd` tools emit, and genome-wide plots reading from it:
-  - `plot_ibd_manhattan()` — per-SNP fraction of pairs IBD along the genome
+  - `plot_ibd_sharing_manhattan()` — per-SNP fraction of pairs IBD along the genome
   - `plot_selection_manhattan()` — the IBD selection statistic, with the
     Bonferroni threshold line
-  - `plot_ibd_region_heatmap()` — region × region IBD as tiles along the genome
-  - `plot_ibd_tugofwar()` — selection (top) vs IBD (bottom) mirror for one region
-  - `plot_drug_gene_triangles()` — region × region IBD-sharing triangles, per gene
-    (SNPs strictly inside the gene, no flanking) or per specific locus via
-    `snps = "Pf3D7_07_v3:403222"`. A gene's cell aggregates **all** its in-gene SNPs
-    (`agg = "mean"`/`"median"`/`"max"` — nothing is picked or dropped). Returns a
-    faceted grid, or `individual = TRUE` for a list of one-per-feature plots (e.g. a
-    multi-page PDF) with the legend tucked into the empty upper triangle
+  - `plot_ibd_pairwise_group_heatmap()` — group × group IBD as tiles along the genome
+  - `plot_ibd_tugofwar()` — selection (top) vs IBD (bottom) mirror for one group
+  - `plot_pairwise_ibd_for_genes()` — group × group IBD-sharing triangles, per gene. With
+    IBD blocks loaded (`ibd_results(blocks=, meta=)`) or a precomputed overlap table
+    (`gene_overlap=`, from `plasgenomicsutils ibd_gene_overlap`), a gene's cell is the
+    fraction of pairs whose IBD **block overlaps the gene** (`gene_ibd_overlap()`) — the
+    right question, since a pair can share a segment spanning the gene with no genotyped
+    SNP inside it. Without blocks it falls back to aggregating the pairwise IBD of SNPs
+    strictly inside the gene; `snps = "Pf3D7_07_v3:403222"` draws a specific locus. Returns
+    a faceted grid, or `individual = TRUE` for one-per-feature plots.
+  - `plot_ibd_network()` — a sample-level IBD network at one gene/locus: nodes are
+    samples, an edge joins two whose pair shares an IBD block over the interval; nodes
+    optionally coloured by a metadata group, and isolated (unconnected) nodes optionally
+    kept (to show the total N) or dropped (for a neater graph). Needs `igraph` + `ggraph`.
+  - `pos_selection_genes()` — the genes hit by an above-threshold selection signal:
+    intersects the significant SNPs with the `genes` track, counting a SNP for a gene
+    when it lands within `within` bp of it (default 2 kb, since filtering can push the
+    peak just outside a gene). Pass the full `PF3D7_GENES` track to scan every gene.
 
-  ggplot2 / scales are optional (Suggests); each plot returns a ggplot object.
+  The gene track (`highlight_genes` / the `genes =` argument) defaults to every gene in
+  the object's track; naming a gene that is not in the track is an error (not a silent
+  no-op), and passing `highlight_genes` labels those genes by default. ggplot2 / scales
+  are optional (Suggests); each plot returns a ggplot object. Every `plot_*()` and
+  `pos_selection_genes()` is also a method, so `ibd$plot_selection_manhattan()` and
+  `plot_selection_manhattan(ibd)` are interchangeable.
 - **Population structure** — `PopStructure` is an R6 workspace bundling a genotype
   matrix, its PCA (full `prcomp`), an optional UMAP, per-sample metadata, a **shared
   colour map**, and an sNMF admixture fit, so PCA / UMAP / admixture colour and order
@@ -100,19 +115,29 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   `example_pop_structure()` ships two **public** demos: `"ghana_cambodia"` (minimal) and
   `"africa"` (258 East-African samples across DRC / Kenya / Tanzania / Uganda sites).
 - **Population differentiation** — `pop_diff()` computes a per-SNP differentiation
-  statistic for every pair of metadata groups from the **full, unpruned** genotypes:
-  **Jost's D** (`jost_d()`), **Nei's Gst**, **Hedrick's standardized G′st**, and
-  **Hudson's Fst**. `pop_diff_matrix()` collapses it to a group × group summary and
-  `plot_diff_heatmap()` draws a triangle heatmap (legend in the empty corner, optional
-  clustering **dendrogram** and one or more metadata **annotation** strips with custom
-  colours), and `pop_diff_table()` returns every statistic × summary per group-pair in one
-  data frame. Because most of the *P. falciparum* genome is barely differentiated, a
-  genome-wide **mean looks near-zero** — use `stat = "top_mean"` (mean of the top few % of
-  SNPs per pair), `"max"`, or a `trans = "sqrt"` fill to see the signal.
+  statistic for every pair of metadata groups: **Jost's D** (`jost_d()`), **Hedrick's
+  standardized G′st**, and **Hudson's Fst**. It wants the **full, unpruned** genotypes
+  (LD-pruning removes the differentiating SNPs), so on a `PopStructure` — whose stored
+  matrix is pruned for PCA/UMAP — pass `genotype = run_ld_prune(vcf, prune = FALSE)` to
+  measure differentiation on every SNP. Only one Gst is offered: plain Nei's Gst is
+  strongly deflated when within-group diversity is high (typical in *P. falciparum*), so
+  its standardized form G′st is kept. `pop_diff_matrix()` collapses to a group × group
+  summary; `plot_diff_heatmap()` draws a triangle heatmap (legend in the empty corner,
+  optional clustering **dendrogram** with leaf tips coloured to match the UMAP/admixture,
+  and metadata **annotation** strips); `pop_diff_table()` returns every statistic ×
+  summary per group-pair; `pop_diff_snps()` unpacks the per-SNP values (with `chr:pos`
+  coordinates) and `plot_diff_manhattan()` draws them along the genome. Because most of the
+  genome is barely differentiated, a genome-wide **mean looks near-zero** — use
+  `stat = "top_mean"`, `"max"`, or a `trans = "sqrt"` fill to see the signal.
   `top_differentiating_snps()` picks the most differentiating markers (round-robin across
-  pairs); the `"africa"` example fixture is itself built from them, which sharpens its
-  UMAP/admixture structure. Estimators follow Jost (2008), Nei & Chesser (1983), Hedrick
-  (2005), and Hudson et al. (1992) / Bhatia et al. (2013).
+  pairs); the `"africa"` example fixture is itself built from them. Estimators follow Jost
+  (2008), Nei & Chesser (1983), Hedrick (2005), and Hudson et al. (1992) / Bhatia et al.
+  (2013).
+- **Genomic intervals** — `bed_intersect()` overlaps two BED-style interval tables
+  (configurable `chr`/`start`/`end` columns, chromosome spellings reconciled) and returns
+  `overlap` / `only1` / `only2`. Bundled region tracks `PF3D7_CORE_REGIONS` (core vs.
+  subtelomeric/hypervariable) and `PF3D7_PARALOG_GENES` let you classify genes, e.g.
+  `bed_intersect(PF3D7_GENES, PF3D7_CORE_REGIONS)$only1` are the subtelomeric genes.
 - Reference registry: `get_reference()`, `available_references()`,
   `normalise_chr()`, `PF3D7_CORE_CHROM_LENGTHS_BP`.
 
@@ -125,15 +150,15 @@ A small **public** example dataset (five African countries) ships with the packa
 library(plasgenomicsutilsR)
 
 ibd <- example_ibd_results()          # bundled public example
-plot_ibd_manhattan(ibd)
+plot_ibd_sharing_manhattan(ibd)
 plot_selection_manhattan(ibd, metric = "neg_log10_p")
-plot_ibd_tugofwar(ibd, region = "Tanzania")
-plot_ibd_region_heatmap(ibd, trans = "log2")   # log2 fill reads best for IBD
+plot_ibd_tugofwar(ibd, group = "Tanzania")
+plot_ibd_pairwise_group_heatmap(ibd, trans = "log2")   # log2 fill reads best for IBD
 ```
 
 The genome-wide plots share a few options:
 
-- **Colour scale** (`plot_ibd_region_heatmap`, `plot_drug_gene_triangles`):
+- **Colour scale** (`plot_ibd_pairwise_group_heatmap`, `plot_pairwise_ibd_for_genes`):
   `trans` (`"log2"`, `"sqrt"`, …), a custom `colors` ramp, `limits = c(lo, hi)`
   (extremes squished so a few high values don't crush the scale), or a full
   `fill_scale` override. The default is a light single-hue ramp.
@@ -141,18 +166,18 @@ The genome-wide plots share a few options:
   `skip_chr = "1"` drops them — the rest are re-laid-out contiguously.
 - **Highlight genes**: gene positions *and* display names come from the `genes`
   track you pass to `ibd_results()` — a data frame of `name`, `chr`, `start`, `end`
-  (the bundled [`EXAMPLE_DRUG_GENES`] is one). The Manhattan, tug-of-war, and region
-  heatmap draw a reference line at each gene; `highlight_genes = c("crt", "dhps")`
+  (the bundled [`PF_EXAMPLE_DRUG_GENES`] is one). The Manhattan, tug-of-war, and region
+  heatmap draw a reference line at each gene; `highlight_genes = c("pfcrt", "pfdhps")`
   selects which to show (case-insensitive) and `label_genes = TRUE` labels them (top
   panel only, just outside the plot). The label text is the track's `name`, so set it
-  to whatever you want displayed (`"CRT"` vs `"crt"`) by passing your own track:
+  to whatever you want displayed (`"CRT"` vs `"pfcrt"`) by passing your own track:
 
 ```r
 my_genes <- data.frame(name = c("CRT", "DHPS"), chr = c("7", "8"),
                        start = c(403222, 548200), end = c(406317, 550616))
-ibd <- ibd_results(per_snp_region = "...", selection = "...", genes = my_genes)
+ibd <- ibd_results(per_snp_group = "...", selection = "...", genes = my_genes)
 plot_selection_manhattan(ibd, chroms = c("7", "8"),
-                         highlight_genes = c("crt", "dhps"), label_genes = TRUE)
+                         highlight_genes = c("CRT", "DHPS"), label_genes = TRUE)
 ```
 
 On your own data, point `ibd_results()` at the tables the Python `plasgenomicsutils
@@ -160,13 +185,13 @@ ibd` tools write:
 
 ```r
 ibd <- ibd_results(
-  per_snp_region  = "ibd_analysis.per_snp_per_region.tsv.gz",
-  pairwise_region = "ibd_analysis.per_snp_pairwise_region.tsv.gz",
-  selection       = "ibd_selection_analysis.per_region.selection_stats.tsv.gz",
-  threshold       = "ibd_selection_analysis.per_region.threshold.txt",
+  per_snp_group  = "ibd_analysis.per_snp_per_group.tsv.gz",
+  pairwise_group = "ibd_analysis.per_snp_pairwise_group.tsv.gz",
+  selection       = "ibd_selection.per_group.selection_stats.tsv.gz",
+  threshold       = "ibd_selection.per_group.threshold.txt",
   reference       = "pf3d7"
 )
-save_plot("ibd_manhattan.pdf", plot_ibd_manhattan(ibd), width = 9, height = 4)
+save_plot("ibd_manhattan.pdf", plot_ibd_sharing_manhattan(ibd), width = 9, height = 4)
 ```
 
 `save_plot()` wraps `ggplot2::ggsave()` and, for `.pdf` output, defaults to the cairo
@@ -179,9 +204,9 @@ to `ibd_results()`; a SNP belongs to a gene when its position falls in the gene
 interval:
 
 ```r
-ibd <- ibd_results(pairwise_region = "...pairwise_region.tsv.gz",
+ibd <- ibd_results(pairwise_group = "...pairwise_group.tsv.gz",
                    genes = "drug_resistance_genes.tsv")
-plot_drug_gene_triangles(ibd)
+plot_pairwise_ibd_for_genes(ibd)
 ```
 
 ## Development

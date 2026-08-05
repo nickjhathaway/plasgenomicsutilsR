@@ -12,15 +12,21 @@
 #'
 #' @param vcf Path to a (bgzipped) VCF.
 #' @param gds Optional GDS path; derived from `vcf` if `NULL`.
+#' @param prune LD-prune (default `TRUE`). `FALSE` returns **every** biallelic SNP,
+#'   unpruned -- use this for the genotype matrix fed to [pop_diff()] /
+#'   [pop_diff_table()], since LD-pruning removes the very SNPs that carry the
+#'   differentiation signal.
 #' @param ld_threshold,slide_max_bp,slide_max_n,autosome_only Passed to
-#'   [SNPRelate::snpgdsLDpruning()] (defaults 0.2 / 20000 / 200 / `FALSE`).
+#'   [SNPRelate::snpgdsLDpruning()] (defaults 0.2 / 20000 / 200 / `FALSE`); ignored
+#'   when `prune = FALSE`.
 #' @param maf,missing_rate Optional MAF / per-SNP missing-rate cutoffs for pruning.
 #' @param seed Random seed for the pruning.
-#' @return A list with `genotype` (matrix), `sample.id`, and `snp.id`.
+#' @return A list with `genotype` (matrix; sample row names and `chr:pos` column names),
+#'   `sample.id`, and `snp.id`.
 #' @export
-run_ld_prune <- function(vcf, gds = NULL, ld_threshold = 0.2, slide_max_bp = 20000,
-                         slide_max_n = 200, autosome_only = FALSE, maf = NaN,
-                         missing_rate = NaN, seed = 42) {
+run_ld_prune <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
+                         slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
+                         maf = NaN, missing_rate = NaN, seed = 42) {
   .need_package("SNPRelate", "run_ld_prune()")
   .need_package("gdsfmt", "run_ld_prune()")
   if (is.null(gds)) gds <- sub("\\.vcf(\\.gz)?$", ".gds", vcf, ignore.case = TRUE)
@@ -30,13 +36,21 @@ run_ld_prune <- function(vcf, gds = NULL, ld_threshold = 0.2, slide_max_bp = 200
   }
   h <- SNPRelate::snpgdsOpen(gds)
   on.exit(SNPRelate::snpgdsClose(h), add = TRUE)
-  set.seed(seed)
-  snpset <- SNPRelate::snpgdsLDpruning(
-    h, autosome.only = autosome_only, ld.threshold = ld_threshold,
-    slide.max.bp = slide_max_bp, slide.max.n = slide_max_n,
-    maf = maf, missing.rate = missing_rate, verbose = FALSE)
-  snp_ids <- unlist(snpset, use.names = FALSE)
+  snpinfo <- SNPRelate::snpgdsSNPList(h)              # snp.id, chromosome, position
+  if (prune) {
+    set.seed(seed)
+    snpset <- SNPRelate::snpgdsLDpruning(
+      h, autosome.only = autosome_only, ld.threshold = ld_threshold,
+      slide.max.bp = slide_max_bp, slide.max.n = slide_max_n,
+      maf = maf, missing.rate = missing_rate, verbose = FALSE)
+    snp_ids <- unlist(snpset, use.names = FALSE)
+  } else {
+    snp_ids <- snpinfo$snp.id
+  }
   geno <- SNPRelate::snpgdsGetGeno(h, snp.id = snp_ids, with.id = TRUE, verbose = FALSE)
+  idx <- match(geno$snp.id, snpinfo$snp.id)
+  rownames(geno$genotype) <- geno$sample.id
+  colnames(geno$genotype) <- paste0(snpinfo$chromosome[idx], ":", snpinfo$position[idx])
   list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id)
 }
 
@@ -389,8 +403,11 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
 #' @param group_bar Draw a coloured strip above the bars keyed by `group`.
 #' @param group_colours Named `level -> colour` vector for the group strip (see
 #'   [meta_colors()]); pass the same mapping you use for the UMAP to match colours.
-#' @param border Outline each sample's bar (default `TRUE`) so neighbours with nearly
-#'   identical ancestry stay distinct; set `FALSE` for borderless bars.
+#' @param border Outline each sample's bar (default `TRUE`, matching
+#'   [plot_structure_figure()]) so neighbours with nearly identical ancestry stay distinct;
+#'   `FALSE` for borderless bars. With very many samples in a narrow render the outlines
+#'   can swamp the fills -- either render wider ([save_plot()] uses the attached width) or
+#'   set `border = FALSE` / a thinner `border_linewidth`.
 #' @param border_colour,border_linewidth Colour and width of the per-sample outline.
 #' @return A ggplot object.
 #' @export
@@ -434,6 +451,7 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
     .need_package("ggnewscale", "the group colour bar")
     gdf <- data.frame(sample = factor(df$sample, levels = sample_order),
                       grp = as.character(df[[group]]), stringsAsFactors = FALSE)
+    gdf[[group]] <- gdf$grp   # carry the facet variable so facet_grid subsets the strip
     if (is.null(group_colours)) group_colours <- meta_colors(df, cols = group)[[group]]
     p <- p + ggnewscale::new_scale_fill() +
       ggplot2::geom_tile(data = gdf, ggplot2::aes(.data$sample, y = 1.06, fill = .data$grp),
@@ -441,10 +459,15 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
       ggplot2::scale_fill_manual(values = group_colours, name = group) +
       ggplot2::coord_cartesian(clip = "off")
   }
+  n_groups <- if (!is.null(group) && group %in% names(df)) length(unique(df[[group]])) else 1L
   if (!is.null(group) && group %in% names(df)) {
     p <- p + ggplot2::facet_grid(stats::as.formula(paste("~", group)),
                                  scales = "free_x", space = "free")
   }
+  # width scales with the number of bars so save_plot() makes it wide enough to read
+  attr(p, "plasgenomics_dims") <- c(
+    width = round(max(6, min(24, nrow(q) * 0.06 + n_groups * 0.3)), 1),
+    height = 4)
   p
 }
 
@@ -667,9 +690,10 @@ PopStructure <- R6::R6Class("PopStructure",
     plot_figure = function(group = NULL, ...) plot_structure_figure(self, group = group, ...),
 
     #' @description Per-SNP population differentiation between the levels of a metadata
-    #'   column (see [pop_diff()]); uses the full genotype matrix for the active samples.
+    #'   column (see [pop_diff()]); uses the object's genotype matrix (pass
+    #'   `genotype = run_ld_prune(vcf, prune = FALSE)` to run on the full unpruned set).
     #' @param group Metadata column defining the groups.
-    #' @param ... Passed to [pop_diff()] (e.g. `statistic = "fst"`).
+    #' @param ... Passed to [pop_diff()] (e.g. `statistic = "fst"`, `genotype = `).
     pop_diff = function(group = NULL, ...) pop_diff(self, group = group, ...),
 
     #' @description Per-SNP Jost's D between the levels of a metadata column ([jost_d()]).
@@ -688,13 +712,16 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   metadata automatically.
     #' @param group Metadata column defining the groups.
     #' @param ... Passed to [plot_diff_heatmap()], plus `statistic` (`"jost_d"` default,
-    #'   `"gst"`, `"gst_hedrick"`, `"fst"`) selecting the measure.
+    #'   `"gst_hedrick"`, `"fst"`) selecting the measure, and `genotype` (a full/unpruned
+    #'   override, see [pop_diff()]). The group colour map colours the dendrogram tips.
     plot_diff_heatmap = function(group = NULL, ...) {
       dots <- list(...)
       statistic <- if (is.null(dots$statistic)) "jost_d" else dots$statistic
-      dots$statistic <- NULL
+      genotype  <- dots$genotype
+      dots$statistic <- NULL; dots$genotype <- NULL
+      if (is.null(dots$group_colours)) dots$group_colours <- private$colors[[group]]
       do.call(plot_diff_heatmap,
-              c(list(pop_diff(self, group = group, statistic = statistic),
+              c(list(pop_diff(self, group = group, statistic = statistic, genotype = genotype),
                      meta = private$meta_df), dots))
     },
 
@@ -703,6 +730,24 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param ... Passed to [plot_diff_heatmap()].
     plot_jost_d_heatmap = function(group = NULL, ...)
       plot_diff_heatmap(jost_d(self, group = group), meta = private$meta_df, ...),
+
+    #' @description Per-SNP differentiation in long form (see [pop_diff_snps()]).
+    #' @param group Metadata column defining the groups.
+    #' @param ... Passed to [pop_diff()] (e.g. `statistic = `, `genotype = `).
+    pop_diff_snps = function(group = NULL, ...) pop_diff_snps(pop_diff(self, group = group, ...)),
+
+    #' @description Genome-wide differentiation Manhattan (see [plot_diff_manhattan()]).
+    #' @param group Metadata column defining the groups.
+    #' @param ... Passed to [plot_diff_manhattan()]; `statistic` / `genotype` go to [pop_diff()].
+    plot_diff_manhattan = function(group = NULL, ...) {
+      dots <- list(...)
+      statistic <- if (is.null(dots$statistic)) "jost_d" else dots$statistic
+      genotype  <- dots$genotype
+      dots$statistic <- NULL; dots$genotype <- NULL
+      do.call(plot_diff_manhattan,
+              c(list(pop_diff(self, group = group, statistic = statistic, genotype = genotype)),
+                dots))
+    },
 
     #' @description Save the whole workspace (genotype, PCA, UMAP, metadata, colours,
     #'   and sNMF fit) to an `.rds` file so it can be reloaded without recomputing.

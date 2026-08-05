@@ -6,40 +6,42 @@
 \usage{
 plot_ibd_tugofwar(
   x,
-  region = NULL,
+  group = NULL,
   metric = "neg_log10_p",
   scale = c("common", "free"),
   chroms = NULL,
   skip_chr = NULL,
   highlight_genes = NULL,
-  label_genes = FALSE,
+  label_genes = NULL,
   draw_threshold = TRUE,
   selection_colour = "#fd8d3c",
   ibd_colour = "#2166ac"
 )
 }
 \arguments{
-\item{x}{An \link{IbdResults} object (needs both selection and per_snp_region tables).}
+\item{x}{An \link{IbdResults} object (needs both selection and per_snp_group tables).}
 
-\item{region}{Region(s) to plot. \code{NULL} (default) plots every region, faceted one
-per row; a single region gives one panel; a vector facets those regions.}
+\item{group}{Group(s) to plot. \code{NULL} (default) plots every group, faceted one
+per row; a single group gives one panel; a vector facets those groups.}
 
 \item{metric}{Selection metric for the top track (default \code{"neg_log10_p"}).}
 
 \item{scale}{\code{"common"} (default) scales every panel to a shared maximum so they
-are directly comparable; \code{"free"} scales each region to its own maximum for more
-per-region detail (the axis then reads as within-region percentages).}
+are directly comparable; \code{"free"} scales each group to its own maximum for more
+per-group detail (the axis then reads as within-group percentages).}
 
 \item{chroms}{Optional chromosomes to keep (any spelling); others are dropped and
 the rest re-laid-out contiguously.}
 
 \item{skip_chr}{Optional chromosomes to drop (complement of \code{chroms}).}
 
-\item{highlight_genes}{Optional gene names from the \code{genes} track to mark with lines.}
+\item{highlight_genes}{Optional gene names from the \code{genes} track to mark with lines;
+requesting a name not in the track is an error.}
 
-\item{label_genes}{Label the highlighted genes (top panel only, outside the plot).}
+\item{label_genes}{Label the genes. \code{NULL} (default) labels them only when
+\code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
-\item{draw_threshold}{Draw the per-region significance threshold (only for
+\item{draw_threshold}{Draw the per-group significance threshold (only for
 \code{neg_log10_p} with \code{scale = "common"}, when thresholds are available).}
 
 \item{selection_colour, ibd_colour}{Bar and axis colours for the two tracks.}

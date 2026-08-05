@@ -15,6 +15,7 @@ plot_diff_heatmap(
   annotate = NULL,
   meta = NULL,
   annotate_colours = NULL,
+  group_colours = NULL,
   label = FALSE,
   digits = 2,
   colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
@@ -45,6 +46,10 @@ strips/legends). Each strip aligns to the clustered column order.}
 
 \item{annotate_colours}{Named list \code{annotation -> (value -> colour)} giving custom
 colours per annotation (unlisted annotations get an automatic palette).}
+
+\item{group_colours}{Optional named \code{group -> colour} vector used to colour the
+dendrogram leaf tips (so the tree carries the same colours as the UMAP / admixture);
+defaults to an automatic palette. A \code{PopStructure} passes its shared map here.}
 
 \item{label}{Print the value in each cell (default \code{FALSE}; the text can distract).}
 

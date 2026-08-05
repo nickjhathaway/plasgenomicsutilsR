@@ -3,12 +3,22 @@
 # (mean / median / top-percentile / max across SNPs), a triangle heatmap with an optional
 # dendrogram and metadata annotation, and a helper to pick the most differentiating SNPs.
 #
-# D / Gst / G'st use the Nei & Chesser (1983) bias-corrected within/total gene diversities
+# D / G'st use the Nei & Chesser (1983) bias-corrected within/total gene diversities
 # Hs, Ht (genotypes are alt-allele dosages, so gene copies = 2 x called). Fst is the
 # Hudson estimator (Bhatia et al. 2013), a robust "ratio of averages" pairwise Fst.
 
-STATISTIC_LABELS <- c(jost_d = "Jost's D", gst = "Nei's Gst",
-                      gst_hedrick = "Hedrick's G'st", fst = "Hudson's Fst")
+STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
+                      fst = "Hudson's Fst")
+
+# coerce a genotype override (a run_ld_prune() list or a matrix) to a labelled matrix
+.coerce_geno <- function(g) {
+  if (is.list(g) && !is.null(g$genotype)) {
+    m <- as.matrix(g$genotype)
+    if (is.null(rownames(m)) && !is.null(g$sample.id)) rownames(m) <- g$sample.id
+    return(m)
+  }
+  as.matrix(g)
+}
 
 # per-group ALT-allele frequency and gene-copy count, one row per group
 .group_freqs <- function(G, grp, levs) {
@@ -40,7 +50,6 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst = "Nei's Gst",
     Ht <- 1 - (pbar^2 + (1 - pbar)^2) + Hs / (Nh * 2)   # bias-corrected total (k = 2)
     v <- switch(statistic,
                 jost_d      = (Ht - Hs) / (1 - Hs) * 2,
-                gst         = (Ht - Hs) / Ht,
                 gst_hedrick = ((Ht - Hs) / Ht) * (1 + Hs) / (1 - Hs))
     v[!is.finite(v)] <- NA_real_                 # e.g. monomorphic (Ht = 0)
   }
@@ -60,13 +69,17 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst = "Nei's Gst",
 #'   genotype matrix (samples x SNPs, 0/1/2, `NA`).
 #' @param group Metadata column (for a `PopStructure`) or a per-sample grouping vector
 #'   (for a matrix).
-#' @param statistic `"jost_d"` (Jost's D, default), `"gst"` (Nei's Gst), `"gst_hedrick"`
-#'   (Hedrick's standardized G'st), or `"fst"` (Hudson's Fst). Gst is strongly deflated
-#'   when within-group diversity is high (typical genome-wide in *P. falciparum*); G'st, D
-#'   and a top-percentile summary counter that -- see [pop_diff_matrix()].
+#' @param statistic `"jost_d"` (Jost's D, default), `"gst_hedrick"` (Hedrick's
+#'   standardized G'st), or `"fst"` (Hudson's Fst); all in \[0, 1]. Plain Nei's Gst is not
+#'   offered -- it is strongly deflated when within-group diversity is high (typical
+#'   genome-wide in *P. falciparum*); its standardized form G'st is provided instead.
 #' @param meta When `x` is a matrix, an optional data frame with a `sample` column plus
 #'   `group`; otherwise `group` is a vector aligned to the matrix rows.
 #' @param clamp Clamp small negative estimates to 0 (default `TRUE`).
+#' @param genotype Optional genotype matrix (samples x SNPs) or [run_ld_prune()] list to
+#'   use **instead** of a `PopStructure`'s stored matrix -- pass the **full, unpruned**
+#'   set here (e.g. `run_ld_prune(vcf, prune = FALSE)`) so differentiation is measured on
+#'   every SNP while PCA/UMAP keep using the pruned matrix. Ignored when `x` is a matrix.
 #' @return A `pop_diff` object: a list with `D` (a SNP x pair matrix of the statistic),
 #'   `snp`, `groups`, `pairs`, `statistic`, and the group `freqs`.
 #' @references
@@ -87,11 +100,11 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst = "Nei's Gst",
 #' \doi{10.1101/gr.154831.113}
 #' @export
 pop_diff <- function(x, group = NULL,
-                     statistic = c("jost_d", "gst", "gst_hedrick", "fst"),
-                     meta = NULL, clamp = TRUE) {
+                     statistic = c("jost_d", "gst_hedrick", "fst"),
+                     meta = NULL, clamp = TRUE, genotype = NULL) {
   statistic <- match.arg(statistic)
   if (inherits(x, "PopStructure")) {
-    G <- x$genotype()
+    G <- if (is.null(genotype)) x$genotype() else .coerce_geno(genotype)
     meta <- x$get_meta()
     if (is.null(group)) group <- setdiff(names(meta), "sample")[1]
     grp <- as.character(meta[[group]])[match(rownames(G), meta$sample)]
@@ -190,11 +203,12 @@ jost_d_matrix <- function(pd, stat = "mean", top = 0.05) pop_diff_matrix(pd, sta
 #' value -- so Jost's D, Nei's Gst, Hedrick's G'st and Hudson's Fst can be read together.
 #'
 #' @inheritParams pop_diff
-#' @param statistics Measures to include (any of `"jost_d"`, `"gst"`, `"gst_hedrick"`,
-#'   `"fst"`; default all four).
+#' @param statistics Measures to include (any of `"jost_d"`, `"gst_hedrick"`, `"fst"`;
+#'   default all three). Nei's Gst is not offered -- see [pop_diff()].
 #' @param stats Per-pair summaries to include (`"mean"`, `"median"`, `"top_mean"`,
 #'   `"max"`; default mean + top_mean + max).
 #' @param top Fraction of top SNPs for `"top_mean"` (default `0.05`).
+#' @param genotype Optional full/unpruned genotype override (see [pop_diff()]).
 #' @return A data frame: `a`, `b`, `n_snps`, then one `statistic_stat` column each.
 #' @examples
 #' \dontrun{
@@ -203,10 +217,10 @@ jost_d_matrix <- function(pd, stat = "mean", top = 0.05) pop_diff_matrix(pd, sta
 #' }
 #' @export
 pop_diff_table <- function(x, group = NULL,
-                           statistics = c("jost_d", "gst", "gst_hedrick", "fst"),
+                           statistics = c("jost_d", "gst_hedrick", "fst"),
                            stats = c("mean", "top_mean", "max"), top = 0.05,
-                           meta = NULL, clamp = TRUE) {
-  statistics <- match.arg(statistics, c("jost_d", "gst", "gst_hedrick", "fst"),
+                           meta = NULL, clamp = TRUE, genotype = NULL) {
+  statistics <- match.arg(statistics, c("jost_d", "gst_hedrick", "fst"),
                           several.ok = TRUE)
   stats <- match.arg(stats, c("mean", "median", "top_mean", "max"), several.ok = TRUE)
   summ <- function(v, st) {
@@ -218,7 +232,8 @@ pop_diff_table <- function(x, group = NULL,
   }
   out <- NULL
   for (s in statistics) {
-    pd <- pop_diff(x, group = group, statistic = s, meta = meta, clamp = clamp)
+    pd <- pop_diff(x, group = group, statistic = s, meta = meta, clamp = clamp,
+                   genotype = genotype)
     if (is.null(out))
       out <- data.frame(a = pd$pairs$a, b = pd$pairs$b,
                         n_snps = colSums(is.finite(pd$D)),
@@ -281,6 +296,90 @@ pop_diff_table <- function(x, group = NULL,
   do.call(rbind, segs)
 }
 
+#' Per-SNP differentiation in long form
+#'
+#' Unpacks a [pop_diff()] result (a SNP x pair matrix) into a tidy long table, parsing the
+#' `chr:pos` SNP ids into genomic coordinates -- so you can look at differentiation SNP by
+#' SNP or feed it to [plot_diff_manhattan()].
+#'
+#' @param pd A [pop_diff()] / [jost_d()] result (its SNPs must be `chr:pos` ids, as from
+#'   [run_ld_prune()]).
+#' @return A tibble with `snp`, `chr`, `pos`, `a`, `b`, `pair`, `statistic`, and `value`
+#'   (one row per SNP x pair).
+#' @export
+pop_diff_snps <- function(pd) {
+  ids <- pd$snp
+  chr <- sub(":[^:]*$", "", ids)
+  pos <- suppressWarnings(as.numeric(sub(".*:", "", ids)))
+  np  <- ncol(pd$D)
+  long <- data.frame(
+    snp   = rep(ids, times = np),
+    chr   = rep(chr, times = np),
+    pos   = rep(pos, times = np),
+    a     = rep(pd$pairs$a, each = nrow(pd$D)),
+    b     = rep(pd$pairs$b, each = nrow(pd$D)),
+    value = as.vector(pd$D),
+    stringsAsFactors = FALSE)
+  long$pair <- paste(long$a, "vs", long$b)
+  long$statistic <- pd$statistic
+  tibble::as_tibble(long[, c("snp", "chr", "pos", "a", "b", "pair", "statistic", "value")])
+}
+
+#' Genome-wide differentiation Manhattan plot
+#'
+#' The per-SNP differentiation statistic along the genome, styled like the IBD Manhattan
+#' plots. By default it collapses the pairwise comparisons to one value per SNP
+#' (`combine = "max"`, the strongest differentiation at that SNP in any pair); pass
+#' `pair` to plot a single group pair instead.
+#'
+#' @param pd A [pop_diff()] / [jost_d()] result with `chr:pos` SNP ids.
+#' @param pair Optional single group pair to plot: `c("A", "B")` or `"A vs B"`. Default
+#'   combines all pairs per SNP.
+#' @param combine How to collapse pairs per SNP when `pair` is `NULL`: `"max"` (default)
+#'   or `"mean"`.
+#' @param reference Reference id for the chromosome layout (default `"pf3d7"`).
+#' @param chroms,skip_chr Optional chromosomes to keep / drop (the rest re-laid-out).
+#' @param point_size,point_alpha Point aesthetics.
+#' @param colours Optional length-2 colour vector for the alternating chromosome bands.
+#' @return A ggplot object.
+#' @export
+plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
+                                reference = "pf3d7", chroms = NULL, skip_chr = NULL,
+                                point_size = 0.6, point_alpha = 0.6, colours = NULL) {
+  .need_package("ggplot2", "plot_diff_manhattan()")
+  long <- pop_diff_snps(pd)
+  long <- long[is.finite(long$value) & is.finite(long$pos), , drop = FALSE]
+  if (!is.null(pair)) {
+    keys <- if (length(pair) == 2) paste(pair, collapse = " vs ") else pair
+    keys <- c(keys, if (length(pair) == 2) paste(rev(pair), collapse = " vs "))
+    df <- long[long$pair %in% keys, c("chr", "pos", "value"), drop = FALSE]
+    if (!nrow(df)) {
+      stop("no such pair; available: ", paste(unique(long$pair), collapse = ", "), call. = FALSE)
+    }
+    title <- keys[1]
+  } else {
+    combine <- match.arg(combine)
+    fn <- if (combine == "max") max else mean
+    ag <- stats::aggregate(value ~ snp + chr + pos, data = long, FUN = fn)
+    df <- ag[, c("chr", "pos", "value")]
+    title <- sprintf("%s across %d group pairs", combine, ncol(pd$D))
+  }
+  df$chr <- normalise_chr(df$chr)
+  layout <- .select_layout(.chrom_layout(reference), chroms, skip_chr)
+  df <- .attach_band(.recum(df, layout), layout)
+  p <- ggplot2::ggplot(df, ggplot2::aes(.data$cum_pos, .data$value)) +
+    .chr_band_layer(layout) +
+    ggplot2::geom_point(ggplot2::aes(colour = .data$.band), size = point_size,
+                        alpha = point_alpha, stroke = 0) +
+    ggplot2::scale_colour_manual(values = .band_colours(colours)) +
+    .chr_axis(layout) +
+    ggplot2::labs(x = "chromosome", y = STATISTIC_LABELS[[pd$statistic]], title = title) +
+    .manhattan_theme()
+  attr(p, "plasgenomics_dims") <- .dims_genome(
+    1L, sum(layout$len) / sum(.chrom_layout(reference)$len))
+  p
+}
+
 #' Triangle heatmap of group x group differentiation
 #'
 #' A lower-triangle heatmap of a group summary (see [pop_diff_matrix()]), styled like the
@@ -301,6 +400,9 @@ pop_diff_table <- function(x, group = NULL,
 #' @param meta Metadata data frame for resolving `annotate` column names.
 #' @param annotate_colours Named list `annotation -> (value -> colour)` giving custom
 #'   colours per annotation (unlisted annotations get an automatic palette).
+#' @param group_colours Optional named `group -> colour` vector used to colour the
+#'   dendrogram leaf tips (so the tree carries the same colours as the UMAP / admixture);
+#'   defaults to an automatic palette. A `PopStructure` passes its shared map here.
 #' @param label Print the value in each cell (default `FALSE`; the text can distract).
 #' @param digits Cell-label digits.
 #' @param colors Fill ramp (low -> high differentiation).
@@ -313,7 +415,7 @@ pop_diff_table <- function(x, group = NULL,
 plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"), top = 0.05,
                               cluster = TRUE, dendrogram = TRUE, triangle = TRUE,
                               annotate = NULL, meta = NULL, annotate_colours = NULL,
-                              label = FALSE, digits = 2,
+                              group_colours = NULL, label = FALSE, digits = 2,
                               colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
                               trans = "identity", base_size = 11) {
   .need_package("ggplot2", "plot_diff_heatmap()")
@@ -366,11 +468,19 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
   dnd_panel <- NULL
   if (dendrogram && !is.null(hc)) {
     seg <- .dendro_segments(hc)
+    # colour the leaf tips by group so the tree matches the UMAP / admixture colours
+    tips <- data.frame(x = seq_along(ord), y = 0, grp = factor(ord, levels = ord),
+                       stringsAsFactors = FALSE)
+    gcols <- if (is.null(group_colours)) meta_colors(data.frame(grp = ord))[["grp"]]
+             else group_colours
     dnd_panel <- ggplot2::ggplot(seg) +
       ggplot2::geom_segment(ggplot2::aes(.data$x, .data$y, xend = .data$xend, yend = .data$yend),
-                            linewidth = 0.3) +
+                            linewidth = 0.3, colour = "grey35") +
+      ggplot2::geom_point(data = tips, ggplot2::aes(.data$x, .data$y, colour = .data$grp),
+                          size = 2.6, show.legend = FALSE) +
+      ggplot2::scale_colour_manual(values = gcols) +
       ggplot2::scale_x_continuous(limits = c(0.5, n + 0.5), expand = c(0, 0)) +
-      ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
+      ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.04, 0.05))) +
       ggplot2::theme_void()
   }
 

@@ -88,6 +88,32 @@ test_that("plot_admixture builds from a bare Q, with grouping and a group strip"
   expect_s3_class(p, "ggplot")
 })
 
+test_that("the group strip is one colour per facet (not repeated across facets)", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("ggnewscale")
+  set.seed(1)
+  q <- matrix(stats::runif(60), ncol = 3); rownames(q) <- paste0("s", 1:20)
+  meta <- data.frame(sample = rownames(q), region = rep(c("A", "B"), each = 10))
+  p <- plot_admixture(q, meta = meta, group = "region", group_bar = TRUE, border = FALSE)
+  b <- ggplot2::ggplot_build(p)
+  strip <- Filter(function(d) "fill" %in% names(d) && any(abs(d$y - 1.06) < 1e-6), b$data)[[1]]
+  per_panel <- tapply(strip$fill, strip$PANEL, function(f) length(unique(f)))
+  expect_true(all(per_panel == 1))                    # each facet shows only its own colour
+})
+
+test_that("admixture bars are bordered by default and the border toggles off", {
+  testthat::skip_if_not_installed("ggplot2")
+  q <- matrix(stats::runif(2 * 10), ncol = 2); rownames(q) <- paste0("s", 1:10)
+  bar_colour <- function(p) {
+    d <- ggplot2::ggplot_build(p)$data[[which(vapply(ggplot2::ggplot_build(p)$data,
+      function(x) "ymin" %in% names(x), logical(1)))[1]]]
+    unique(d$colour)
+  }
+  expect_equal(bar_colour(plot_admixture(q)), "black")               # default: black borders
+  expect_equal(bar_colour(plot_admixture(q, border_colour = "grey30")), "grey30")
+  expect_true(all(is.na(bar_colour(plot_admixture(q, border = FALSE)))))   # toggled off
+})
+
 test_that("run_snmf caches: a second identical call reuses the project", {
   testthat::skip_if_not_installed("LEA")
   cache <- tempfile("snmf_cache_")

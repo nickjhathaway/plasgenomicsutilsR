@@ -11,6 +11,7 @@ Description: A collection of utilities for visualizing and analyzing the outputs
     tools generalize beyond Plasmodium falciparum.
 License: GPL-3
 Encoding: UTF-8
+LazyData: true
 Roxygen: list(markdown = TRUE)
 Depends:
     R (>= 4.1.0)
@@ -28,6 +29,8 @@ Suggests:
     scales,
     patchwork,
     ggtext,
+    igraph,
+    ggraph,
     SNPRelate,
     gdsfmt,
     uwot,

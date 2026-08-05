@@ -2,42 +2,42 @@
 # level -> colour mapping can be shared across plots (UMAP points, admixture bars).
 # Palettes mirror the colour-blind-friendly sets used in HaplotypeRainbows.
 
-#' Colour-blind-friendly categorical palettes
+# Colour-blind-friendly base palettes (8, 12, 15 colours), mirroring the sets used in
+# HaplotypeRainbows. Kept internal (dot-prefixed) so these generic names never collide with
+# a user's globals; the exported `color_palette()` is the only entry point.
+.color_palettes <- list(
+  `8` = c("#2271B2", "#3DB7E9", "#F748A5", "#359B73",
+          "#D55E00", "#E69F00", "#F0E442", "#000000"),
+  `12` = c("#9F0162", "#009F81", "#FF5AAF", "#00FCCF", "#8400CD", "#008DF9",
+           "#00C2F9", "#FFB2FD", "#A40122", "#E20134", "#FF6E3A", "#FFC33B"),
+  `15` = c("#68023F", "#008169", "#EF0096", "#00DCB5", "#FFCFE2",
+           "#003C86", "#9400E6", "#009FFA", "#FF71FD", "#7CFFFA",
+           "#6A0213", "#008607", "#F60239", "#00E307", "#FFDC3D")
+)
+
+#' A colour-blind-friendly categorical palette
 #'
-#' Three categorical palettes (8, 12, 15 colours) for colouring metadata levels.
+#' Returns `n` colours from the package's colour-blind-friendly sets: the 8-, 12- or
+#' 15-colour set that fits (interpolated beyond 15). Use it to colour metadata levels
+#' consistently across plots. A single, namespaced entry point replaces the older
+#' `colorPalette_08` / `colorPalette_12` / `colorPalette_15` objects.
 #'
-#' @format Character vectors of hex colours.
-#' @name color_palettes
+#' @param n Number of colours to return.
+#' @return A character vector of `n` hex colours.
 #' @examples
-#' if (requireNamespace("scales", quietly = TRUE)) scales::show_col(colorPalette_12)
-NULL
-
-#' @rdname color_palettes
+#' color_palette(5)
+#' if (requireNamespace("scales", quietly = TRUE)) scales::show_col(color_palette(12))
 #' @export
-colorPalette_08 <- c(
-  "#2271B2", "#3DB7E9", "#F748A5", "#359B73",
-  "#D55E00", "#E69F00", "#F0E442", "#000000")
-
-#' @rdname color_palettes
-#' @export
-colorPalette_12 <- c(
-  "#9F0162", "#009F81", "#FF5AAF", "#00FCCF", "#8400CD", "#008DF9",
-  "#00C2F9", "#FFB2FD", "#A40122", "#E20134", "#FF6E3A", "#FFC33B")
-
-#' @rdname color_palettes
-#' @export
-colorPalette_15 <- c(
-  "#68023F", "#008169", "#EF0096", "#00DCB5", "#FFCFE2",
-  "#003C86", "#9400E6", "#009FFA", "#FF71FD", "#7CFFFA",
-  "#6A0213", "#008607", "#F60239", "#00E307", "#FFDC3D")
-
-.pick_palette <- function(n) {
-  if (n == 0) character(0)
-  else if (n <= 8) colorPalette_08[seq_len(n)]
-  else if (n <= 12) colorPalette_12[seq_len(n)]
-  else if (n <= 15) colorPalette_15[seq_len(n)]
-  else grDevices::colorRampPalette(colorPalette_15)(n)
+color_palette <- function(n) {
+  if (n <= 0) return(character(0))
+  if (n <= 8)  return(.color_palettes[["8"]][seq_len(n)])
+  if (n <= 12) return(.color_palettes[["12"]][seq_len(n)])
+  if (n <= 15) return(.color_palettes[["15"]][seq_len(n)])
+  grDevices::colorRampPalette(.color_palettes[["15"]])(n)
 }
+
+# internal alias used throughout the plotting code
+.pick_palette <- function(n) color_palette(n)
 
 .levels_of <- function(x) {
   if (is.factor(x)) levels(droplevels(x)) else sort(unique(as.character(x[!is.na(x)])))

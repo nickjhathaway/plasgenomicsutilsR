@@ -45,9 +45,9 @@ test_that("top_differentiating_snps returns the requested count of real SNPs", {
   expect_length(top_differentiating_snps(jd, 50, method = "max"), 50)
 })
 
-test_that("all four differentiation statistics compute in a sane range", {
+test_that("all three differentiation statistics compute in a sane range", {
   ps <- example_pop_structure("africa", umap = FALSE)
-  for (s in c("jost_d", "gst", "gst_hedrick", "fst")) {
+  for (s in c("jost_d", "gst_hedrick", "fst")) {
     pd <- ps$pop_diff(group = "site", statistic = s)
     expect_s3_class(pd, "pop_diff")
     v <- pd$D[is.finite(pd$D)]
@@ -80,7 +80,43 @@ test_that("pop_diff_table gathers all statistics per pair", {
   expect_equal(nrow(tbl), choose(length(ps$get_meta()$site |> unique()), 2))
   expect_true(all(c("a", "b", "n_snps",
                     "jost_d_mean", "jost_d_top_mean", "jost_d_max",
-                    "gst_mean", "gst_hedrick_max", "fst_top_mean") %in% names(tbl)))
+                    "gst_hedrick_mean", "gst_hedrick_max", "fst_top_mean") %in% names(tbl)))
+  expect_false(any(grepl("^gst_mean$|^gst_top", names(tbl))))   # plain Nei's Gst dropped
   # top_mean >= mean for every pair/statistic
   expect_true(all(tbl$jost_d_top_mean >= tbl$jost_d_mean))
+})
+
+test_that("pop_diff_snps unpacks per-SNP values with parsed coordinates", {
+  ps <- example_pop_structure("africa", umap = FALSE)
+  pd <- ps$pop_diff(group = "site", statistic = "jost_d")
+  sn <- pop_diff_snps(pd)
+  expect_true(all(c("snp", "chr", "pos", "a", "b", "pair", "value") %in% names(sn)))
+  expect_equal(nrow(sn), length(pd$snp) * ncol(pd$D))
+  expect_true(all(is.finite(sn$pos[!is.na(sn$pos)])))          # chr:pos parsed to numbers
+})
+
+test_that("plot_diff_manhattan builds combined and per-pair", {
+  testthat::skip_if_not_installed("ggplot2")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  pd <- ps$pop_diff(group = "region", statistic = "jost_d")
+  expect_silent(ggplot2::ggplotGrob(plot_diff_manhattan(pd)))                 # max across pairs
+  expect_silent(ggplot2::ggplotGrob(plot_diff_manhattan(pd, combine = "mean")))
+  pr <- pd$pairs[1, ]
+  expect_silent(ggplot2::ggplotGrob(plot_diff_manhattan(pd, pair = c(pr$a, pr$b))))
+  expect_error(plot_diff_manhattan(pd, pair = c("nope", "nada")), "no such pair")
+})
+
+test_that("pop_diff accepts a genotype override (full unpruned set)", {
+  ps <- example_pop_structure("africa", umap = FALSE)
+  G  <- ps$genotype()
+  # a wider matrix (duplicated columns) stands in for an 'unpruned' set here
+  wide <- cbind(G, G)
+  colnames(wide) <- c(colnames(G), paste0(colnames(G), "_b"))
+  pd_default <- ps$pop_diff(group = "region")
+  pd_over    <- ps$pop_diff(group = "region", genotype = wide)
+  expect_equal(length(pd_over$snp), ncol(wide))               # used the override matrix
+  expect_gt(length(pd_over$snp), length(pd_default$snp))
+  # a run_ld_prune-style list is accepted too
+  lst <- list(genotype = wide, sample.id = rownames(wide))
+  expect_s3_class(ps$pop_diff(group = "region", genotype = lst), "pop_diff")
 })

@@ -41,8 +41,11 @@ bars in the same place across different K.}
 \item{group_colours}{Named \code{level -> colour} vector for the group strip (see
 \code{\link[=meta_colors]{meta_colors()}}); pass the same mapping you use for the UMAP to match colours.}
 
-\item{border}{Outline each sample's bar (default \code{TRUE}) so neighbours with nearly
-identical ancestry stay distinct; set \code{FALSE} for borderless bars.}
+\item{border}{Outline each sample's bar (default \code{TRUE}, matching
+\code{\link[=plot_structure_figure]{plot_structure_figure()}}) so neighbours with nearly identical ancestry stay distinct;
+\code{FALSE} for borderless bars. With very many samples in a narrow render the outlines
+can swamp the fills -- either render wider (\code{\link[=save_plot]{save_plot()}} uses the attached width) or
+set \code{border = FALSE} / a thinner \code{border_linewidth}.}
 
 \item{border_colour, border_linewidth}{Colour and width of the per-sample outline.}
 }

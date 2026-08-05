@@ -51,6 +51,8 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-pop_diff_table}{\code{PopStructure$pop_diff_table()}}
     \item \href{#method-PopStructure-plot_diff_heatmap}{\code{PopStructure$plot_diff_heatmap()}}
     \item \href{#method-PopStructure-plot_jost_d_heatmap}{\code{PopStructure$plot_jost_d_heatmap()}}
+    \item \href{#method-PopStructure-pop_diff_snps}{\code{PopStructure$pop_diff_snps()}}
+    \item \href{#method-PopStructure-plot_diff_manhattan}{\code{PopStructure$plot_diff_manhattan()}}
     \item \href{#method-PopStructure-save}{\code{PopStructure$save()}}
     \item \href{#method-PopStructure-print}{\code{PopStructure$print()}}
     \item \href{#method-PopStructure-clone}{\code{PopStructure$clone()}}
@@ -484,7 +486,8 @@ matches the UMAP/PCA colouring.
 \if{latex}{\out{\hypertarget{method-PopStructure-pop_diff}{}}}
 \subsection{\code{PopStructure$pop_diff()}}{
   Per-SNP population differentiation between the levels of a metadata
-column (see \code{\link[=pop_diff]{pop_diff()}}); uses the full genotype matrix for the active samples.
+column (see \code{\link[=pop_diff]{pop_diff()}}); uses the object's genotype matrix (pass
+\code{genotype = run_ld_prune(vcf, prune = FALSE)} to run on the full unpruned set).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{PopStructure$pop_diff(group = NULL, ...)}
@@ -494,7 +497,7 @@ column (see \code{\link[=pop_diff]{pop_diff()}}); uses the full genotype matrix 
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{group}}{Metadata column defining the groups.}
-      \item{\code{...}}{Passed to \code{\link[=pop_diff]{pop_diff()}} (e.g. \code{statistic = "fst"}).}
+      \item{\code{...}}{Passed to \code{\link[=pop_diff]{pop_diff()}} (e.g. \code{statistic = "fst"}, \verb{genotype = }).}
     }
     \if{html}{\out{</div>}}
   }
@@ -558,7 +561,8 @@ metadata automatically.
     \describe{
       \item{\code{group}}{Metadata column defining the groups.}
       \item{\code{...}}{Passed to \code{\link[=plot_diff_heatmap]{plot_diff_heatmap()}}, plus \code{statistic} (\code{"jost_d"} default,
-\code{"gst"}, \code{"gst_hedrick"}, \code{"fst"}) selecting the measure.}
+\code{"gst_hedrick"}, \code{"fst"}) selecting the measure, and \code{genotype} (a full/unpruned
+override, see \code{\link[=pop_diff]{pop_diff()}}). The group colour map colours the dendrogram tips.}
     }
     \if{html}{\out{</div>}}
   }
@@ -579,6 +583,46 @@ metadata automatically.
     \describe{
       \item{\code{group}}{Metadata column defining the groups.}
       \item{\code{...}}{Passed to \code{\link[=plot_diff_heatmap]{plot_diff_heatmap()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-pop_diff_snps"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-pop_diff_snps}{}}}
+\subsection{\code{PopStructure$pop_diff_snps()}}{
+  Per-SNP differentiation in long form (see \code{\link[=pop_diff_snps]{pop_diff_snps()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$pop_diff_snps(group = NULL, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{group}}{Metadata column defining the groups.}
+      \item{\code{...}}{Passed to \code{\link[=pop_diff]{pop_diff()}} (e.g. \verb{statistic = }, \verb{genotype = }).}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-plot_diff_manhattan"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-plot_diff_manhattan}{}}}
+\subsection{\code{PopStructure$plot_diff_manhattan()}}{
+  Genome-wide differentiation Manhattan (see \code{\link[=plot_diff_manhattan]{plot_diff_manhattan()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$plot_diff_manhattan(group = NULL, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{group}}{Metadata column defining the groups.}
+      \item{\code{...}}{Passed to \code{\link[=plot_diff_manhattan]{plot_diff_manhattan()}}; \code{statistic} / \code{genotype} go to \code{\link[=pop_diff]{pop_diff()}}.}
     }
     \if{html}{\out{</div>}}
   }

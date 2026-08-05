@@ -7,11 +7,11 @@
 plot_selection_manhattan(
   x,
   metric = c("neg_log10_p", "chi2_stat", "z_score"),
-  regions = NULL,
+  groups = NULL,
   chroms = NULL,
   skip_chr = NULL,
   highlight_genes = NULL,
-  label_genes = FALSE,
+  label_genes = NULL,
   draw_threshold = TRUE,
   point_size = 0.5,
   point_alpha = 0.6,
@@ -24,7 +24,7 @@ plot_selection_manhattan(
 \item{metric}{Which column to plot: \code{"neg_log10_p"} (default), \code{"chi2_stat"},
 or \code{"z_score"}.}
 
-\item{regions}{Optional character vector to keep (needs a \code{region} column).}
+\item{groups}{Optional character vector to keep (needs a \code{group} column).}
 
 \item{chroms}{Optional chromosomes to keep (any spelling); others are dropped and
 the remaining ones re-laid-out contiguously.}
@@ -32,9 +32,11 @@ the remaining ones re-laid-out contiguously.}
 \item{skip_chr}{Optional chromosomes to drop (complement of \code{chroms}).}
 
 \item{highlight_genes}{Optional gene names (from the object's \code{genes} track) to draw
-as reference lines; default all genes in the track.}
+as reference lines; default all genes in the track. Requesting a name not in the
+track is an error.}
 
-\item{label_genes}{Label the highlighted genes (top panel only, outside the plot).}
+\item{label_genes}{Label the genes. \code{NULL} (default) labels them only when
+\code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
 \item{draw_threshold}{Draw the significance threshold line (only for \code{neg_log10_p}).}
 
