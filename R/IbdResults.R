@@ -172,6 +172,10 @@ IbdResults <- R6::R6Class(
         private$analyzed_samples <- unique(c(bl$sample1, bl$sample2))   # before IBD filter
         if ("different" %in% names(bl)) bl <- bl[bl$different == 0, , drop = FALSE]
         bl$chr <- normalise_chr(bl$chr)
+        # hmmibd-rs reports both endpoints as the 0-based position of the first and last
+        # SNP in the segment; shift `end` to make the interval half-open [start, end) so it
+        # matches the gene / region tables and every interval test in the package
+        bl$end <- as.numeric(bl$end) + 1
         private$blocks <- bl[, c("sample1", "sample2", "chr", "start", "end"), drop = FALSE]
       }
       private$meta <- .read_maybe(meta, "meta")

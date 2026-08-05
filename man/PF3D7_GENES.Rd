@@ -8,14 +8,17 @@
 A data frame with 5318 rows and columns:
 \describe{
 \item{Pf3D7_chrom}{sequence id, e.g. \code{Pf3D7_01_v3}}
-\item{start, end}{1-based transcript-span bounds}
+\item{start, end}{CDS-span bounds, 0-based half-open \verb{[start, end)} -- the translated
+extent (min CDS start to max CDS end across isoforms), excluding UTRs}
 \item{chrom}{short chromosome (\code{"1"}..\code{"14"}, or \code{"API"} / \code{"MIT"})}
 \item{gene_id}{PlasmoDB gene id, e.g. \code{PF3D7_0709000}}
 \item{name}{friendly display name (see above)}
 }
 }
 \source{
-VEuPathDB / PlasmoDB Pf3D7 GFF, release version 2020-09-01.
+VEuPathDB / PlasmoDB Pf3D7 GFF, release version 2020-09-01. The GFF is 1-based
+inclusive; \code{start} is shifted down by one when the dataset is built so the shipped
+coordinates follow the package convention (see \link{plasgenomicsutilsR-coordinates}).
 }
 \usage{
 PF3D7_GENES

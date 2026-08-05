@@ -51,3 +51,38 @@ test_that("repeated gene Names are disambiguated by gene_id (not collapsed)", {
   expect_setequal(unique(ov$name), "pfvar")                  # raw name kept
   expect_setequal(unique(ov$gene_id), gtab$gene_id)          # unique ids kept
 })
+
+test_that("everything is 0-based: intervals half-open, variant positions too", {
+  # abutting intervals do not overlap; overlapping ones do
+  a <- data.frame(chr = "7", start = 100, end = 200)
+  b <- data.frame(chr = "7", start = 200, end = 300)   # starts exactly where a ends
+  expect_equal(nrow(bed_intersect(a, b)$overlap), 0)
+  expect_equal(nrow(bed_intersect(a, data.frame(chr = "7", start = 199, end = 300))$overlap), 1)
+
+  # shipped gene datasets carry half-open CDS coordinates
+  expect_true(all(PF3D7_GENES$end > PF3D7_GENES$start))
+  crt <- PF_EXAMPLE_DRUG_GENES[PF_EXAMPLE_DRUG_GENES$name == "pfcrt", ]
+  # PlasmoDB pfcrt CDS is 1-based 403222..406317 -> 0-based half-open [403221, 406317)
+  expect_equal(crt$start, 403221)
+  expect_equal(crt$end, 406317)
+  k13 <- PF_EXAMPLE_DRUG_GENES[PF_EXAMPLE_DRUG_GENES$name == "pfkelch13", ]
+  expect_equal(k13$start + 1, 1724817)              # canonical K13 CDS start (1-based)
+
+  # hmmibd blocks are shifted to half-open on read (end is the last SNP, made exclusive)
+  bl <- data.frame(sample1 = "a", sample2 = "b", chr = "Pf3D7_07_v3",
+                   start = 100, end = 200, different = 0)
+  obj <- ibd_results(blocks = bl, reference = "pf3d7")
+  expect_equal(obj$get_blocks()$end, 201)
+  expect_equal(obj$get_blocks()$start, 100)
+
+  # a variant is in a gene when its 0-based pos is: the start is included, the end is not
+  pw <- data.frame(chr = "7", pos = c(99, 100, 199, 200),
+                   group_a = "A", group_b = "B", frac_pairs_ibd = 0.5)
+  inside <- .snps_in_gene(pw, "7", 100, 200)
+  expect_equal(inside$pos, c(100, 199))
+
+  # a `snps=` id becomes the one-base interval [pos, pos + 1), so it matches itself
+  f <- .parse_snp_features("Pf3D7_07_v3:403221")
+  expect_equal(f$start, 403221)
+  expect_equal(f$end, 403222)
+})

@@ -30,7 +30,10 @@ plot_ibd_network(
 \item{gene}{A single gene name from the object's track (its interval is used).}
 
 \item{locus}{Alternatively, a locus: \code{"chr:pos"}, \code{"chr:start-end"}, or a one-row data
-frame with \code{chr}, \code{start}, \code{end}. Give exactly one of \code{gene} / \code{locus}.}
+frame with \code{chr}, \code{start}, \code{end}. Give exactly one of \code{gene} / \code{locus}. Coordinates
+are 0-based half-open (see \link{plasgenomicsutilsR-coordinates}), so \code{"chr:1000-2000"} is
+the 1000 bases from 0-based 1000 up to but not including 2000, and a bare \code{"chr:1000"}
+is the single base at 0-based 1000.}
 
 \item{group}{Optional metadata column to colour nodes by (needs \code{meta}).}
 

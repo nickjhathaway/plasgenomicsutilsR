@@ -16,9 +16,10 @@
     stop("give a gene= (name in the track) or locus= (\"chr:pos\", \"chr:start-end\", ",
          "or a data frame with chr/start/end)", call. = FALSE)
   }
+  # a bare position is the single base [pos, pos + 1), keeping every interval half-open
   if (is.data.frame(locus)) {
     st <- as.numeric(locus$start[1])
-    en <- if ("end" %in% names(locus)) as.numeric(locus$end[1]) else st
+    en <- if ("end" %in% names(locus)) as.numeric(locus$end[1]) else st + 1
     return(list(chr = normalise_chr(locus$chr[1]), start = st, end = en,
                 label = sprintf("%s:%s-%s", normalise_chr(locus$chr[1]), st, en)))
   }
@@ -29,7 +30,7 @@
   if (grepl("-", rng, fixed = TRUE)) {
     se <- as.numeric(strsplit(rng, "-", fixed = TRUE)[[1]]); st <- se[1]; en <- se[2]
   } else {
-    st <- as.numeric(rng); en <- st
+    st <- as.numeric(rng); en <- st + 1
   }
   list(chr = chr, start = st, end = en, label = s)
 }
@@ -67,7 +68,10 @@
 #' @param x An [IbdResults] with IBD `blocks`.
 #' @param gene A single gene name from the object's track (its interval is used).
 #' @param locus Alternatively, a locus: `"chr:pos"`, `"chr:start-end"`, or a one-row data
-#'   frame with `chr`, `start`, `end`. Give exactly one of `gene` / `locus`.
+#'   frame with `chr`, `start`, `end`. Give exactly one of `gene` / `locus`. Coordinates
+#'   are 0-based half-open (see [plasgenomicsutilsR-coordinates]), so `"chr:1000-2000"` is
+#'   the 1000 bases from 0-based 1000 up to but not including 2000, and a bare `"chr:1000"`
+#'   is the single base at 0-based 1000.
 #' @param group Optional metadata column to colour nodes by (needs `meta`).
 #' @param within Pad the interval by this many bp on both sides (default `0`).
 #' @param include_isolated Keep samples with no IBD edge (default `FALSE`). `TRUE` also
@@ -120,7 +124,8 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within 
 
   bl <- blocks
   bl$chr <- normalise_chr(bl$chr)
-  m <- bl$chr == iv$chr & bl$start <= (iv$end + within) & bl$end >= (iv$start - within)
+  # half-open [start, end) overlap between the IBD block and the padded interval
+  m <- bl$chr == iv$chr & bl$start < (iv$end + within) & bl$end > (iv$start - within)
   sub <- bl[m, , drop = FALSE]
   # distinct undirected pairs sharing IBD over the interval
   a <- pmin(sub$sample1, sub$sample2); b <- pmax(sub$sample1, sub$sample2)

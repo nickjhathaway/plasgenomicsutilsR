@@ -6,7 +6,8 @@
 \title{Pf3D7 paralogous / hypervariable gene families}
 \format{
 A data frame with columns \code{Pf3D7_chrom}, \code{start}, \code{end}, \code{chrom}, \code{gene_id},
-\code{description}.
+\code{description}; coordinates are 0-based half-open (see
+\link{plasgenomicsutilsR-coordinates}).
 }
 \source{
 The companion Python package (\code{plasgenomicsutils} \code{builtin:pf3d7_paralog_genes}).

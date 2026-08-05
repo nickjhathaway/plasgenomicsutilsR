@@ -10,7 +10,8 @@ tools and downsampled to ~1,357 SNPs for a compact fixture. Values are real (not
 synthetic). Regions are the sample countries.
 
 Files (all group-level; no per-sample genotype data). Here the grouping is the sample
-country, so the `group` columns hold country names:
+country, so the `group` columns hold country names. `pos` is the variant's 0-based
+position, matching the package convention (`?plasgenomicsutilsR-coordinates`):
 
 - `ibd_per_snp_group.tsv.gz` — per-SNP fraction of pairs IBD, per group
   (`chr`, `pos`, `group`, `frac_pairs_ibd`)

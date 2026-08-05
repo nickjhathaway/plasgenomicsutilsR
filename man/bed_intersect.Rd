@@ -37,9 +37,15 @@ column, then every \code{locs2} column suffixed \code{.2}, then \code{overlap_st
 A lightweight, dependency-free "bedtools intersect"-style overlap between two interval
 tables (e.g. genes vs. core regions, SNPs vs. paralog masks). Two intervals overlap when
 they are on the same chromosome and share at least one base
-(\code{start1 <= end2 & end1 >= start2}); chromosome names are matched via \code{\link[=normalise_chr]{normalise_chr()}}
+(\code{start1 < end2 & end1 > start2}); chromosome names are matched via \code{\link[=normalise_chr]{normalise_chr()}}
 so \code{"Pf3D7_07_v3"} and \code{"7"} agree.
 }
+\section{Coordinates}{
+ Intervals are \strong{0-based half-open} \verb{[start, end)}, as in BED and
+throughout this package -- so abutting intervals (\code{end1 == start2}) do not overlap.
+See \link{plasgenomicsutilsR-coordinates}.
+}
+
 \examples{
 genes <- data.frame(name = c("a", "b"), chr = c("7", "7"),
                     start = c(100, 5000), end = c(200, 5200))

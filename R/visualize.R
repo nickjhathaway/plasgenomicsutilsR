@@ -592,20 +592,22 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
 
 # ---- drug-gene group x group triangles -----------------------------------
 
-# SNPs from a pairwise-group table overlapping one feature interval
+# SNPs from a pairwise-group table overlapping one feature interval; `pos` and the
+# interval are both 0-based, the interval half-open.
 .snps_in_gene <- function(pw, chr, start, end) {
-  pw[pw$chr == chr & pw$pos >= start & pw$pos <= end, , drop = FALSE]
+  pw[pw$chr == chr & pw$pos >= start & pw$pos < end, , drop = FALSE]
 }
 
 # Turn user SNP identifiers into single-position features: either "chr:pos" ids or a
-# data frame with chr + pos (+ optional name).
+# data frame with chr + pos (+ optional name). `pos` is 0-based, so the feature it becomes
+# is the half-open interval covering that one base, [pos, pos + 1).
 .parse_snp_features <- function(snps) {
   if (is.data.frame(snps)) {
     if (!all(c("chr", "pos") %in% names(snps)))
       stop("`snps` data frame needs 'chr' and 'pos' columns", call. = FALSE)
     nm <- if ("name" %in% names(snps)) as.character(snps$name) else paste0(snps$chr, ":", snps$pos)
     return(data.frame(name = nm, chr = normalise_chr(snps$chr),
-                      start = as.numeric(snps$pos), end = as.numeric(snps$pos),
+                      start = as.numeric(snps$pos), end = as.numeric(snps$pos) + 1,
                       stringsAsFactors = FALSE))
   }
   ids <- as.character(snps)
@@ -615,7 +617,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
   if (any(is.na(pos)))
     stop("`snps` must be 'chr:pos' ids (e.g. 'Pf3D7_07_v3:403222') or a chr/pos data frame",
          call. = FALSE)
-  data.frame(name = ids, chr = normalise_chr(chr), start = pos, end = pos,
+  data.frame(name = ids, chr = normalise_chr(chr), start = pos, end = pos + 1,
              stringsAsFactors = FALSE)
 }
 

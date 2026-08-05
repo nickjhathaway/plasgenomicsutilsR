@@ -1,8 +1,12 @@
 # Build the bundled Pf3D7 gene-coordinate datasets from the VEuPathDB/PlasmoDB GFF.
 #
-# PF3D7_GENES        : every protein-coding gene, coordinates = the mRNA (transcript)
-#                      span (min transcript start .. max transcript end), i.e. CDS+UTR
-#                      transcript extent rather than the wider `gene` feature.
+# PF3D7_GENES        : every protein-coding gene, coordinates = the CDS span (min CDS
+#                      start .. max CDS end over every isoform), i.e. the translated
+#                      extent, excluding UTRs. Genes with no CDS feature fall back to the
+#                      mRNA span and then to the `protein_coding_gene` bounds.
+#                      Coordinates are 0-based half-open [start, end), matching BED and
+#                      the rest of the package; the GFF is 1-based inclusive, so `start`
+#                      is shifted down by one and `end` is carried over unchanged.
 # PF_EXAMPLE_DRUG_GENES : the small drug-resistance / selection subset used in docs
 #                      and examples.
 #
@@ -34,16 +38,30 @@ genes <- data.frame(
   stringsAsFactors = FALSE
 )
 
-# coordinates = transcript (mRNA) span, collapsing multiple isoforms to the outer bounds
+# coordinates = CDS span (translated extent), collapsing every isoform to the outer bounds
+cds <- g[g$type == "CDS", ]
+cds_gid <- attr_get(cds$attr, "gene_id")                   # CDS rows carry gene_id directly
+cstart <- tapply(cds$start, cds_gid, min)
+cend   <- tapply(cds$end,   cds_gid, max)
+genes$start <- as.integer(cstart[genes$gene_id])
+genes$end   <- as.integer(cend[genes$gene_id])
+
+# fall back to the mRNA span, then the gene bounds, for anything with no CDS feature
 mr     <- g[g$type == "mRNA", ]
 parent <- sub("\\.[0-9]+$", "", attr_get(mr$attr, "ID"))   # PF3D7_0709000.1 -> PF3D7_0709000
 pstart <- tapply(mr$start, parent, min)
 pend   <- tapply(mr$end,   parent, max)
-genes$start <- as.integer(pstart[genes$gene_id])
-genes$end   <- as.integer(pend[genes$gene_id])
-miss <- is.na(genes$start)                                 # genes with no mRNA: use gene bounds
+no_cds <- is.na(genes$start)
+genes$start[no_cds] <- as.integer(pstart[genes$gene_id[no_cds]])
+genes$end[no_cds]   <- as.integer(pend[genes$gene_id[no_cds]])
+miss <- is.na(genes$start)
 genes$start[miss] <- genes$gene_start[miss]
 genes$end[miss]   <- genes$gene_end[miss]
+message(sum(no_cds), " genes had no CDS feature (fell back to mRNA / gene bounds)")
+
+# GFF 1-based inclusive -> 0-based half-open [start, end)
+genes$start <- as.integer(genes$start) - 1L
+genes$end   <- as.integer(genes$end)
 
 # display name: "pf" + lowercase(Name), or the gene_id when the gene has no Name
 genes$name <- ifelse(is.na(genes$Name) | !nzchar(genes$Name),

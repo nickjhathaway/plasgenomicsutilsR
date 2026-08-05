@@ -5,7 +5,8 @@
 \alias{PF3D7_CORE_REGIONS}
 \title{Pf3D7 core genome regions}
 \format{
-A data frame with columns \code{Pf3D7_chrom}, \code{start}, \code{end}, \code{chrom}.
+A data frame with columns \code{Pf3D7_chrom}, \code{start}, \code{end}, \code{chrom}; coordinates are
+0-based half-open (see \link{plasgenomicsutilsR-coordinates}).
 }
 \source{
 MalariaGEN \code{regions-20130225} core/non-core boundaries (with a few core

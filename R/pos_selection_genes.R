@@ -107,10 +107,11 @@ pos_selection_genes <- function(x, within = 2000, genes = NULL,
       if (!nrow(gc)) next
       hc <- hits[hits$chr == ch, , drop = FALSE]
       for (i in seq_len(nrow(gc))) {
-        m <- hc$pos >= gc$start[i] - within & hc$pos <= gc$end[i] + within
+        # `pos` and the gene interval are both 0-based, the interval half-open
+        m <- hc$pos >= gc$start[i] - within & hc$pos < gc$end[i] + within
         if (!any(m)) next
         win  <- hc[m, , drop = FALSE]
-        dist <- pmax(0, gc$start[i] - win$pos, win$pos - gc$end[i])   # 0 when inside
+        dist <- pmax(0, gc$start[i] - win$pos, win$pos - (gc$end[i] - 1))   # 0 when inside
         prow <- win[which.max(win$neg_log10_p), , drop = FALSE]       # peak by neg_log10_p
         base <- data.frame(
           group = if (is.na(g)) NA_character_ else as.character(g),

@@ -6,8 +6,12 @@
 #' A lightweight, dependency-free "bedtools intersect"-style overlap between two interval
 #' tables (e.g. genes vs. core regions, SNPs vs. paralog masks). Two intervals overlap when
 #' they are on the same chromosome and share at least one base
-#' (`start1 <= end2 & end1 >= start2`); chromosome names are matched via [normalise_chr()]
+#' (`start1 < end2 & end1 > start2`); chromosome names are matched via [normalise_chr()]
 #' so `"Pf3D7_07_v3"` and `"7"` agree.
+#'
+#' @section Coordinates: Intervals are **0-based half-open** `[start, end)`, as in BED and
+#'   throughout this package -- so abutting intervals (`end1 == start2`) do not overlap.
+#'   See [plasgenomicsutilsR-coordinates].
 #'
 #' @param locs1,locs2 Interval tables (data frames / tibbles).
 #' @param chrom1,start1,end1 Column names for the chromosome / start / end in `locs1`
@@ -53,7 +57,7 @@ bed_intersect <- function(locs1, locs2,
   for (ch in intersect(unique(c1), unique(c2))) {
     i1 <- which(c1 == ch); i2 <- which(c2 == ch)
     for (i in i1) {
-      ov <- i2[s2[i2] <= e1[i] & e2[i2] >= s1[i]]
+      ov <- i2[s2[i2] < e1[i] & e2[i2] > s1[i]]
       if (length(ov)) {
         hit1[i] <- TRUE; hit2[ov] <- TRUE
         parts[[length(parts) + 1L]] <- data.frame(

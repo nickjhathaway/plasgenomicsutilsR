@@ -102,7 +102,7 @@ gene_ibd_overlap <- function(x, genes = NULL, group = NULL, within = 0) {
     idx <- by_chr[[f$chr]]
     if (!is.null(idx) && length(idx)) {
       d <- blocks[idx, , drop = FALSE]
-      m <- d$start <= hi & d$end >= lo
+      m <- d$start < hi & d$end > lo                      # half-open [start, end) overlap
       if (any(m)) {
         s1 <- d$sample1[m]; s2 <- d$sample2[m]
         key <- ifelse(s1 < s2, paste(s1, s2), paste(s2, s1))   # distinct pairs
