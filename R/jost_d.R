@@ -115,9 +115,9 @@ pop_diff <- function(x, group = NULL,
       grp <- as.character(meta[[group]])[match(rownames(G), meta$sample)]
       levs <- .levels_of(meta[[group]])
     } else {
+      if (length(group) != nrow(G)) stop("`group` must align to the genotype rows", call. = FALSE)
       grp <- as.character(group)
-      if (length(grp) != nrow(G)) stop("`group` must align to the genotype rows", call. = FALSE)
-      levs <- sort(unique(grp[!is.na(grp)]))
+      levs <- .levels_of(group)            # a factor's own order, else a natural sort
     }
   }
   if (length(levs) < 2) stop("need at least two groups", call. = FALSE)
@@ -256,7 +256,8 @@ pop_diff_table <- function(x, group = NULL,
         stop("supply `meta` containing the grouping column and the `annotate` column(s)",
              call. = FALSE)
       if (is.null(nm) || !nzchar(nm)) nm <- a
-      out[[nm]] <- as.character(meta[[a]])[match(ord, as.character(meta[[group_col]]))]
+      # subset rather than coerce, so a factor annotation keeps its own level order
+      out[[nm]] <- meta[[a]][match(ord, as.character(meta[[group_col]]))]
     } else {                                                 # a named group -> value vector
       if (is.null(nm) || !nzchar(nm)) nm <- paste0("annotation", i)
       out[[nm]] <- unname(a[ord])
@@ -267,8 +268,11 @@ pop_diff_table <- function(x, group = NULL,
 
 # one annotation colour strip aligned above the heatmap columns
 .annotation_panel <- function(name, vals, ord, cols, base_size) {
+  # the columns follow `ord` (the clustering), but the annotation's own levels set the
+  # colour assignment and legend order, so a value keeps its colour however the axis runs
   adf <- data.frame(col = factor(ord, levels = ord), y = 1,
-                    value = factor(vals, levels = unique(vals)), stringsAsFactors = FALSE)
+                    value = factor(as.character(vals), levels = .levels_of(vals)),
+                    stringsAsFactors = FALSE)
   if (is.null(cols)) cols <- meta_colors(data.frame(value = adf$value))$value
   ggplot2::ggplot(adf, ggplot2::aes(.data$col, .data$y, fill = .data$value)) +
     ggplot2::geom_tile(colour = "white") +
@@ -390,7 +394,12 @@ plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
 #' @param pd A [pop_diff()] / [jost_d()] result.
 #' @param stat,top Summary passed to [pop_diff_matrix()] (`"mean"`, `"median"`,
 #'   `"top_mean"`, `"max"`; `top` for the top-percentile mean).
-#' @param cluster Order groups by hierarchical clustering of the matrix.
+#' @param cluster Order groups by hierarchical clustering of the matrix (default `TRUE`),
+#'   which is what puts similar groups side by side. With `cluster = FALSE` the axes follow
+#'   the grouping column's levels instead -- its factor order if it has one (e.g. from
+#'   `PopStructure$set_levels()`), otherwise a natural sort. Annotation strips and the
+#'   dendrogram tips take their colours in level order either way, so a group keeps the
+#'   same colour whichever ordering is drawn.
 #' @param dendrogram Draw the clustering dendrogram across the top (needs `cluster`).
 #' @param triangle Show only the lower triangle (with the legend in the empty corner).
 #' @param annotate One or more annotations drawn as colour strips above the columns:
@@ -423,6 +432,8 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
   M <- pop_diff_matrix(pd, stat, top)
   n <- nrow(M)
   hc <- if (cluster && n > 2) stats::hclust(stats::as.dist(max(M, na.rm = TRUE) - M)) else NULL
+  # clustering, when asked for, decides the axis order -- that grouping is the point of it.
+  # Without it the axes fall back to the group levels (`M` is already in that order).
   ord <- if (is.null(hc)) rownames(M) else rownames(M)[hc$order]
 
   df <- expand.grid(row = ord, col = ord, stringsAsFactors = FALSE)
@@ -469,10 +480,12 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
   if (dendrogram && !is.null(hc)) {
     seg <- .dendro_segments(hc)
     # colour the leaf tips by group so the tree matches the UMAP / admixture colours
-    tips <- data.frame(x = seq_along(ord), y = 0, grp = factor(ord, levels = ord),
+    # colours come from the group levels, not the leaf order, so a group keeps its colour
+    glev <- .levels_of(rownames(M))
+    tips <- data.frame(x = seq_along(ord), y = 0, grp = factor(ord, levels = glev),
                        stringsAsFactors = FALSE)
-    gcols <- if (is.null(group_colours)) meta_colors(data.frame(grp = ord))[["grp"]]
-             else group_colours
+    gcols <- if (is.null(group_colours))
+      meta_colors(data.frame(grp = factor(glev, levels = glev)))[["grp"]] else group_colours
     dnd_panel <- ggplot2::ggplot(seg) +
       ggplot2::geom_segment(ggplot2::aes(.data$x, .data$y, xend = .data$xend, yend = .data$yend),
                             linewidth = 0.3, colour = "grey35") +

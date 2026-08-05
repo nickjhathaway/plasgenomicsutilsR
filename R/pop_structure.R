@@ -141,6 +141,27 @@ print.pop_structure <- function(x, ...) {
   merge(df, meta, by = "sample", all.x = TRUE, sort = FALSE)
 }
 
+# Grouping values for a set of samples as a factor, carrying the metadata column's own
+# level order through. Every plot derives its group ordering from here, so setting levels
+# on the metadata (or via PopStructure$set_levels()) drives them all the same way. A
+# column that is not a factor is natural-sorted (see .levels_of()).
+.group_factor <- function(meta, group, samples = NULL) {
+  v <- meta[[group]]
+  if (!is.null(samples)) v <- v[match(samples, meta$sample)]
+  .as_group_factor(v)
+}
+
+# The levels actually present, in the column's level order (empty levels dropped).
+.group_order <- function(v) {
+  f <- .as_group_factor(v)
+  levels(f)[levels(f) %in% as.character(f[!is.na(f)])]
+}
+
+# A factor keeps its own level order; anything else gets one from .levels_of().
+.as_group_factor <- function(v) {
+  if (is.factor(v)) v else factor(as.character(v), levels = .levels_of(v))
+}
+
 # ---- plots -----------------------------------------------------------------
 
 #' PCA scatter plot
@@ -369,18 +390,25 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
   q <- as.matrix(q)
   if (is.null(samples)) samples <- rownames(q)
   if (is.null(samples)) samples <- as.character(seq_len(nrow(q)))
-  grp <- rep("all", length(samples))
+  grp <- factor(rep("all", length(samples)))
   if (!is.null(meta) && !is.null(group) && "sample" %in% names(meta) && group %in% names(meta)) {
-    grp <- as.character(meta[[group]][match(samples, meta$sample)])
+    grp <- .group_factor(meta, group, samples)
   }
   ord <- character(0)
-  for (g in unique(grp)) {
-    idx <- which(grp == g)
+  # groups are swept in the column's level order, so samples sit in the requested order
+  for (g in .group_order(grp)) {
+    idx <- which(!is.na(grp) & grp == g)
     if (length(idx) > 2) {
       hc <- stats::hclust(stats::dist(q[idx, , drop = FALSE]), method = "ward.D2")
       idx <- idx[hc$order]
     }
     ord <- c(ord, samples[idx])
+  }
+  # samples whose group is not one of the levels are left out (set_levels() drops unlisted
+  # levels), which silently shrinks the plot -- so say how many went
+  if (anyNA(grp)) {
+    warning(sum(is.na(grp)), " sample(s) have no level in the grouping column and are ",
+            "not plotted; add their level with set_levels() to keep them", call. = FALSE)
   }
   ord
 }
@@ -449,8 +477,10 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
 
   if (group_bar && !is.null(group) && group %in% names(df)) {
     .need_package("ggnewscale", "the group colour bar")
+    # the strip's facet column has to stay the same factor as the bars': a character copy
+    # here makes ggplot combine the two layers' facet values alphabetically
     gdf <- data.frame(sample = factor(df$sample, levels = sample_order),
-                      grp = as.character(df[[group]]), stringsAsFactors = FALSE)
+                      grp = .as_group_factor(df[[group]]), stringsAsFactors = FALSE)
     gdf[[group]] <- gdf$grp   # carry the facet variable so facet_grid subsets the strip
     if (is.null(group_colours)) group_colours <- meta_colors(df, cols = group)[[group]]
     p <- p + ggnewscale::new_scale_fill() +

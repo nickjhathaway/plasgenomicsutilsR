@@ -39,8 +39,25 @@ color_palette <- function(n) {
 # internal alias used throughout the plotting code
 .pick_palette <- function(n) color_palette(n)
 
+# Natural ("human") sort: digit runs compare as numbers, so site2 precedes site10 where a
+# plain sort would not. Each digit run is zero-padded to a fixed width and the padded keys
+# are sorted in the C locale, keeping the result stable regardless of the user's locale.
+.natural_sort <- function(x) {
+  x <- unique(as.character(x))
+  if (length(x) < 2) return(x)
+  key <- vapply(x, function(s) {
+    parts <- regmatches(s, gregexpr("[0-9]+|[^0-9]+", s))[[1]]
+    paste0(vapply(parts, function(p)
+      if (grepl("^[0-9]+$", p)) formatC(p, width = 20, flag = "0") else p,
+      character(1)), collapse = "")
+  }, character(1), USE.NAMES = FALSE)
+  x[order(key, method = "radix")]
+}
+
+# The ordered levels of a grouping value: a factor keeps its own order, anything else is
+# natural-sorted. Every group ordering in the package resolves through here.
 .levels_of <- function(x) {
-  if (is.factor(x)) levels(droplevels(x)) else sort(unique(as.character(x[!is.na(x)])))
+  if (is.factor(x)) levels(droplevels(x)) else .natural_sort(x[!is.na(x)])
 }
 
 #' Assign colours to the levels of metadata columns

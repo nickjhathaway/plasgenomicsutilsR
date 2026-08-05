@@ -31,7 +31,12 @@ plot_jost_d_heatmap(pd, stat = "mean", ...)
 \item{stat, top}{Summary passed to \code{\link[=pop_diff_matrix]{pop_diff_matrix()}} (\code{"mean"}, \code{"median"},
 \code{"top_mean"}, \code{"max"}; \code{top} for the top-percentile mean).}
 
-\item{cluster}{Order groups by hierarchical clustering of the matrix.}
+\item{cluster}{Order groups by hierarchical clustering of the matrix (default \code{TRUE}),
+which is what puts similar groups side by side. With \code{cluster = FALSE} the axes follow
+the grouping column's levels instead -- its factor order if it has one (e.g. from
+\code{PopStructure$set_levels()}), otherwise a natural sort. Annotation strips and the
+dendrogram tips take their colours in level order either way, so a group keeps the
+same colour whichever ordering is drawn.}
 
 \item{dendrogram}{Draw the clustering dendrogram across the top (needs \code{cluster}).}
 

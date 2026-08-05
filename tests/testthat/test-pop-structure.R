@@ -217,3 +217,74 @@ test_that("run_ld_prune converts a VCF and returns a genotype matrix", {
   expect_equal(nrow(res$genotype), n_s)
   expect_length(res$sample.id, n_s)
 })
+
+test_that("group factor levels drive the order of every output", {
+  testthat::skip_if_not_installed("ggplot2")
+  set.seed(3)
+  n <- 24
+  meta <- data.frame(sample = paste0("s", 1:n),
+                     site = rep(c("Delta", "Alpha", "Charlie"), each = n / 3),
+                     stringsAsFactors = FALSE)
+  want <- c("Delta", "Charlie", "Alpha")            # deliberately not alphabetical
+  meta$site <- factor(meta$site, levels = want)
+  q <- matrix(runif(n * 3), nrow = n, dimnames = list(meta$sample, paste0("K", 1:3)))
+  q <- q / rowSums(q)
+
+  facets <- function(p) as.character(ggplot2::ggplot_build(p)$layout$layout$site)
+  # the group colour bar used to force alphabetical facets by carrying a character column
+  expect_equal(facets(plot_admixture(q, meta$sample, meta, "site")), want)
+  expect_equal(facets(plot_admixture(q, meta$sample, meta, "site", group_bar = TRUE)), want)
+
+  # sample sweep follows the levels too
+  ord <- admixture_order(q, meta$sample, meta, "site")
+  site_of <- stats::setNames(as.character(meta$site), meta$sample)
+  expect_equal(unique(site_of[ord]), want)
+
+  # samples outside the declared levels are dropped, but not silently
+  meta2 <- meta
+  meta2$site <- factor(as.character(meta2$site), levels = c("Delta", "Charlie"))
+  expect_warning(admixture_order(q, meta2$sample, meta2, "site"), "no level")
+})
+
+test_that("diff heatmap follows group levels, exactly when unclustered", {
+  testthat::skip_if_not_installed("ggplot2")
+  set.seed(5)
+  n <- 30
+  meta <- data.frame(sample = paste0("s", 1:n),
+                     site = factor(rep(c("Delta", "Alpha", "Charlie"), each = n / 3),
+                                   levels = c("Delta", "Charlie", "Alpha")),
+                     stringsAsFactors = FALSE)
+  g <- matrix(rbinom(n * 40, 2, 0.4), nrow = n, dimnames = list(meta$sample, NULL))
+  pd <- pop_diff(g, group = "site", meta = meta)
+  expect_equal(rownames(pop_diff_matrix(pd)), levels(meta$site))
+  xo <- function(p) ggplot2::ggplot_build(p)$layout$panel_params[[1]]$x$get_labels()
+  # unclustered follows the levels; clustered follows the clustering, which is the point
+  expect_equal(xo(plot_diff_heatmap(pd, cluster = FALSE)), levels(meta$site))
+  expect_setequal(xo(plot_diff_heatmap(pd)), levels(meta$site))
+})
+
+test_that("annotation colours follow the annotation's levels, not the axis order", {
+  testthat::skip_if_not_installed("ggplot2")
+  meta <- data.frame(site = c("S_a", "S_b", "S_c", "S_d"),
+                     country = factor(c("Zed", "Alpha", "Zed", "Alpha"),
+                                      levels = c("Zed", "Alpha")),
+                     stringsAsFactors = FALSE)
+  ord <- c("S_b", "S_d", "S_a", "S_c")          # as a clustering would order them
+  ann <- .resolve_annotations("country", ord, "site", meta)
+  expect_true(is.factor(ann$country))           # the column's factor must survive
+  p <- .annotation_panel("country", ann$country, ord, NULL, 11)
+  expect_equal(levels(p$data$value), c("Zed", "Alpha"))   # not the axis order Alpha, Zed
+
+  meta$country <- c("c10", "c2", "c10", "c2")   # no factor -> natural sort
+  a2 <- .resolve_annotations("country", ord, "site", meta)
+  expect_equal(levels(.annotation_panel("country", a2$country, ord, NULL, 11)$data$value),
+               c("c2", "c10"))
+})
+
+test_that("without a factor, group order is a natural sort", {
+  expect_equal(.natural_sort(c("site10", "site2", "site1")), c("site1", "site2", "site10"))
+  expect_equal(.levels_of(c("s10", "s2", "s1")), c("s1", "s2", "s10"))
+  # a factor keeps its own order untouched
+  expect_equal(.levels_of(factor(c("b", "a"), levels = c("b", "a"))), c("b", "a"))
+  expect_equal(.natural_sort(c("chr10", "chrX", "chr2")), c("chr2", "chr10", "chrX"))
+})
