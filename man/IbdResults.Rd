@@ -21,11 +21,25 @@ Expected columns (superset; extras are kept):
 (output of \code{ibd_selection_statistic}).
 }
 }
+\examples{
+ibd <- example_ibd_results()
+groups <- levels(factor(ibd$get_selection()$group))
+
+# everything except one group, or only the ones named
+ibd$subset_groups(drop = groups[1])
+pair <- ibd$subset_groups(keep = groups[1:2])
+pair$plot_selection_manhattan()
+
+# `restrict_groups()` is the same thing in place
+ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
+}
 \section{Methods}{
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-IbdResults-initialize}{\code{IbdResults$new()}}
     \item \href{#method-IbdResults-set_group_order}{\code{IbdResults$set_group_order()}}
+    \item \href{#method-IbdResults-restrict_groups}{\code{IbdResults$restrict_groups()}}
+    \item \href{#method-IbdResults-subset_groups}{\code{IbdResults$subset_groups()}}
     \item \href{#method-IbdResults-get_group_order}{\code{IbdResults$get_group_order()}}
     \item \href{#method-IbdResults-get_group_col}{\code{IbdResults$get_group_col()}}
     \item \href{#method-IbdResults-get_per_snp_group}{\code{IbdResults$get_per_snp_group()}}
@@ -137,6 +151,64 @@ from \code{levels} (it would silently become \code{NA}); warns about levels no r
   }
   \subsection{Returns}{
     Invisibly self.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-restrict_groups"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-restrict_groups}{}}}
+\subsection{\code{IbdResults$restrict_groups()}}{
+  Drop or keep groups, in place. \code{subset_groups()} is the copying form.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$restrict_groups(keep = NULL, drop = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{keep}}{Group labels to keep (\code{NULL} keeps all).}
+      \item{\code{drop}}{Group labels to remove. Applied after \code{keep}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly self.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-subset_groups"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-subset_groups}{}}}
+\subsection{\code{IbdResults$subset_groups()}}{
+  A new \code{IbdResults} holding only some of the groups.
+
+Everything this object carries is either summarised per group or per group pair, so
+groups are the natural unit to cut on. All of the per-SNP, group-pair, selection and
+threshold tables are filtered; a group-pair row survives only when \strong{both} of its
+groups do, a cell against a dropped group having no meaning. \code{meta}, \code{blocks} and the
+analysed-sample set narrow to the samples belonging to the surviving groups, so
+block-derived output — \code{\link[=gene_ibd_overlap]{gene_ibd_overlap()}}, \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}},
+\code{\link[=plot_ibd_network]{plot_ibd_network()}} — follows as well. The group order is trimmed to what survives.
+
+Narrowing groups cannot recompute a summary, so every number kept is still the one
+computed over that group's full sample set. Groups are dropped, never re-derived.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$subset_groups(keep = NULL, drop = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{keep}}{Group labels to keep (\code{NULL} keeps all).}
+      \item{\code{drop}}{Group labels to remove. Applied after \code{keep}, so passing only \code{drop} is
+the usual "everything except these" form.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A new \code{IbdResults}; this object is unchanged.
   }
 }
 

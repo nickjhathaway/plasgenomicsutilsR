@@ -655,10 +655,15 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
   genes <- .genes_for_layout(x$get_genes(), layout, highlight_genes)
   genome_frac <- sum(layout$len) / sum(x$chrom_layout()$len)
 
-  # a table written before the grouping column was standardised names it after the
-  # grouping instead ("region"); reaching for `$group` there warns and silently unfacets
-  .grp_of <- function(df) if ("group" %in% names(df)) as.character(df$group) else NULL
-  present <- sort(unique(c(.grp_of(sel), .grp_of(ibd))))
+  # Only test for the column, never reach through it: a table written before the grouping
+  # column was standardised names it after the grouping instead ("region"), and `$group`
+  # there warns and silently unfacets. Combining with `c()` keeps the factor and its levels,
+  # so `sort()` gives the declared group order rather than the alphabet -- and `top_level`
+  # stays a factor, which matters because a secondary layer carrying the facet column as
+  # bare character makes ggplot merge the layers' facet values alphabetically.
+  grp <- c(if ("group" %in% names(sel)) sel$group,
+           if ("group" %in% names(ibd)) ibd$group)
+  present <- sort(unique(grp))
   faceted <- ("group" %in% names(sel)) && length(present) > 1
   top_level <- if (faceted) present[1] else NULL
 

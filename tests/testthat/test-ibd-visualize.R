@@ -1023,3 +1023,36 @@ test_that("a band layer given no second fill draws only the first band", {
 
   expect_null(plasgenomicsutilsR:::.chr_band_layer(layout, c(NA, NA)))
 })
+
+test_that("gene labels do not reorder the facets of any genome-wide plot", {
+  skip_if_not_installed("ggplot2")
+  # levels deliberately NOT alphabetical, and the first alphabetically ("East") is not the
+  # first level -- so an alphabetical merge is visible rather than a coincidence
+  levs <- c("Northwest", "North", "Northeast", "East", "West", "Southwest")
+  sel <- data.frame(
+    group = factor(rep(levs, each = 3), levels = levs),
+    chr = "Pf3D7_07_v3", pos = rep(c(400000, 410000, 420000), length(levs)),
+    neg_log10_p = seq(1, 9, length.out = 3 * length(levs)), stringsAsFactors = FALSE)
+  psg <- data.frame(group = sel$group, chr = sel$chr, pos = sel$pos,
+                    frac_pairs_ibd = seq(0, 0.4, length.out = nrow(sel)))
+  ibd <- ibd_results(selection = sel, per_snp_group = psg,
+                     threshold = data.frame(group = levs, threshold = 5),
+                     genes = PF_EXAMPLE_DRUG_GENES)
+  ibd$set_group_order(levs)
+
+  panels <- function(p) as.character(ggplot2::ggplot_build(p)$layout$layout$group)
+  fns <- list(plot_ibd_tugofwar, plot_selection_manhattan, plot_ibd_sharing_manhattan)
+  for (f in fns) {
+    # labelling genes adds a layer carrying the facet column; if it carries it as bare
+    # character ggplot merges the layers' facet values alphabetically
+    expect_equal(panels(f(ibd)), levs)
+    expect_equal(panels(f(ibd, label_genes = TRUE)), levs)
+    expect_equal(panels(f(ibd, skip_chr = c(1, 2, 3), label_genes = TRUE)), levs)
+  }
+
+  # ...and after dropping a group the survivors keep their declared order
+  sub <- ibd$subset_groups(drop = "West")
+  for (f in fns) {
+    expect_equal(panels(f(sub, label_genes = TRUE)), setdiff(levs, "West"))
+  }
+})

@@ -119,6 +119,27 @@ ibd$get_group_order()
 actually contain is an error rather than a silent `NA`; naming a group nothing uses is only
 a warning.
 
+### Dropping groups
+
+Everything an `IbdResults` holds is summarised either per group or per group pair, so groups
+are the unit to cut on. `$subset_groups()` returns a copy; `$restrict_groups()` does it in
+place. `drop` is the usual form — "everything except these" — and `keep` names the survivors
+instead:
+
+```{r subset-groups}
+groups <- levels(factor(ibd$get_selection()$group))
+ibd$subset_groups(drop = groups[1])
+```
+
+The per-SNP, group-pair, selection and threshold tables are all filtered, and a group-pair
+row survives only when **both** of its groups do — a cell against a dropped group means
+nothing. With `meta` loaded, `blocks` and the analysed-sample set narrow to the surviving
+groups' samples too, so `gene_ibd_overlap()`, `gene_ibd_pairs()` and `plot_ibd_network()`
+follow. The group order is trimmed to whatever is left.
+
+Narrowing groups cannot recompute a summary, so every number kept is still the one computed
+over that group's full sample set — groups are dropped, never re-derived.
+
 ## Highlighting genes
 
 The `genes` track supplies gene positions **and** display names. `PF_EXAMPLE_DRUG_GENES` is a

@@ -91,7 +91,7 @@ IBD_MIN_BLOCK_KB <- 15
                          "fdr_alpha", "alpha", "n_tests", "n_significant",
                          "n_significant_fdr", "n_significant_perm",
                          "n_significant_fdr_perm", "n_perm", "q_empirical_floor",
-                         "empirical_pool", "lambda_gc"),
+                         "empirical_pool", "xirs_variant", "tail", "lambda_gc"),
                        names(df))
     out <- if (is.na(rcol))
       tibble::tibble(group = NA_character_, threshold = as.numeric(df[[tcol]])[1])
@@ -135,6 +135,17 @@ IBD_MIN_BLOCK_KB <- 15
 #'     `z_score`), optionally `group` and `significant`
 #'     (output of `ibd_selection_statistic`).
 #'
+#' @examples
+#' ibd <- example_ibd_results()
+#' groups <- levels(factor(ibd$get_selection()$group))
+#'
+#' # everything except one group, or only the ones named
+#' ibd$subset_groups(drop = groups[1])
+#' pair <- ibd$subset_groups(keep = groups[1:2])
+#' pair$plot_selection_manhattan()
+#'
+#' # `restrict_groups()` is the same thing in place
+#' ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
 #' @export
 IbdResults <- R6::R6Class(
   "IbdResults",
@@ -261,6 +272,37 @@ IbdResults <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description Drop or keep groups, in place. `subset_groups()` is the copying form.
+    #' @param keep Group labels to keep (`NULL` keeps all).
+    #' @param drop Group labels to remove. Applied after `keep`.
+    #' @return Invisibly self.
+    restrict_groups = function(keep = NULL, drop = NULL) {
+      private$restrict_to_groups(keep, drop)
+      invisible(self)
+    },
+
+    #' @description A new `IbdResults` holding only some of the groups.
+    #'
+    #'   Everything this object carries is either summarised per group or per group pair, so
+    #'   groups are the natural unit to cut on. All of the per-SNP, group-pair, selection and
+    #'   threshold tables are filtered; a group-pair row survives only when **both** of its
+    #'   groups do, a cell against a dropped group having no meaning. `meta`, `blocks` and the
+    #'   analysed-sample set narrow to the samples belonging to the surviving groups, so
+    #'   block-derived output — [gene_ibd_overlap()], [gene_ibd_pairs()],
+    #'   [plot_ibd_network()] — follows as well. The group order is trimmed to what survives.
+    #'
+    #'   Narrowing groups cannot recompute a summary, so every number kept is still the one
+    #'   computed over that group's full sample set. Groups are dropped, never re-derived.
+    #' @param keep Group labels to keep (`NULL` keeps all).
+    #' @param drop Group labels to remove. Applied after `keep`, so passing only `drop` is
+    #'   the usual "everything except these" form.
+    #' @return A new `IbdResults`; this object is unchanged.
+    subset_groups = function(keep = NULL, drop = NULL) {
+      new <- self$clone(deep = TRUE)
+      new$restrict_groups(keep = keep, drop = drop)
+      new
+    },
+
     #' @description The current group order (`NULL` when none has been set).
     get_group_order = function() private$group_order,
 
@@ -376,6 +418,18 @@ IbdResults <- R6::R6Class(
       unique(g[!is.na(g)])
     },
 
+    # Groups named by `meta`, which is routinely a SUPERSET of the ones the result tables
+    # carry: a group with a single sample contributes no within-group pair, so no per-SNP or
+    # selection row, yet its samples still belong to it for the block tools. Kept apart from
+    # `groups_present()` so a group that only exists here is never treated as a result that
+    # an ordering has to account for.
+    groups_in_meta = function() {
+      if (is.null(private$meta) || is.null(private$group_col) ||
+          !private$group_col %in% names(private$meta)) return(character(0))
+      g <- as.character(private$meta[[private$group_col]])
+      unique(g[!is.na(g)])
+    },
+
     # stamp the order onto every group column, so plots, facets and legends all follow it
     apply_group_order = function() {
       levs <- private$group_order
@@ -402,6 +456,59 @@ IbdResults <- R6::R6Class(
       invisible(NULL)
     },
 
+    # Both `restrict_groups()` and `subset_groups()` land here.
+    restrict_to_groups = function(keep, drop) {
+      present <- union(private$groups_present(), private$groups_in_meta())
+      if (is.null(keep) && is.null(drop)) return(invisible(NULL))
+      unknown <- setdiff(c(as.character(keep), as.character(drop)), present)
+      if (length(unknown)) {
+        warning("group(s) not in these results: ", paste(sort(unknown), collapse = ", "),
+                call. = FALSE)
+      }
+      groups <- if (is.null(keep)) present else intersect(present, as.character(keep))
+      if (!is.null(drop)) groups <- setdiff(groups, as.character(drop))
+      if (!length(groups)) stop("that leaves no groups", call. = FALSE)
+
+      one <- function(df, col) {
+        if (is.null(df) || !col %in% names(df)) return(df)
+        df[as.character(df[[col]]) %in% groups, , drop = FALSE]
+      }
+      both <- function(df, a, b) {
+        if (is.null(df) || !all(c(a, b) %in% names(df))) return(df)
+        df[as.character(df[[a]]) %in% groups & as.character(df[[b]]) %in% groups, ,
+           drop = FALSE]
+      }
+      private$per_snp <- one(private$per_snp, "group")
+      private$selection <- one(private$selection, "group")
+      private$threshold <- one(private$threshold, "group")
+      private$pairwise <- both(private$pairwise, "group_a", "group_b")
+      private$gene_overlap <- both(private$gene_overlap, "group_a", "group_b")
+
+      # a group is a set of samples, so the sample-keyed tables narrow with it and anything
+      # computed from the blocks follows the subset
+      if (!is.null(private$meta) && !is.null(private$group_col) &&
+          private$group_col %in% names(private$meta)) {
+        m <- private$meta
+        kept <- as.character(m$sample[as.character(m[[private$group_col]]) %in% groups])
+        private$meta <- m[as.character(m$sample) %in% kept, , drop = FALSE]
+        if (!is.null(private$blocks)) {
+          b <- private$blocks
+          private$blocks <- b[b$sample1 %in% kept & b$sample2 %in% kept, , drop = FALSE]
+        }
+        if (!is.null(private$analyzed_samples))
+          private$analyzed_samples <- intersect(private$analyzed_samples, kept)
+      }
+
+      # keep the declared order, minus what no longer appears, so re-applying it does not
+      # error on groups that were deliberately dropped
+      if (!is.null(private$group_order)) {
+        private$group_order <- intersect(private$group_order, groups)
+        if (!length(private$group_order)) private$group_order <- NULL
+      }
+      private$apply_group_order()
+      invisible(NULL)
+    },
+
     # shared by set_group_order() and the constructor's group_col_in_meta
     adopt_group_order = function(levs, source) {
       levs <- as.character(levs)
@@ -417,8 +524,20 @@ IbdResults <- R6::R6Class(
              paste(sort(dropped), collapse = ", "),
              ". They would become NA; add them to keep the results intact.", call. = FALSE)
       }
-      unused <- setdiff(levs, present)
-      if (length(unused) && length(present)) {
+      # A group only `meta` knows about is not a result, so it does not have to be ordered --
+      # but dropping its level would NA those samples and quietly remove them from the
+      # block-derived output, so append it instead and say so.
+      meta_only <- setdiff(private$groups_in_meta(), levs)
+      if (length(meta_only)) {
+        warning(source, " does not name meta group(s) ",
+                paste(sort(meta_only), collapse = ", "),
+                "; appended at the end so their samples stay in the block outputs.",
+                call. = FALSE)
+        levs <- c(levs, sort(meta_only))
+      }
+      known <- union(present, private$groups_in_meta())
+      unused <- setdiff(levs, known)
+      if (length(unused) && length(known)) {
         warning(source, " has group(s) that no IBD result uses: ",
                 paste(unused, collapse = ", "), call. = FALSE)
       }
