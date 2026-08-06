@@ -38,16 +38,19 @@ track is an error.}
 \item{label_genes}{Label the genes. \code{NULL} (default) labels them only when
 \code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
-\item{draw_threshold}{Which significance line(s) to draw (only for \code{neg_log10_p}):
-\code{TRUE} / \code{"bonferroni"} (red dashed), \code{"fdr"} (blue dot-dash), \code{"permutation"}
-(green solid), \code{"both"} for the first two, \code{"all"} for all three, or \code{FALSE}.
-Prefer the permutation line where it disagrees with the other two: it is built by
+\item{draw_threshold}{Which significance line(s) to draw (only for \code{neg_log10_p}).
+The two read off a chi-square(1) are warm, the two built by permutation cool:
+\code{TRUE} / \code{"bonferroni"} (red dashed), \code{"fdr"} (orange dot-dash), \code{"permutation"}
+(family-wise, green solid), \code{"empirical"} (FDR over the permutation's own p-values,
+blue long-dash). Also \code{"both"} for the first two, \code{"all"} for every kind present, or
+\code{FALSE} for none.
+Prefer a permutation line where it disagrees with a parametric one: it is built by
 re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
 it accounts for one segment spanning many SNPs. On real data it lands several times
 higher than Bonferroni's. \code{lambda_gc} says how far that reference is from fitting;
-the further from 1, the less the two parametric lines mean.
-A run that did not write the line asked for is an error, but \code{"all"} quietly draws
-whichever kinds the threshold table carries.}
+the further from 1, the less the parametric lines mean.
+Naming a kind the run did not write is an error; \code{"all"} draws whichever kinds the
+threshold table carries.}
 
 \item{point_size, point_alpha}{Point aesthetics.}
 

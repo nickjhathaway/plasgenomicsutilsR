@@ -41,11 +41,14 @@ plasgenomicsutils compute_allele_freqs \
   --bcf clean.snps.bcf --meta sample_groups.tsv --group-col group \
   --output freqs/
 
-# 4. IBD selection statistic (XiR,s), genome-wide and per group
+# 4. IBD selection statistic (XiR,s), genome-wide and per group.
+#    --permute 200 adds a threshold and per-SNP p-values drawn from the data instead of
+#    from a chi-square(1); see "Choosing a significance criterion" below.
 plasgenomicsutils ibd_selection_statistic \
   --matrix ibd_matrix \
   --af freqs/allele_freqs.tsv.gz --af-group freqs/group_allele_freqs.tsv.gz \
   --meta sample_groups.tsv --group-col group \
+  --permute 200 \
   --output ibd_selection
 ```
 
@@ -167,6 +170,52 @@ to the object (which would make the Manhattan plots draw a line per gene):
 
 ```{r sel-genes-all}
 pos_selection_genes(ibd, genes = PF3D7_GENES, within = 2000)
+```
+
+## Choosing a significance criterion
+
+`ibd_selection_statistic` reports up to four cutoffs, and `get_thresholds()` shows them
+beside the diagnostic that says which to use:
+
+```{r sel-thresholds}
+ibd$get_thresholds()
+```
+
+Two read their p-values off a chi-square(1): **Bonferroni** (family-wise) and
+**Benjamini-Hochberg** (a stated share of the calls may be false, so it calls more). Two
+come from `--permute`, which rebuilds the null by sliding each pair's IBD segments to a
+random circular offset — preserving that pair's total sharing, segment count, segment
+lengths and along-genome autocorrelation, and destroying only the alignment of segments
+*between* pairs: **`permutation`** (family-wise, from the per-replicate genome-wide maxima)
+and **`empirical`** (Benjamini-Hochberg over the permutation's own per-SNP p-values).
+
+`lambda_gc` decides between them. It is 1 when the chi-square(1) reference fits, and on real
+*P. falciparum* data it comes out near 0.1: the within-MAF-bin standardisation fixes the
+z-scores' mean and variance and nothing about their shape. Where it is far from 1, prefer the
+permutation lines — `pval` and `q_value` are still fine for *ranking* SNPs, since every step
+from `z_score` to `neg_log10_p` is monotone, but they are not probabilities.
+
+Draw any one of them, or `"all"` for every kind the run wrote (chi-square lines warm,
+permutation lines cool). The shipped example comes from a run without `--permute`, so only
+the Bonferroni line is available here:
+
+```{r sel-thresholds-plot, fig.height = 7}
+plot_selection_manhattan(ibd, draw_threshold = "all", label_genes = TRUE)
+```
+
+Then merge whichever criterion you settle on into loci, rather than reporting SNP counts —
+a sweep spans many SNPs, so a SNP count largely measures panel density:
+
+```{r sel-peaks-criteria}
+selection_peaks(ibd, criterion = "bonferroni", genes = PF3D7_GENES, min_snps = 2)
+```
+
+With a `--permute` run the same call takes `criterion = "permutation"` or `"empirical"`,
+and `draw_threshold` the matching names:
+
+```{r sel-peaks-perm, eval = FALSE}
+selection_peaks(ibd, criterion = "permutation", genes = PF3D7_GENES, min_snps = 2)
+selection_peaks(ibd, criterion = "empirical", genes = PF3D7_GENES, min_snps = 2)
 ```
 
 ## Tug-of-war

@@ -14,7 +14,7 @@
 .CHR_BAND_TILE <- c("#d9d9d9", "#f0f0f0")
 
 # One layer per band rather than one layer with a vector of fills: a faceted plot
-# replicates each layer's data across panels, so a per-row fill would no longer line up.
+# replicates each layer's data across panels, so a per-row fill would not line up.
 .chr_band_layer <- function(layout, fills = c("#ebebeb", NA)) {
   out <- lapply(seq_along(c("a", "b")), function(i) {
     d <- layout[layout$band == c("a", "b")[i], , drop = FALSE]
@@ -135,8 +135,8 @@
        ggplot2::theme(plot.margin = ggplot2::margin(t = 42, r = 12, b = 6, l = 6)))
 }
 
-# `draw_threshold` accepts TRUE/FALSE for the old behaviour or a name; resolving it in one
-# place keeps the Manhattan and the tug-of-war from drifting apart.
+# `draw_threshold` takes a kind by name, or TRUE/FALSE for the Bonferroni line / no line.
+# Resolving it in one place keeps the Manhattan and the tug-of-war from drifting apart.
 .resolve_threshold <- function(x) {
   if (isTRUE(x)) return("bonferroni")
   if (isFALSE(x) || is.null(x)) return("none")
@@ -433,16 +433,19 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
 #'   track is an error.
 #' @param label_genes Label the genes. `NULL` (default) labels them only when
 #'   `highlight_genes` is given; `TRUE`/`FALSE` forces it.
-#' @param draw_threshold Which significance line(s) to draw (only for `neg_log10_p`):
-#'   `TRUE` / `"bonferroni"` (red dashed), `"fdr"` (blue dot-dash), `"permutation"`
-#'   (green solid), `"both"` for the first two, `"all"` for all three, or `FALSE`.
-#'   Prefer the permutation line where it disagrees with the other two: it is built by
+#' @param draw_threshold Which significance line(s) to draw (only for `neg_log10_p`).
+#'   The two read off a chi-square(1) are warm, the two built by permutation cool:
+#'   `TRUE` / `"bonferroni"` (red dashed), `"fdr"` (orange dot-dash), `"permutation"`
+#'   (family-wise, green solid), `"empirical"` (FDR over the permutation's own p-values,
+#'   blue long-dash). Also `"both"` for the first two, `"all"` for every kind present, or
+#'   `FALSE` for none.
+#'   Prefer a permutation line where it disagrees with a parametric one: it is built by
 #'   re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
 #'   it accounts for one segment spanning many SNPs. On real data it lands several times
 #'   higher than Bonferroni's. `lambda_gc` says how far that reference is from fitting;
-#'   the further from 1, the less the two parametric lines mean.
-#'   A run that did not write the line asked for is an error, but `"all"` quietly draws
-#'   whichever kinds the threshold table carries.
+#'   the further from 1, the less the parametric lines mean.
+#'   Naming a kind the run did not write is an error; `"all"` draws whichever kinds the
+#'   threshold table carries.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours Optional length-2 colour vector for the alternating chromosome bands.
 #' @return A ggplot object.
@@ -616,11 +619,11 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #' @param label_genes Label the genes. `NULL` (default) labels them only when
 #'   `highlight_genes` is given; `TRUE`/`FALSE` forces it.
 #' @param draw_threshold Which significance line(s) to draw (only for `neg_log10_p`, and
-#'   only when not `normalized`): `TRUE` / `"bonferroni"` (red dashed), `"fdr"` (blue
-#'   dot-dash), `"permutation"` (green solid), `"both"` for the first two, `"all"` for all
-#'   three, or `FALSE` -- the same set `plot_selection_manhattan()` takes, resolved by the
-#'   same helper. Each line is mapped through the same transform as the mirrored selection
-#'   half, so it lands where the data does.
+#'   only when not `normalized`): `TRUE` / `"bonferroni"`, `"fdr"`, `"permutation"`,
+#'   `"empirical"`, `"both"`, `"all"` or `FALSE` -- the same set
+#'   [plot_selection_manhattan()] takes, in the same colours, resolved by the same helper.
+#'   Each line is mapped through the same transform as the mirrored selection half, so it
+#'   lands where the data does.
 #' @param selection_colour,ibd_colour Bar and axis colours for the two tracks.
 #' @return A ggplot object.
 #' @export
