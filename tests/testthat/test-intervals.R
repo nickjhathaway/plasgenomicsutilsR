@@ -44,7 +44,7 @@ test_that("repeated gene Names are disambiguated by gene_id (not collapsed)", {
                        different = c(0, 1))
   meta <- data.frame(sample = c("s1", "s2", "s3"), region = c("A", "A", "B"))
   gtab <- PF3D7_GENES[PF3D7_GENES$name == "pfvar", ][1:3, ]   # 3 gene_ids, one Name
-  ibd <- ibd_results(blocks = blocks, meta = meta, reference = "pf3d7")
+  ibd <- ibd_results(blocks = blocks, meta = meta, min_block_snp = 0, min_block_kb = 0, reference = "pf3d7")
   ov <- NULL
   expect_warning(ov <- gene_ibd_overlap(ibd, genes = gtab, group = "region"), "repeat")
   expect_length(levels(ov$gene), 3)                          # 3 distinct features, not 1
@@ -71,7 +71,7 @@ test_that("everything is 0-based: intervals half-open, variant positions too", {
   # hmmibd blocks are shifted to half-open on read (end is the last SNP, made exclusive)
   bl <- data.frame(sample1 = "a", sample2 = "b", chr = "Pf3D7_07_v3",
                    start = 100, end = 200, different = 0)
-  obj <- ibd_results(blocks = bl, reference = "pf3d7")
+  obj <- ibd_results(blocks = bl, min_block_snp = 0, min_block_kb = 0, reference = "pf3d7")
   expect_equal(obj$get_blocks()$end, 201)
   expect_equal(obj$get_blocks()$start, 100)
 

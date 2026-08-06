@@ -30,6 +30,10 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-run_umap}{\code{PopStructure$run_umap()}}
     \item \href{#method-PopStructure-run_snmf}{\code{PopStructure$run_snmf()}}
     \item \href{#method-PopStructure-best_k}{\code{PopStructure$best_k()}}
+    \item \href{#method-PopStructure-cross_entropy}{\code{PopStructure$cross_entropy()}}
+    \item \href{#method-PopStructure-plot_cross_entropy}{\code{PopStructure$plot_cross_entropy()}}
+    \item \href{#method-PopStructure-get_snmf_fit}{\code{PopStructure$get_snmf_fit()}}
+    \item \href{#method-PopStructure-plot_admixture_multi_k}{\code{PopStructure$plot_admixture_multi_k()}}
     \item \href{#method-PopStructure-q}{\code{PopStructure$q()}}
     \item \href{#method-PopStructure-restrict}{\code{PopStructure$restrict()}}
     \item \href{#method-PopStructure-subset}{\code{PopStructure$subset()}}
@@ -53,6 +57,11 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-plot_jost_d_heatmap}{\code{PopStructure$plot_jost_d_heatmap()}}
     \item \href{#method-PopStructure-pop_diff_snps}{\code{PopStructure$pop_diff_snps()}}
     \item \href{#method-PopStructure-plot_diff_manhattan}{\code{PopStructure$plot_diff_manhattan()}}
+    \item \href{#method-PopStructure-diversity}{\code{PopStructure$diversity()}}
+    \item \href{#method-PopStructure-ld_index}{\code{PopStructure$ld_index()}}
+    \item \href{#method-PopStructure-beta_score}{\code{PopStructure$beta_score()}}
+    \item \href{#method-PopStructure-haplotypes}{\code{PopStructure$haplotypes()}}
+    \item \href{#method-PopStructure-ihs}{\code{PopStructure$ihs()}}
     \item \href{#method-PopStructure-save}{\code{PopStructure$save()}}
     \item \href{#method-PopStructure-print}{\code{PopStructure$print()}}
     \item \href{#method-PopStructure-clone}{\code{PopStructure$clone()}}
@@ -214,6 +223,78 @@ follow their level (only the order changes); unlisted levels are dropped.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{stat}}{Combine replicates by \code{"mean"} or \code{"min"}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-cross_entropy"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-cross_entropy}{}}}
+\subsection{\code{PopStructure$cross_entropy()}}{
+  Per-K cross-entropy summary of the sNMF replicates
+(see \code{\link[=snmf_cross_entropy]{snmf_cross_entropy()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$cross_entropy(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=snmf_cross_entropy]{snmf_cross_entropy()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-plot_cross_entropy"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-plot_cross_entropy}{}}}
+\subsection{\code{PopStructure$plot_cross_entropy()}}{
+  Cross-entropy elbow plot for choosing K
+(see \code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$plot_cross_entropy(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-get_snmf_fit"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-get_snmf_fit}{}}}
+\subsection{\code{PopStructure$get_snmf_fit()}}{
+  The fitted sNMF result (\code{NULL} before \code{run_snmf()}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$get_snmf_fit()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-plot_admixture_multi_k"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-plot_admixture_multi_k}{}}}
+\subsection{\code{PopStructure$plot_admixture_multi_k()}}{
+  One admixture plot per K as pages, for a multi-page PDF
+(see \code{\link[=plot_admixture_multi_k]{plot_admixture_multi_k()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$plot_admixture_multi_k(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_admixture_multi_k]{plot_admixture_multi_k()}}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -562,7 +643,7 @@ metadata automatically.
       \item{\code{group}}{Metadata column defining the groups.}
       \item{\code{...}}{Passed to \code{\link[=plot_diff_heatmap]{plot_diff_heatmap()}}, plus \code{statistic} (\code{"jost_d"} default,
 \code{"gst_hedrick"}, \code{"fst"}) selecting the measure, and \code{genotype} (a full/unpruned
-override, see \code{\link[=pop_diff]{pop_diff()}}). The group colour map colours the dendrogram tips.}
+override, see \code{\link[=pop_diff]{pop_diff()}}).}
     }
     \if{html}{\out{</div>}}
   }
@@ -623,6 +704,108 @@ override, see \code{\link[=pop_diff]{pop_diff()}}). The group colour map colours
     \describe{
       \item{\code{group}}{Metadata column defining the groups.}
       \item{\code{...}}{Passed to \code{\link[=plot_diff_manhattan]{plot_diff_manhattan()}}; \code{statistic} / \code{genotype} go to \code{\link[=pop_diff]{pop_diff()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-diversity"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-diversity}{}}}
+\subsection{\code{PopStructure$diversity()}}{
+  Within-group diversity (see \code{\link[=pop_diversity]{pop_diversity()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$diversity(group = NULL, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{group}}{Metadata column defining the groups.}
+      \item{\code{...}}{Passed to \code{\link[=pop_diversity]{pop_diversity()}} (e.g. \verb{by = }, \verb{accessible = }).}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-ld_index"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-ld_index}{}}}
+\subsection{\code{PopStructure$ld_index()}}{
+  Multilocus index of association (see \code{\link[=ld_index]{ld_index()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$ld_index(group = NULL, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{group}}{Metadata column defining the groups.}
+      \item{\code{...}}{Passed to \code{\link[=ld_index]{ld_index()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-beta_score"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-beta_score}{}}}
+\subsection{\code{PopStructure$beta_score()}}{
+  Beta scores for balancing selection (see \code{\link[=beta_score]{beta_score()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$beta_score(group = NULL, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{group}}{Metadata column defining the groups.}
+      \item{\code{...}}{Passed to \code{\link[=beta_score]{beta_score()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-haplotypes"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-haplotypes}{}}}
+\subsection{\code{PopStructure$haplotypes()}}{
+  Phased haplotypes for a haplotype-homozygosity scan
+(see \code{\link[=parasite_haplotypes]{parasite_haplotypes()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$haplotypes(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=parasite_haplotypes]{parasite_haplotypes()}} (e.g. \verb{fws = }, \verb{maf = }).}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-ihs"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-ihs}{}}}
+\subsection{\code{PopStructure$ihs()}}{
+  Integrated haplotype score (see \code{\link[=run_ihs]{run_ihs()}}); builds the haplotypes
+first unless one is supplied.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$ihs(group = NULL, hap = NULL, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{group}}{Metadata column defining the groups.}
+      \item{\code{hap}}{Optional \code{\link[=parasite_haplotypes]{parasite_haplotypes()}} object to reuse.}
+      \item{\code{...}}{Passed to \code{\link[=run_ihs]{run_ihs()}}.}
     }
     \if{html}{\out{</div>}}
   }

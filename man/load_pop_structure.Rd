@@ -13,5 +13,7 @@ load_pop_structure(file)
 The \link{PopStructure} object.
 }
 \description{
-Reads an \code{.rds} written by \code{PopStructure$save()} (or plain \code{\link[=saveRDS]{saveRDS()}}).
+Reads an \code{.rds} written by \code{PopStructure$save()} (or plain \code{\link[=saveRDS]{saveRDS()}}). The workspace is
+re-bound to the installed version of the class, so a file written by an older version of
+the package gains the methods added since.
 }

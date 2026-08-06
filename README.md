@@ -5,7 +5,7 @@
 [![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-> **Version 0.1.1** — early development; APIs, defaults, and outputs may change
+> **Version 0.2.0** — early development; APIs, defaults, and outputs may change
 > between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** — the
@@ -74,19 +74,44 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   - `plot_pairwise_ibd_for_genes()` — group × group IBD-sharing triangles, per gene. With
     IBD blocks loaded (`ibd_results(blocks=, meta=)`) or a precomputed overlap table
     (`gene_overlap=`, from `plasgenomicsutils ibd_gene_overlap`), a gene's cell is the
-    fraction of pairs whose IBD **block overlaps the gene** (`gene_ibd_overlap()`) — the
-    right question, since a pair can share a segment spanning the gene with no genotyped
-    SNP inside it. Without blocks it falls back to aggregating the pairwise IBD of SNPs
-    strictly inside the gene; `snps = "Pf3D7_07_v3:403222"` draws a specific locus. Returns
-    a faceted grid, or `individual = TRUE` for one-per-feature plots.
+    fraction of pairs whose IBD **block overlaps the gene** (`gene_ibd_overlap()`), so a
+    pair counts when it shares a segment spanning the gene even with no genotyped SNP
+    inside it. Without blocks it falls back to aggregating the pairwise IBD of SNPs inside
+    the gene; `within` widens the window on either path, which matters because gene spans
+    are CDS and can be short relative to a sparse panel. `snps = "Pf3D7_07_v3:403222"`
+    draws a specific locus. Returns a faceted grid, or `individual = TRUE` for
+    one-per-feature plots — pair that with `limits = "shared"` so the pages are
+    colour-comparable.
   - `plot_ibd_network()` — a sample-level IBD network at one gene/locus: nodes are
-    samples, an edge joins two whose pair shares an IBD block over the interval; nodes
-    optionally coloured by a metadata group, and isolated (unconnected) nodes optionally
-    kept (to show the total N) or dropped (for a neater graph). Needs `igraph` + `ggraph`.
+    samples, an edge joins two whose pair shares an IBD block over the interval. Nodes take
+    their colour from `color_group` and their **shape** from `shape_group` — two independent
+    metadata columns, so two variables read off one plot; `colors` / `shapes` accept a named
+    `level -> value` vector (mapped by name, may be partial) or an unnamed one (positional).
+    `sharing` decides what an edge requires: `"overlap"` (default) if the pair's segment
+    touches the gene/locus anywhere, or `"complete"` if it must span the whole thing — the
+    same gene can give very different graphs (on one real cohort 90% of pfcrt-sharing pairs
+    share it completely but only 45% for pfdhps).
+    Isolated (unconnected) nodes are optionally kept (to show the total N) or dropped.
+    `spread` (default 1.5) weights edge attraction by `(1 - J)^spread`, `J` being the
+    Jaccard overlap of two samples' IBD neighbourhoods, so a densely inter-connected group
+    opens into a readable disc instead of collapsing to a blob while genuinely separate
+    clusters keep their separation. Needs `igraph` + `ggraph`.
+  - `gene_ibd_pairs()` — the adjacency list behind the triangles: one row per sample pair ×
+    IBD block × gene, with whether the block covers the gene `"complete"`ly or
+    `"partial"`ly, the covered span, and `percent_covered`. Pairs with no IBD over a gene
+    are simply absent. Mirrors `plasgenomicsutils ibd_gene_pairs`, which writes the same
+    table as a TSV.
   - `pos_selection_genes()` — the genes hit by an above-threshold selection signal:
     intersects the significant SNPs with the `genes` track, counting a SNP for a gene
     when it lands within `within` bp of it (default 2 kb, since filtering can push the
     peak just outside a gene). Pass the full `PF3D7_GENES` track to scan every gene.
+
+  Blocks are filtered on ingest: segments with fewer than **15 SNPs** or shorter than
+  **15 kb** are discarded (`min_block_snp` / `min_block_kb`, `0` to disable), since small
+  IBD blocks are commonly spurious and this filter is conventionally applied before any
+  summary. Only the IBD evidence is filtered — the analyzed-sample set behind every
+  denominator still comes from every row, so a pair whose only segment was short still
+  counts as compared. `print()` reports how many segments went.
 
   The gene track (`highlight_genes` / the `genes =` argument) defaults to every gene in
   the object's track; naming a gene that is not in the track is an error (not a silent
@@ -103,7 +128,15 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   noisy), `subset()` (down to given samples or a metadata match), `best_k()` / `q()`,
   and `plot_pca()` / `plot_umap()` / `plot_admixture()` (bars ordered once via
   `admixture_order()`, per-sample borders so near-identical neighbours stay distinct, and
-  a group strip coloured to match the UMAP). `set_levels()` fixes a metadata column's
+  a group strip coloured to match the UMAP). `cross_entropy()` summarises the sNMF
+  replicates per K (`min` / `mean` / `max`, plus the `best_run` index that `q()` returns)
+  and `plot_cross_entropy()` draws the elbow with the replicate spread as a band — a flat
+  stretch or a wide band means the data do not pin K down, whatever `best_k()` says.
+  `plot_admixture_multi_k()` returns the elbow plus one page per K, sharing one sample
+  order taken from the best K, ready for `save_plot()` as a multi-page PDF. A long cluster
+  legend wraps into columns (or a shallow row block under `legend_position = "bottom"`) and
+  the suggested canvas grows to hold it, so a K of 15 keys does not run off the page.
+  `set_levels()` fixes a metadata column's
   order once and it flows through every legend, facet, and strip; `save()` /
   `load_pop_structure()` persist the whole workspace. `run_ld_prune()` builds the genotype
   matrix from a VCF (SNPRelate LD-pruning). SNPRelate / uwot / LEA / ggnewscale / patchwork
@@ -133,11 +166,51 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   pairs); the `"africa"` example fixture is itself built from them. Estimators follow Jost
   (2008), Nei & Chesser (1983), Hedrick (2005), and Hudson et al. (1992) / Bhatia et al.
   (2013).
+- **Within-population diversity** — `pop_diversity()` reports, for each metadata group and
+  genome-wide / per gene / per window: nucleotide diversity, expected heterozygosity,
+  Watterson's theta, Tajima's D, segregating sites, and the haplotype / multilocus-genotype
+  summaries (`hap_div`, Shannon `H`, Simpson's `lambda`, evenness). **`pi` is per accessible
+  base pair** — the denominator is `accessible` callable sites (e.g. `PF3D7_CORE_REGIONS`),
+  not the SNP count, so windows of different SNP density stay comparable; the per-SNP
+  average is reported separately as `he` and the two are never interchangeable. The
+  parasite is haploid, so a heterozygous call is read as a mixed infection and dropped at
+  that site by default (`het = "dosage"` splits it instead). Tajima's D keeps every site and
+  uses the mean number of calls as *n* rather than discarding samples with gaps.
+  `plot_diversity()` draws a windowed track. Tajima's D, haplotype diversity and pi are
+  verified against \pkg{pegas} to floating-point.
+- **Linkage disequilibrium** — `ld_index()` gives the multilocus index of association `Ia`
+  and its standardized `rbarD` (verified against \pkg{poppr}), the genome-wide read on
+  clonality. The r² **decay** curve is quadratic in SNP count and so runs in the Python
+  package (`plasgenomicsutils ld_decay`, ~7 s on a 249-sample callset against ~2 min here);
+  `read_ld_decay()` reads it back — half-decay distance and scan settings attached — and
+  `plot_ld_decay()` draws it.
+- **Selection scans** — `parasite_haplotypes()` builds the complete, phased 0/1 haplotypes
+  \pkg{rehh} needs from a callset that has neither: gate to monoclonal infections on Fws,
+  resolve remaining mixed calls by drawing at the population frequency, filter, impute —
+  reporting every sample and SNP it removed, because how the haplotypes were made
+  determines what the scan can claim. Then `run_ihs()` (within a population),
+  `run_rsb()` / `run_xpehh()` (between two), `ihs_genes()` for the per-gene peak, and
+  `plot_ihs()`. Without an outgroup the scan is unpolarised, so read `abs(ihs)`, not its
+  sign. `beta_score()` covers the other half: long-term **balancing** selection from allele
+  frequencies clustered around an intermediate-frequency core (Siewert & Voight's folded
+  Beta1), with `beta_genes()` and `plot_beta()` — the antigen counterpart to iHS's sweeps.
+- **Coverage QC** — `read_coverage()`, `coverage_qc()`, `plot_coverage_summary()`,
+  `plot_coverage_by_chrom()` and `plot_coverage_dropout()` read and plot the depth tables
+  from `plasgenomicsutils coverage_depth_stats` / `coverage_dropout_regions`. Breadth
+  matters more than mean depth: sWGA can give a respectable average while leaving much of
+  the genome at zero, and only the breadth column shows it.
 - **Genomic intervals** — `bed_intersect()` overlaps two BED-style interval tables
   (configurable `chr`/`start`/`end` columns, chromosome spellings reconciled) and returns
   `overlap` / `only1` / `only2`. Bundled region tracks `PF3D7_CORE_REGIONS` (core vs.
   subtelomeric/hypervariable) and `PF3D7_PARALOG_GENES` let you classify genes, e.g.
   `bed_intersect(PF3D7_GENES, PF3D7_CORE_REGIONS)$only1` are the subtelomeric genes.
+- **Coordinates are 0-based throughout** (`?"plasgenomicsutilsR-coordinates"`) — intervals
+  half-open `[start, end)` as in BED, and variant positions 0-based too, so there is one
+  rule and no part of the package to remember an exception for. Sources that number
+  differently are converted once at the boundary: the PlasmoDB GFF where the gene datasets
+  are built, `hmmibd-rs` block ends when an `IbdResults` reads them, and VCF `POS` in the
+  Python package before any table reaches R. `PF3D7_GENES` gives each gene's **CDS** span
+  (the translated extent, introns included, UTRs excluded).
 - Reference registry: `get_reference()`, `available_references()`,
   `normalise_chr()`, `PF3D7_CORE_CHROM_LENGTHS_BP`.
 
@@ -198,6 +271,15 @@ save_plot("ibd_manhattan.pdf", plot_ibd_sharing_manhattan(ibd), width = 9, heigh
 PDF device (better font embedding), falling back to the standard `pdf` device where
 cairo is unavailable or unreliable (e.g. Windows). Force a device with `device =`, or
 use `pdf_device()` directly with `ggsave()`.
+
+It also **sizes the canvas to the drawing**. Plots with a locked panel shape — the IBD
+networks and the gene triangles both use `coord_fixed()` — only fill a canvas of one
+particular aspect ratio, and on any other shape the remainder becomes blank margin. Supply
+one of `width` / `height` and the other is computed from the built plot's panel ratio plus
+the inches its titles, legends and margins actually need; supply neither and both are worked
+out; supply both and they are used verbatim. `fit = FALSE` disables it. Plots with a free
+coordinate system (the Manhattans, tug-of-war, group heatmap) are unaffected — any canvas
+shape is legitimate for them, so their attached sizes stand.
 
 Drug-gene triangles read a `genes` track (`name`, `chr`, `start`, `end`) passed
 to `ibd_results()`; a SNP belongs to a gene when its position falls in the gene

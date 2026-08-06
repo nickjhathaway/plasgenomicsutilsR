@@ -38,7 +38,11 @@ track is an error.}
 \item{label_genes}{Label the genes. \code{NULL} (default) labels them only when
 \code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
-\item{draw_threshold}{Draw the significance threshold line (only for \code{neg_log10_p}).}
+\item{draw_threshold}{Draw a significance line (only for \code{neg_log10_p}): \code{TRUE} /
+\code{"bonferroni"} for the family-wise line, \code{"fdr"} for the Benjamini-Hochberg cutoff,
+\code{"both"} for both, \code{FALSE} for none. Read either against the \code{lambda_gc} reported by
+\code{ibd_selection_statistic}: far from 1 means the chi2(1) null does not fit and both
+lines rest on miscalibrated p-values.}
 
 \item{point_size, point_alpha}{Point aesthetics.}
 

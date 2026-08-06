@@ -51,6 +51,29 @@ NULL
   df
 }
 
+# Conventional thresholds for discarding short, SNP-poor IBD segments, which are commonly
+# spurious. Applied to the IBD evidence only -- `analyzed_samples`, the denominator behind
+# every fraction, is taken from the unfiltered blocks first.
+IBD_MIN_BLOCK_SNP <- 15L
+IBD_MIN_BLOCK_KB <- 15
+
+.filter_ibd_blocks <- function(bl, min_snp = IBD_MIN_BLOCK_SNP, min_kb = IBD_MIN_BLOCK_KB) {
+  if (!nrow(bl)) return(bl)
+  keep <- rep(TRUE, nrow(bl))
+  if (!is.null(min_kb) && is.finite(min_kb) && min_kb > 0) {
+    keep <- keep & (as.numeric(bl$end) - as.numeric(bl$start)) >= min_kb * 1000
+  }
+  if (!is.null(min_snp) && is.finite(min_snp) && min_snp > 0) {
+    if (!"Nsnp" %in% names(bl)) {
+      warning("min_block_snp = ", min_snp, " was requested but the blocks have no 'Nsnp' ",
+              "column; only the length filter was applied", call. = FALSE)
+    } else {
+      keep <- keep & as.numeric(bl$Nsnp) >= min_snp
+    }
+  }
+  bl[keep, , drop = FALSE]
+}
+
 # Normalise the many shapes a per-group significance threshold arrives in
 # (scalar, named vector, or a data frame of group + threshold) to a tibble.
 .normalise_threshold <- function(threshold) {
@@ -61,8 +84,16 @@ NULL
     if (is.na(tcol)) stop("threshold data frame needs a 'threshold' or ",
                           "'neg_log10_p_threshold' column", call. = FALSE)
     rcol <- intersect(c("group", "population"), names(df))[1]
-    if (is.na(rcol)) return(tibble::tibble(group = NA_character_, threshold = df[[tcol]][1]))
-    return(tibble::tibble(group = as.character(df[[rcol]]), threshold = as.numeric(df[[tcol]])))
+    # the FDR cutoff and the calibration diagnostic ride along when present, so a plot can
+    # draw either line and the printed object can show why neither may be trustworthy
+    extra <- intersect(c("neg_log10_p_fdr_threshold", "fdr_alpha", "alpha", "n_tests",
+                         "n_significant", "n_significant_fdr", "lambda_gc"), names(df))
+    out <- if (is.na(rcol))
+      tibble::tibble(group = NA_character_, threshold = as.numeric(df[[tcol]])[1])
+    else
+      tibble::tibble(group = as.character(df[[rcol]]), threshold = as.numeric(df[[tcol]]))
+    for (k in extra) out[[k]] <- if (is.na(rcol)) df[[k]][1] else df[[k]]
+    return(out)
   }
   if (is.character(threshold) && length(threshold) == 1L && file.exists(threshold)) {
     first <- readLines(threshold, n = 1L, warn = FALSE)
@@ -121,11 +152,26 @@ IbdResults <- R6::R6Class(
     #' @param gene_overlap Optional precomputed per-gene per-group-pair block-overlap table
     #'   (from `plasgenomicsutils ibd_gene_overlap`: `gene`, `group_a`, `group_b`,
     #'   `frac_pairs_ibd`, ...), used directly by the gene triangles.
+    #' @param min_block_snp,min_block_kb Discard IBD segments carrying fewer than
+    #'   `min_block_snp` SNPs or shorter than `min_block_kb` kb (defaults `15` and `15`).
+    #'   Short, SNP-poor segments are commonly spurious, and this filter is conventionally
+    #'   applied before any IBD summary -- it is built in so the blocks need not be
+    #'   pre-filtered. `0` disables either criterion. Only the IBD evidence is filtered:
+    #'   the analyzed-sample set (the denominator behind every fraction) still comes from
+    #'   every row of the blocks file, so a pair whose only segment is short still counts
+    #'   as compared. The SNP criterion needs the `Nsnp` column hmmibd-rs writes.
+    #' @param group_col_in_meta Name of the `meta` column that defines the grouping. It
+    #'   becomes the default `group` for the block-based tools, and if the column is a
+    #'   factor its levels set the group order for every loaded table (equivalent to
+    #'   calling `$set_group_order(levels(meta[[group_col_in_meta]]))`).
     #' @param reference Reference id for chromosome lengths (default `"pf3d7"`).
     #' @return An `IbdResults` object (invisibly self).
     initialize = function(per_snp_group = NULL, pairwise_group = NULL,
                           selection = NULL, threshold = NULL, genes = NULL,
                           blocks = NULL, meta = NULL, gene_overlap = NULL,
+                          group_col_in_meta = NULL,
+                          min_block_snp = IBD_MIN_BLOCK_SNP,
+                          min_block_kb = IBD_MIN_BLOCK_KB,
                           reference = "pf3d7") {
       private$reference <- reference
       private$layout <- .chrom_layout(reference)
@@ -176,14 +222,45 @@ IbdResults <- R6::R6Class(
         # SNP in the segment; shift `end` to make the interval half-open [start, end) so it
         # matches the gene / region tables and every interval test in the package
         bl$end <- as.numeric(bl$end) + 1
+        n_before <- nrow(bl)
+        bl <- .filter_ibd_blocks(bl, min_block_snp, min_block_kb)
+        private$block_filter <- c(min_snp = min_block_snp %||% 0, min_kb = min_block_kb %||% 0,
+                                  dropped = n_before - nrow(bl), kept = nrow(bl))
         private$blocks <- bl[, c("sample1", "sample2", "chr", "start", "end"), drop = FALSE]
       }
       private$meta <- .read_maybe(meta, "meta")
       private$gene_overlap <- .read_maybe(gene_overlap, "gene_overlap")
 
       private$threshold <- .normalise_threshold(threshold)
+
+      if (!is.null(group_col_in_meta)) {
+        if (is.null(private$meta) || !group_col_in_meta %in% names(private$meta)) {
+          stop("group_col_in_meta = '", group_col_in_meta, "' is not a column of meta",
+               call. = FALSE)
+        }
+        private$group_col <- group_col_in_meta
+        # a factor column carries the intended order; anything else is natural-sorted
+        private$adopt_group_order(.levels_of(private$meta[[group_col_in_meta]]),
+                                  sprintf("meta$%s", group_col_in_meta))
+      }
       invisible(self)
     },
+
+    #' @description Set the order of the groups for every loaded table, so facets,
+    #'   legends and axes follow it. Errors if a group present in the results is missing
+    #'   from `levels` (it would silently become `NA`); warns about levels no result uses.
+    #' @param levels Group names in the desired order.
+    #' @return Invisibly self.
+    set_group_order = function(levels) {
+      private$adopt_group_order(levels, "the requested order")
+      invisible(self)
+    },
+
+    #' @description The current group order (`NULL` when none has been set).
+    get_group_order = function() private$group_order,
+
+    #' @description The `meta` column naming the grouping, if one was declared.
+    get_group_col = function() private$group_col,
 
     #' @description Per-SNP (optionally per-group) IBD table with `cum_pos`.
     get_per_snp_group = function() private$per_snp,
@@ -217,8 +294,16 @@ IbdResults <- R6::R6Class(
       cat("  selection      :", shape(private$selection), "\n")
       if (!is.null(private$threshold)) cat("  thresholds     :", nrow(private$threshold), "\n")
       if (!is.null(private$genes)) cat("  genes          :", nrow(private$genes), "\n")
-      if (!is.null(private$blocks)) cat("  IBD blocks     :", nrow(private$blocks), "rows,",
-                                        length(private$analyzed_samples), "samples\n")
+      if (!is.null(private$blocks)) {
+        cat("  IBD blocks     :", nrow(private$blocks), "rows,",
+            length(private$analyzed_samples), "samples\n")
+        bf <- private$block_filter
+        # the filter changes every downstream fraction, so say what it removed
+        if (!is.null(bf) && bf[["dropped"]] > 0) {
+          cat(sprintf("                   dropped %d short/SNP-poor segment(s) (>= %g SNPs, >= %g kb)\n",
+                      bf[["dropped"]], bf[["min_snp"]], bf[["min_kb"]]))
+        }
+      }
       if (!is.null(private$gene_overlap)) cat("  gene_overlap   :",
                                               nrow(private$gene_overlap), "rows\n")
       invisible(self)
@@ -252,6 +337,10 @@ IbdResults <- R6::R6Class(
     #' @param ... Passed to [gene_ibd_overlap()].
     gene_ibd_overlap = function(...) gene_ibd_overlap(self, ...),
 
+    #' @description Sample pairs sharing IBD over each gene (see [gene_ibd_pairs()]).
+    #' @param ... Passed to [gene_ibd_pairs()].
+    gene_ibd_pairs = function(...) gene_ibd_pairs(self, ...),
+
     #' @description Sample-level IBD network at a gene / locus (see [plot_ibd_network()]).
     #' @param ... Passed to [plot_ibd_network()].
     plot_ibd_network = function(...) plot_ibd_network(self, ...),
@@ -264,7 +353,73 @@ IbdResults <- R6::R6Class(
   private = list(
     reference = NULL, layout = NULL, per_snp = NULL, pairwise = NULL,
     selection = NULL, threshold = NULL, genes = NULL,
-    blocks = NULL, analyzed_samples = NULL, meta = NULL, gene_overlap = NULL
+    blocks = NULL, analyzed_samples = NULL, meta = NULL, gene_overlap = NULL,
+    group_order = NULL, group_col = NULL, block_filter = NULL,
+
+    # every group label appearing anywhere in the loaded tables
+    groups_present = function() {
+      g <- character(0)
+      one <- function(df, cols) {
+        if (is.null(df)) return(character(0))
+        unlist(lapply(cols[cols %in% names(df)], function(cc) as.character(df[[cc]])))
+      }
+      g <- c(g, one(private$per_snp, "group"), one(private$selection, "group"),
+             one(private$pairwise, c("group_a", "group_b")),
+             one(private$gene_overlap, c("group_a", "group_b")),
+             one(private$threshold, "group"))
+      unique(g[!is.na(g)])
+    },
+
+    # stamp the order onto every group column, so plots, facets and legends all follow it
+    apply_group_order = function() {
+      levs <- private$group_order
+      if (is.null(levs)) return(invisible(NULL))
+      set <- function(df, cols) {
+        if (is.null(df)) return(df)
+        for (cc in cols[cols %in% names(df)]) {
+          df[[cc]] <- factor(as.character(df[[cc]]), levels = levs)
+        }
+        df
+      }
+      private$per_snp <- set(private$per_snp, "group")
+      private$selection <- set(private$selection, "group")
+      private$pairwise <- set(private$pairwise, c("group_a", "group_b"))
+      private$gene_overlap <- set(private$gene_overlap, c("group_a", "group_b"))
+      # the per-group threshold rows become a geom_hline layer of their own; leaving them
+      # character makes ggplot merge the two layers' facet values alphabetically
+      private$threshold <- set(private$threshold, "group")
+      if (!is.null(private$meta) && !is.null(private$group_col) &&
+          private$group_col %in% names(private$meta)) {
+        private$meta[[private$group_col]] <-
+          factor(as.character(private$meta[[private$group_col]]), levels = levs)
+      }
+      invisible(NULL)
+    },
+
+    # shared by set_group_order() and the constructor's group_col_in_meta
+    adopt_group_order = function(levs, source) {
+      levs <- as.character(levs)
+      levs <- levs[!is.na(levs)]
+      if (anyDuplicated(levs)) {
+        stop("duplicated group(s) in the requested order: ",
+             paste(unique(levs[duplicated(levs)]), collapse = ", "), call. = FALSE)
+      }
+      present <- private$groups_present()
+      dropped <- setdiff(present, levs)
+      if (length(dropped)) {
+        stop("group(s) in the IBD results are missing from ", source, ": ",
+             paste(sort(dropped), collapse = ", "),
+             ". They would become NA; add them to keep the results intact.", call. = FALSE)
+      }
+      unused <- setdiff(levs, present)
+      if (length(unused) && length(present)) {
+        warning(source, " has group(s) that no IBD result uses: ",
+                paste(unused, collapse = ", "), call. = FALSE)
+      }
+      private$group_order <- levs
+      private$apply_group_order()
+      invisible(NULL)
+    }
   )
 )
 

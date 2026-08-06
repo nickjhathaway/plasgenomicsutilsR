@@ -2,6 +2,41 @@
 # samples that share an IBD block over the interval. Built from the IBD blocks loaded
 # into an IbdResults (ibd_results(blocks=, meta=)).
 
+# Distinguishable point shapes, solid ones first so a small node still reads clearly.
+.SHAPE_PALETTE <- c(16, 17, 15, 18, 8, 3, 4, 7, 9, 10, 12, 13, 14)
+
+.shape_palette <- function(n) {
+  if (n > length(.SHAPE_PALETTE)) {
+    stop("shape_group has ", n, " levels but only ", length(.SHAPE_PALETTE),
+         " shapes are distinguishable; pass `shapes` explicitly or colour by this ",
+         "column instead", call. = FALSE)
+  }
+  .SHAPE_PALETTE[seq_len(n)]
+}
+
+# Values for a manual scale. A *named* vector maps level -> value in any order and may
+# cover only some levels; an unnamed one is taken positionally against `levels`. Anything
+# missing falls back to the automatic palette, so a partial mapping is allowed.
+.match_scale_values <- function(values, levels, what, palette) {
+  auto <- stats::setNames(palette(length(levels)), levels)
+  if (is.null(values)) return(auto)
+  if (!is.null(names(values)) && any(nzchar(names(values)))) {
+    unknown <- setdiff(names(values), levels)
+    if (length(unknown)) {
+      warning("`", what, "` names not among the levels are ignored: ",
+              paste(unknown, collapse = ", "), call. = FALSE)
+    }
+    keep <- intersect(names(values), levels)
+    auto[keep] <- values[keep]
+    return(auto)
+  }
+  if (length(values) < length(levels)) {
+    stop("`", what, "` has ", length(values), " value(s) for ", length(levels),
+         " levels; give one per level or use a named vector", call. = FALSE)
+  }
+  stats::setNames(values[seq_along(levels)], levels)
+}
+
 # Resolve a gene name / locus string / interval to list(chr, start, end, label).
 .resolve_locus <- function(x, gene, locus) {
   if (!is.null(gene)) {
@@ -59,7 +94,7 @@
 #'
 #' A sample-level network for one gene or locus: each node is a sample and an edge joins
 #' two samples whose pair shares an **IBD block overlapping** the interval. Optionally
-#' colours nodes by a metadata group, and optionally drops isolated (unconnected) nodes
+#' colours and/or shapes nodes by metadata columns, and optionally drops isolated nodes
 #' for a cleaner picture -- or keeps them so the total sample count is visible.
 #'
 #' Needs an [IbdResults] built with `blocks =` (and `meta =` for grouping / the full
@@ -72,8 +107,28 @@
 #'   are 0-based half-open (see [plasgenomicsutilsR-coordinates]), so `"chr:1000-2000"` is
 #'   the 1000 bases from 0-based 1000 up to but not including 2000, and a bare `"chr:1000"`
 #'   is the single base at 0-based 1000.
-#' @param group Optional metadata column to colour nodes by (needs `meta`).
+#' @param color_group Optional metadata column to colour nodes by (needs `meta`).
+#' @param colors Colours for `color_group`. A **named** `level -> colour` vector maps by
+#'   name and may cover only some levels (the rest keep their automatic colour); an
+#'   unnamed vector is taken positionally, in the column's level order. `NULL` (default)
+#'   uses [meta_colors()], so the same mapping can be shared with other plots.
+#' @param shape_group Optional metadata column to set node **shape** by, so a second
+#'   variable can be read off the same plot (needs `meta`). Independent of `color_group`:
+#'   use either, both, or neither.
+#' @param shapes Shapes for `shape_group`, named or positional exactly like `colors`
+#'   (values are \pkg{ggplot2} shape codes). `NULL` picks distinguishable defaults and
+#'   errors if the column has more levels than there are distinct shapes.
 #' @param within Pad the interval by this many bp on both sides (default `0`).
+#' @param sharing What an edge requires of a pair's IBD segment:
+#'   \describe{
+#'     \item{`"overlap"`}{(default) the segment touches the interval anywhere -- the pair
+#'       shares *some* of the gene/locus.}
+#'     \item{`"complete"`}{the segment spans the whole interval -- the pair shares the
+#'       *entire* gene/locus. A stricter, usually much sparser graph.}
+#'   }
+#'   `within` applies either way, so with padding `"complete"` asks the segment to cover the
+#'   padded interval. Use [gene_ibd_pairs()] to see per-pair which of the two each segment
+#'   satisfies (its `coverage` column) and how much of the gene is covered.
 #' @param include_isolated Keep samples with no IBD edge (default `FALSE`). `TRUE` also
 #'   shows every analyzed sample; the isolated samples are drawn in a grid below the
 #'   connected component (sorted by `group` when colouring by one). `FALSE` shows only the
@@ -94,7 +149,6 @@
 #' @param edge_colour,edge_width Edge aesthetics (default width `1`).
 #' @param edge_alpha Edge opacity (default `0.5`). `NULL` instead scales opacity down with
 #'   edge count (`~120 / n_edges`, clamped to \[0.06, 0.6]).
-#' @param colours Optional named `group -> colour` vector for the node fill.
 #' @param title Plot title: `NULL` (default) uses `"IBD network: <label>"`, a string sets a
 #'   custom title, and `NA`/`FALSE` draws no title.
 #' @param subtitle Show the sample / IBD-pair count line under the title (default `TRUE`).
@@ -103,18 +157,28 @@
 #' @examples
 #' \dontrun{
 #' ibd <- ibd_results(blocks = "hmm.txt", meta = meta, genes = PF_EXAMPLE_DRUG_GENES)
-#' plot_ibd_network(ibd, gene = "pfcrt", group = "region")
+#' plot_ibd_network(ibd, gene = "pfcrt", color_group = "region")
+#' # colour by region, shape by year: two variables on one plot
+#' plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
+#'                  shape_group = "collection_year")
+#' # a named vector pins chosen levels; the rest keep their automatic colour
+#' plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
+#'                  colors = c(North = "#1f78b4", East = "#33a02c"))
 #' plot_ibd_network(ibd, locus = "Pf3D7_07_v3:403500", include_isolated = TRUE)
 #' }
 #' @export
-plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within = 0,
+plot_ibd_network <- function(x, gene = NULL, locus = NULL,
+                             color_group = NULL, colors = NULL,
+                             shape_group = NULL, shapes = NULL, within = 0,
+                             sharing = c("overlap", "complete"),
                              include_isolated = FALSE, layout = "fr", spread = 1.5,
                              node_size = 3, node_alpha = 0.9,
                              edge_colour = "grey65", edge_alpha = 0.5, edge_width = 1,
-                             colours = NULL, title = NULL, subtitle = TRUE, seed = 42) {
+                             title = NULL, subtitle = TRUE, seed = 42) {
   .need_package("ggplot2", "plot_ibd_network()")
   .need_package("igraph", "plot_ibd_network()")
   .need_package("ggraph", "plot_ibd_network()")
+  sharing <- match.arg(sharing)
   blocks <- x$get_blocks()
   if (is.null(blocks)) {
     stop("this IbdResults has no IBD blocks; build it with ibd_results(blocks = , meta = )",
@@ -124,8 +188,13 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within 
 
   bl <- blocks
   bl$chr <- normalise_chr(bl$chr)
-  # half-open [start, end) overlap between the IBD block and the padded interval
-  m <- bl$chr == iv$chr & bl$start < (iv$end + within) & bl$end > (iv$start - within)
+  lo <- iv$start - within
+  hi <- iv$end + within
+  m <- bl$chr == iv$chr & if (sharing == "complete") {
+    bl$start <= lo & bl$end >= hi          # the segment has to span the whole interval
+  } else {
+    bl$start < hi & bl$end > lo            # any half-open [start, end) overlap
+  }
   sub <- bl[m, , drop = FALSE]
   # distinct undirected pairs sharing IBD over the interval
   a <- pmin(sub$sample1, sub$sample2); b <- pmax(sub$sample1, sub$sample2)
@@ -140,9 +209,17 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within 
     stop("no samples share an IBD block over ", iv$label,
          " (set include_isolated = TRUE to still show the samples)", call. = FALSE)
   }
-  grp_of <- if (!is.null(meta) && !is.null(group) && group %in% names(meta)) {
-    stats::setNames(as.character(meta[[group]]), as.character(meta$sample))
-  } else NULL
+  # sample -> value lookups for each aesthetic, keeping the column's own level order
+  lookup <- function(col, what) {
+    if (is.null(col)) return(NULL)
+    if (is.null(meta)) stop(what, " needs meta; build with ibd_results(meta = )", call. = FALSE)
+    if (!col %in% names(meta)) stop("meta has no column '", col, "'", call. = FALSE)
+    v <- .as_group_factor(meta[[col]])
+    list(map = stats::setNames(as.character(v), as.character(meta$sample)),
+         levels = .levels_of(v))
+  }
+  col_of <- lookup(color_group, "color_group")
+  shp_of <- lookup(shape_group, "shape_group")
 
   # lay out the connected component on its own, normalised with a single scale (aspect kept)
   set.seed(seed)
@@ -161,10 +238,14 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within 
                        stringsAsFactors = FALSE)
   }
 
-  # isolated samples: a grid below the connected component, sorted by group when colouring
+  # isolated samples: a grid below the connected component, sorted by the grouping(s) so
+  # like samples sit together -- colour first, then shape
   iso <- NULL
   if (length(isolated)) {
-    if (!is.null(grp_of)) isolated <- isolated[order(grp_of[isolated], isolated)]
+    keys <- list()
+    if (!is.null(col_of)) keys <- c(keys, list(match(col_of$map[isolated], col_of$levels)))
+    if (!is.null(shp_of)) keys <- c(keys, list(match(shp_of$map[isolated], shp_of$levels)))
+    if (length(keys)) isolated <- isolated[do.call(order, c(keys, list(isolated)))]
     xr <- if (!is.null(main)) range(main$x) else c(0, 1)
     span <- diff(xr)
     ncw  <- max(1L, ceiling(sqrt(length(isolated)) * 2.4))
@@ -177,7 +258,8 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within 
   }
 
   nodes <- rbind(main, iso)
-  if (!is.null(grp_of)) nodes$grp <- grp_of[nodes$name]
+  if (!is.null(col_of)) nodes$.colour <- factor(col_of$map[nodes$name], levels = col_of$levels)
+  if (!is.null(shp_of)) nodes$.shape <- factor(shp_of$map[nodes$name], levels = shp_of$levels)
 
   # edges in the connected-component coordinates (isolated nodes have none)
   edf <- NULL
@@ -196,14 +278,28 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within 
       data = edf, ggplot2::aes(.data$x, .data$y, xend = .data$xe, yend = .data$ye),
       colour = edge_colour, alpha = edge_alpha, linewidth = edge_width)
   }
-  if (!is.null(grp_of)) {
-    node_cols <- if (is.null(colours)) meta_colors(data.frame(grp = nodes$grp))[["grp"]] else colours
-    p <- p + ggplot2::geom_point(data = nodes,
-      ggplot2::aes(.data$x, .data$y, colour = .data$grp), size = node_size, alpha = node_alpha) +
-      ggplot2::scale_colour_manual(values = node_cols, name = group, na.value = "grey70")
-  } else {
-    p <- p + ggplot2::geom_point(data = nodes, ggplot2::aes(.data$x, .data$y),
-                                 size = node_size, alpha = node_alpha, colour = "#2166ac")
+  # nodes: colour and shape are independent, so either, both or neither can be mapped
+  aes_args <- list(x = quote(.data$x), y = quote(.data$y))
+  if (!is.null(col_of)) aes_args$colour <- quote(.data$.colour)
+  if (!is.null(shp_of)) aes_args$shape <- quote(.data$.shape)
+  fixed <- list(data = nodes, mapping = do.call(ggplot2::aes, aes_args),
+                size = node_size, alpha = node_alpha)
+  if (is.null(col_of)) fixed$colour <- "#2166ac"
+  p <- p + do.call(ggplot2::geom_point, fixed)
+
+  if (!is.null(col_of)) {
+    node_cols <- .match_scale_values(colors, col_of$levels, "colors",
+                                     function(n) meta_colors(
+                                       data.frame(g = factor(col_of$levels,
+                                                             levels = col_of$levels)))[["g"]])
+    p <- p + ggplot2::scale_colour_manual(values = node_cols, name = color_group,
+                                          na.value = "grey70", drop = FALSE)
+  }
+  if (!is.null(shp_of)) {
+    node_shapes <- .match_scale_values(shapes, shp_of$levels, "shapes",
+                                       function(n) .shape_palette(n))
+    p <- p + ggplot2::scale_shape_manual(values = node_shapes, name = shape_group,
+                                         na.value = 4, drop = FALSE)
   }
   # dashed separator + label between the connected component (y >= 0) and the isolated grid
   if (!is.null(iso)) {
@@ -221,7 +317,9 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, group = NULL, within 
          else if (isFALSE(title) || (length(title) == 1 && is.na(title))) NULL
          else as.character(title)
   sub_lab <- if (isTRUE(subtitle)) {
-    sprintf("%d samples, %d IBD pairs%s", nrow(nodes), nrow(edges),
+    # name the criterion: the same gene gives very different graphs under the two
+    sprintf("%d samples, %d IBD pairs sharing %s%s", nrow(nodes), nrow(edges),
+            if (sharing == "complete") "the whole interval" else "part of the interval",
             if (length(isolated)) sprintf(" (%d unconnected)", length(isolated)) else "")
   } else NULL
 

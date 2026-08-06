@@ -111,10 +111,20 @@ pdf_device <- function() {
 #' @param device Graphics device. `NULL` (default) auto-selects for `.pdf` output
 #'   (see [pdf_device()]); pass `grDevices::cairo_pdf`, `"pdf"`, or any device
 #'   [ggplot2::ggsave()] accepts to force a choice.
-#' @param width,height Output size in inches. `NULL` (default) uses the size the
-#'   `plot_*()` function attached to the plot (see [plot_dims()]), falling back to
-#'   `ggsave()`'s default if none is present. For a multi-page list, the page size is the
-#'   largest attached size across the plots (one size for every page).
+#' @param width,height Output size in inches. **Give one and the other is computed** from
+#'   the plot's contents; give neither and both are worked out; give both and they are used
+#'   as-is. `NULL` for both falls back to the size the `plot_*()` function attached (see
+#'   [plot_dims()]), then to `ggsave()`'s default. For a multi-page list, one page size
+#'   serves every page: the width every page needs, and the tallest height any page needs at
+#'   that width.
+#' @param fit Size the canvas to the drawing (default `TRUE`). A plot whose panel has a
+#'   locked aspect ratio -- anything using [ggplot2::coord_fixed()], such as
+#'   [plot_ibd_network()] or the gene triangles -- only fills a canvas of one particular
+#'   shape; on any other shape the leftover appears as blank margin above and below (or
+#'   beside) the drawing. Fitting measures the built plot's fixed furniture (titles,
+#'   legends, axes, margins) and its panel ratio, then solves for the dimension you did not
+#'   supply so there is no leftover. Set `FALSE` to use the requested / attached numbers
+#'   verbatim.
 #' @param ... Passed to [ggplot2::ggsave()] (e.g. `dpi`, `units`) for a single plot;
 #'   ignored for a multi-page list (which honours only `width` / `height` / `device`).
 #' @return `filename`, invisibly.
@@ -128,15 +138,14 @@ pdf_device <- function() {
 #' }
 #' @export
 save_plot <- function(filename, plot = ggplot2::last_plot(), device = NULL,
-                      width = NULL, height = NULL, ...) {
+                      width = NULL, height = NULL, fit = TRUE, ...) {
   .need_package("ggplot2", "save_plot()")
   # a list/vector of plots -> multi-page PDF (one page each)
   if (is.list(plot) && !.is_plot(plot) && length(plot) && all(vapply(plot, .is_plot, logical(1)))) {
-    return(.save_plots_multipage(filename, plot, device, width, height))
+    return(.save_plots_multipage(filename, plot, device, width, height, fit = fit))
   }
-  d <- attr(plot, "plasgenomics_dims")
-  if (is.null(width) && !is.null(d)) width <- unname(d["width"])
-  if (is.null(height) && !is.null(d)) height <- unname(d["height"])
+  dims <- .fit_plot_dims(plot, width, height, fit = fit)
+  width <- dims$width; height <- dims$height
   if (is.null(device) && grepl("\\.pdf$", filename, ignore.case = TRUE)) device <- pdf_device()
   args <- list(filename = filename, plot = plot, device = device, ...)
   if (!is.null(width)) args$width <- width
@@ -145,8 +154,100 @@ save_plot <- function(filename, plot = ggplot2::last_plot(), device = NULL,
   invisible(filename)
 }
 
-# a single plot object (ggplot, or a patchwork assembly, both inherit "ggplot")
-.is_plot <- function(p) ggplot2::is.ggplot(p) || inherits(p, "patchwork")
+# Height a legend stacked down the side needs, in inches. A side legend sits in its own
+# column spanning the canvas, so nothing in the layout forces the canvas to be tall enough
+# for it -- if it is not, grid simply clips the keys off the ends. Measuring the guide-box
+# grob is the only reliable way to know: key size, text size, titles and how many columns
+# the guides wrapped into all feed in.
+.guide_box_height <- function(gt, names = c("guide-box-right", "guide-box-left")) {
+  i <- which(gt$layout$name %in% names)
+  if (!length(i)) return(0)
+  hs <- vapply(i, function(k) {
+    g <- gt$grobs[[k]]
+    if (is.null(g$heights)) return(0)
+    h <- try(grid::convertHeight(sum(g$heights), "in", valueOnly = TRUE), silent = TRUE)
+    if (inherits(h, "try-error") || !is.finite(h)) 0 else h
+  }, numeric(1))
+  max(0, max(hs))
+}
+
+.side_legend_height <- function(gt) .guide_box_height(gt)
+
+# Measure a built plot: the space its fixed furniture needs (titles, legends, axes,
+# margins), the height any side legend needs, and, when the panel has a locked aspect
+# ratio, that ratio. `null` units convert to zero in absolute terms, so summing the
+# gtable's widths/heights leaves exactly the non-panel inches.
+.plot_metrics <- function(p) {
+  out <- list(fixed_w = NA_real_, fixed_h = NA_real_, aspect = NULL, n_row = 1L, n_col = 1L,
+              legend_h = 0)
+  gt <- try(ggplot2::ggplotGrob(p), silent = TRUE)
+  if (inherits(gt, "try-error")) return(out)
+  out$fixed_w <- grid::convertWidth(sum(gt$widths), "in", valueOnly = TRUE)
+  out$fixed_h <- grid::convertHeight(sum(gt$heights), "in", valueOnly = TRUE)
+  out$legend_h <- .side_legend_height(gt)
+  b <- try(ggplot2::ggplot_build(p), silent = TRUE)
+  if (inherits(b, "try-error")) return(out)
+  lay <- b$layout$layout
+  if (!is.null(lay) && all(c("ROW", "COL") %in% names(lay))) {
+    out$n_row <- max(1L, max(lay$ROW)); out$n_col <- max(1L, max(lay$COL))
+  }
+  # coord_fixed()/coord_equal() report a panel height:width; free coords return NULL
+  asp <- try(b$layout$coord$aspect(b$layout$panel_params[[1]]), silent = TRUE)
+  if (!inherits(asp, "try-error") && length(asp) == 1 && is.finite(asp) && asp > 0) {
+    out$aspect <- as.numeric(asp)
+  }
+  out
+}
+
+# Resolve the output size. A plot whose panel has a locked aspect ratio only fills a canvas
+# of one particular shape -- any other shape shows as blank margin -- so given one dimension
+# the other is computed rather than guessed, and given neither the attached width is kept
+# and the height solved for. Falls back to the attached size (then ggsave's default) for
+# plots with no fixed aspect, where any canvas shape is legitimate.
+.fit_plot_dims <- function(p, width = NULL, height = NULL, fit = TRUE) {
+  d <- attr(p, "plasgenomics_dims")
+  att_w <- if (!is.null(d) && "width" %in% names(d)) unname(d[["width"]]) else NULL
+  att_h <- if (!is.null(d) && "height" %in% names(d)) unname(d[["height"]]) else NULL
+  if (!isTRUE(fit) || (!is.null(width) && !is.null(height))) {
+    return(list(width = width %||% att_w, height = height %||% att_h))
+  }
+  m <- .plot_metrics(p)
+  # a side legend is clipped rather than accommodated, so treat its height as a floor
+  min_h <- if (is.finite(m$legend_h) && m$legend_h > 0) m$legend_h + 0.25 else 0
+  if (is.null(m$aspect) || !is.finite(m$fixed_w) || !is.finite(m$fixed_h)) {
+    # no locked aspect: keep whatever was asked for, and take the aspect of the attached
+    # size for the missing side so an explicit width still yields a sensible height
+    if (!is.null(width) && is.null(height) && !is.null(att_w) && !is.null(att_h)) {
+      return(list(width = width, height = round(max(width * att_h / att_w, min_h), 2)))
+    }
+    if (!is.null(height) && is.null(width) && !is.null(att_w) && !is.null(att_h)) {
+      return(list(width = round(height * att_w / att_h, 2), height = height))
+    }
+    h <- height %||% att_h
+    if (!is.null(h)) h <- round(max(h, min_h), 2)
+    return(list(width = width %||% att_w, height = h))
+  }
+  # panel_h_total = aspect * panel_w_each * n_row, panel_w_total = panel_w_each * n_col
+  k <- m$aspect * m$n_row / m$n_col
+  if (is.null(width) && is.null(height)) width <- att_w %||% max(.MIN_PLOT_WIDTH, m$fixed_w + 4)
+  if (!is.null(width)) {
+    panel_w <- width - m$fixed_w
+    if (!is.finite(panel_w) || panel_w <= 0.5) return(list(width = width, height = height %||% att_h))
+    return(list(width = round(width, 2),
+                height = round(max(k * panel_w + m$fixed_h, min_h), 2)))
+  }
+  panel_h <- height - m$fixed_h
+  if (!is.finite(panel_h) || panel_h <= 0.5) return(list(width = att_w, height = height))
+  list(width = round(panel_h / k + m$fixed_w, 2), height = round(height, 2))
+}
+
+# a single plot object (ggplot, or a patchwork assembly, both inherit "ggplot").
+# ggplot2 renamed is.ggplot() to is_ggplot() in 3.5.2; accept either installed version.
+.is_plot <- function(p) {
+  fn <- getNamespace("ggplot2")[["is_ggplot"]]
+  if (is.null(fn)) fn <- ggplot2::is.ggplot
+  fn(p) || inherits(p, "patchwork")
+}
 
 # largest attached `plasgenomics_dims[key]` across a list of plots, or `default`
 .max_dim <- function(plots, key, default) {
@@ -157,13 +258,26 @@ save_plot <- function(filename, plot = ggplot2::last_plot(), device = NULL,
 }
 
 # write a list of plots as one multi-page PDF (one plot per page, uniform page size)
-.save_plots_multipage <- function(filename, plots, device, width, height) {
+.save_plots_multipage <- function(filename, plots, device, width, height, fit = TRUE) {
   if (!grepl("\\.pdf$", filename, ignore.case = TRUE)) {
     stop("a list of plots is written as a multi-page PDF, so `filename` must end in '.pdf'; ",
          "got '", filename, "'. Save the plots individually for other formats.", call. = FALSE)
   }
-  if (is.null(width))  width  <- .max_dim(plots, "width", default = 7)
-  if (is.null(height)) height <- .max_dim(plots, "height", default = 7)
+  # One page size has to serve every page, so take the width every page needs and the
+  # tallest height any page needs at that width -- fitting each page separately would give
+  # a different size per page, which a single PDF cannot do.
+  if (is.null(width)) width <- .max_dim(plots, "width", default = 7)
+  if (is.null(height)) {
+    if (isTRUE(fit)) {
+      hs <- vapply(plots, function(p) {
+        h <- .fit_plot_dims(p, width = width, height = NULL, fit = TRUE)$height
+        if (is.null(h) || !is.finite(h)) NA_real_ else h
+      }, numeric(1))
+      height <- if (all(is.na(hs))) .max_dim(plots, "height", default = 7) else max(hs, na.rm = TRUE)
+    } else {
+      height <- .max_dim(plots, "height", default = 7)
+    }
+  }
   dev <- if (is.null(device)) pdf_device() else device
   if (is.function(dev)) {
     dev(filename, width = width, height = height, onefile = TRUE)      # e.g. cairo_pdf

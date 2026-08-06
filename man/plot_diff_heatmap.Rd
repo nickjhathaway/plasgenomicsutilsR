@@ -12,10 +12,10 @@ plot_diff_heatmap(
   cluster = TRUE,
   dendrogram = TRUE,
   triangle = TRUE,
+  legend_inside = triangle,
   annotate = NULL,
   meta = NULL,
   annotate_colours = NULL,
-  group_colours = NULL,
   label = FALSE,
   digits = 2,
   colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
@@ -42,6 +42,12 @@ same colour whichever ordering is drawn.}
 
 \item{triangle}{Show only the lower triangle (with the legend in the empty corner).}
 
+\item{legend_inside}{Put the legends in the empty half of the matrix rather than in a
+margin column (default: on whenever \code{triangle} is \code{TRUE}, since that is what leaves
+the space). The annotation strips' legends move onto the matrix too, so there is one
+legend area. Turn it off when there are few groups: the empty corner is then small
+and the legends would sit over the cells.}
+
 \item{annotate}{One or more annotations drawn as colour strips above the columns:
 a metadata column name (looked up in \code{meta}), a vector of several column names, a
 named \code{group -> value} vector, or a named list mixing these (the names label the
@@ -51,10 +57,6 @@ strips/legends). Each strip aligns to the clustered column order.}
 
 \item{annotate_colours}{Named list \code{annotation -> (value -> colour)} giving custom
 colours per annotation (unlisted annotations get an automatic palette).}
-
-\item{group_colours}{Optional named \code{group -> colour} vector used to colour the
-dendrogram leaf tips (so the tree carries the same colours as the UMAP / admixture);
-defaults to an automatic palette. A \code{PopStructure} passes its shared map here.}
 
 \item{label}{Print the value in each cell (default \code{FALSE}; the text can distract).}
 

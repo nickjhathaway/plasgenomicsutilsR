@@ -14,11 +14,15 @@ run_ld_prune(
   autosome_only = FALSE,
   maf = NaN,
   missing_rate = NaN,
-  seed = 42
+  seed = 42,
+  vcf_dir = NULL,
+  allele = c("alt", "ref")
 )
 }
 \arguments{
-\item{vcf}{Path to a (bgzipped) VCF.}
+\item{vcf}{Path to a (bgzipped) VCF, or a \strong{BCF} -- SNPRelate reads VCF text only, so
+a BCF is converted first with \code{bcftools}, reusing any VCF already sitting next to it
+rather than making another copy.}
 
 \item{gds}{Optional GDS path; derived from \code{vcf} if \code{NULL}.}
 
@@ -34,6 +38,15 @@ when \code{prune = FALSE}.}
 \item{maf, missing_rate}{Optional MAF / per-SNP missing-rate cutoffs for pruning.}
 
 \item{seed}{Random seed for the pruning.}
+
+\item{vcf_dir}{Where to put the VCF converted from a BCF (default: alongside the BCF).
+Point it somewhere scratch to keep converted copies out of the data directory.}
+
+\item{allele}{Which allele the returned dosage counts. \pkg{SNPRelate} counts the
+\strong{reference} allele; the default \code{"alt"} flips that so the matrix means what the
+rest of the package says it means. Only reported allele frequencies (and the
+arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
+and selection statistic here is symmetric in \code{p} and \code{1 - p}.}
 }
 \value{
 A list with \code{genotype} (matrix; sample row names and \code{chr:pos} column names),

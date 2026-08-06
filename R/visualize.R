@@ -120,6 +120,37 @@
        ggplot2::theme(plot.margin = ggplot2::margin(t = 42, r = 12, b = 6, l = 6)))
 }
 
+# `draw_threshold` accepts TRUE/FALSE for the old behaviour or a name; resolving it in one
+# place keeps the Manhattan and the tug-of-war from drifting apart.
+.resolve_threshold <- function(x) {
+  if (isTRUE(x)) return("bonferroni")
+  if (isFALSE(x) || is.null(x)) return("none")
+  if (!is.character(x))
+    stop("`draw_threshold` must be TRUE/FALSE or one of \"bonferroni\", \"fdr\", ",
+         "\"both\", \"none\"", call. = FALSE)
+  match.arg(x, c("bonferroni", "fdr", "both", "none"))
+}
+
+.threshold_kinds <- function(which_thr) {
+  if (which_thr == "both") c("bonferroni", "fdr") else which_thr
+}
+
+# One kind of threshold as a group/threshold frame, or NULL when it is not available.
+.threshold_line <- function(thr, kind) {
+  if (is.null(thr)) return(NULL)
+  col <- if (kind == "fdr") "neg_log10_p_fdr_threshold" else "threshold"
+  if (!col %in% names(thr)) {
+    if (kind == "fdr")
+      stop("this selection run has no FDR threshold; regenerate with a current ",
+           "`ibd_selection_statistic`", call. = FALSE)
+    return(NULL)
+  }
+  out <- thr[c(intersect("group", names(thr)), col)]
+  names(out)[ncol(out)] <- "threshold"
+  out <- out[is.finite(out$threshold), , drop = FALSE]
+  if (!nrow(out)) NULL else out
+}
+
 .manhattan_theme <- function() {
   # No grid lines: they read oddly against the alternating grey chromosome bands
   # (visible on the white bands, hidden on the grey). The bands carry the x reference.
@@ -201,10 +232,91 @@
   .need_package("scales", "the IBD fill scale")
   if (is.null(colors)) colors <- .IBD_FILL_DEFAULT
   ggplot2::scale_fill_gradientn(
-    colours = colors, trans = trans, limits = limits, name = name,
+    colours = colors, trans = trans, limits = limits,
+    name = .fill_scale_name(name, trans),
     na.value = colors[1],
+    # a function, so this works off the *trained* range when no limits were given --
+    # otherwise a per-page plot keeps the transform's default breaks and their padding
+    breaks = function(lims) {
+      b <- .fill_breaks(lims, trans)
+      if (is.null(b)) ggplot2::waiver() else b
+    },
+    labels = .fill_labels,
     oob = if (is.null(limits)) scales::censor else scales::squish
   )
+}
+
+# The transform's own round breaks, plus the maximum.
+#
+# A transform picks pleasant round numbers -- powers of two under log2 -- but they stop
+# wherever they stop, which under a log scale is routinely a long way below the top: the
+# bar then runs on past its last label and the strongest colour has no number attached.
+# So keep the round breaks and add the limit itself, dropping any round break that would
+# print on top of it.
+.fill_breaks <- function(limits, trans) {
+  if (is.null(limits) || length(limits) != 2 || !all(is.finite(limits))) return(NULL)
+  lo <- limits[1]
+  hi <- limits[2]
+  if (hi <= lo) return(NULL)
+  if (.log_trans(trans) && lo <= 0) return(NULL)
+
+  tf <- .transform_fun(trans)
+  nice <- tryCatch(.transform_breaks(trans, limits), error = function(e) NULL)
+  nice <- nice[is.finite(nice) & nice >= lo & nice <= hi]
+  if (!length(nice)) return(sort(unique(c(lo, hi))))
+
+  # "too close to the top to label separately": within a tenth of the bar's height
+  span <- tf(hi) - tf(lo)
+  keep <- if (is.finite(span) && span > 0) abs(tf(hi) - tf(nice)) > 0.1 * span else TRUE
+  sort(unique(c(nice[keep], hi)))
+}
+
+# scales renamed as.trans() to as.transform(); accept whichever this install has.
+.as_transform <- function(trans) {
+  f <- asNamespace("scales")$as.transform
+  if (is.null(f)) f <- asNamespace("scales")$as.trans
+  f(trans)
+}
+
+# The break function belonging to a transform, so log2 gives powers of two.
+.transform_breaks <- function(trans, limits) .as_transform(trans)$breaks(limits)
+
+.transform_fun <- function(trans) {
+  if (identical(trans, "identity")) return(identity)
+  .as_transform(trans)$transform
+}
+
+# Name the transform in the legend title: a "pairs IBD" bar running 0.0039 -> 0.52 in
+# even visual steps is a log scale, and saying so is cheaper than expecting the reader to
+# infer it from the spacing.
+.fill_scale_name <- function(name, trans) {
+  label <- if (is.character(trans)) trans
+           else tryCatch(.as_transform(trans)$name, error = function(e) NULL)
+  if (is.null(label) || !nzchar(label) || identical(label, "identity")) return(name)
+  paste0(name, " (", label, ")")
+}
+
+# Compact labels: significant digits, not decimal places, and no trailing zeros.
+#
+# A log scale's default formatter pads every break to one fixed width, which is where
+# labels like "0.0039062500" come from. Rounding to fixed decimals instead is worse: on a
+# log scale the smallest break is often a few ten-thousandths, and two decimal places
+# render it "0", which reads as nothing at all. Significant digits keep every break
+# informative regardless of its magnitude, and the loop only adds precision when two
+# breaks would otherwise print the same.
+.fill_labels <- function(breaks) {
+  fmt <- function(v, sig) {
+    vapply(v, function(x) {
+      if (!is.finite(x)) return(NA_character_)
+      if (x == 0) return("0")
+      format(signif(x, sig), scientific = FALSE, trim = TRUE, drop0trailing = TRUE)
+    }, character(1))
+  }
+  for (sig in 2:6) {
+    out <- fmt(breaks, sig)
+    if (!anyDuplicated(out)) return(out)
+  }
+  fmt(breaks, 6)
 }
 
 # ---- Manhattan: per-SNP IBD fraction ---------------------------------------
@@ -285,7 +397,11 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
 #'   track is an error.
 #' @param label_genes Label the genes. `NULL` (default) labels them only when
 #'   `highlight_genes` is given; `TRUE`/`FALSE` forces it.
-#' @param draw_threshold Draw the significance threshold line (only for `neg_log10_p`).
+#' @param draw_threshold Draw a significance line (only for `neg_log10_p`): `TRUE` /
+#'   `"bonferroni"` for the family-wise line, `"fdr"` for the Benjamini-Hochberg cutoff,
+#'   `"both"` for both, `FALSE` for none. Read either against the `lambda_gc` reported by
+#'   `ibd_selection_statistic`: far from 1 means the chi2(1) null does not fit and both
+#'   lines rest on miscalibrated p-values.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours Optional length-2 colour vector for the alternating chromosome bands.
 #' @return A ggplot object.
@@ -326,7 +442,21 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
     .gene_label_space(label_genes)
 
   thr <- x$get_thresholds()
-  if (draw_threshold && metric == "neg_log10_p" && !is.null(thr)) {
+  which_thr <- .resolve_threshold(draw_threshold)
+  if (which_thr %in% c("fdr", "both") && metric == "neg_log10_p" && !is.null(thr)) {
+    fdr <- .threshold_line(thr, "fdr")
+    if (!is.null(fdr)) {
+      has_g <- "group" %in% names(fdr) && any(!is.na(fdr$group)) && "group" %in% names(df)
+      p <- p + if (has_g)
+        ggplot2::geom_hline(data = fdr[fdr$group %in% df$group, , drop = FALSE],
+          ggplot2::aes(yintercept = .data$threshold), colour = "#2271B2",
+          linetype = "dotdash", linewidth = 0.4)
+      else
+        ggplot2::geom_hline(yintercept = fdr$threshold[1], colour = "#2271B2",
+          linetype = "dotdash", linewidth = 0.4)
+    }
+  }
+  if (which_thr %in% c("bonferroni", "both") && metric == "neg_log10_p" && !is.null(thr)) {
     # Drop non-finite thresholds up front: a group with no valid SNPs gets a
     # NaN threshold (written as an empty cell by `ibd_selection_statistic`), and
     # feeding NA to geom_hline draws nothing but warns ("Removed N rows ...").
@@ -456,8 +586,10 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #'   requesting a name not in the track is an error.
 #' @param label_genes Label the genes. `NULL` (default) labels them only when
 #'   `highlight_genes` is given; `TRUE`/`FALSE` forces it.
-#' @param draw_threshold Draw the per-group significance threshold (only for
-#'   `neg_log10_p` with `scale = "common"`, when thresholds are available).
+#' @param draw_threshold Which significance line to draw (only for `neg_log10_p`, and
+#'   only when not `normalized`): `TRUE` / `"bonferroni"` for the family-wise line,
+#'   `"fdr"` for the Benjamini-Hochberg cutoff, `"both"`, or `FALSE`. Mapped through the
+#'   same transform as the mirrored selection half, so it lands where the data does.
 #' @param selection_colour,ibd_colour Bar and axis colours for the two tracks.
 #' @return A ggplot object.
 #' @export
@@ -540,20 +672,26 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
     ytitle_elem <- ggplot2::element_text()
   }
 
+  which_thr <- .resolve_threshold(draw_threshold)
   thr_layer <- NULL
-  if (draw_threshold && metric == "neg_log10_p" && !normalized) {
-    thr <- x$get_thresholds()
-    if (!is.null(thr)) {
-      thr <- thr[is.finite(thr$threshold), , drop = FALSE]   # drop NaN (no-valid-SNP) groups
-      if ("group" %in% names(thr) && any(!is.na(thr$group)) && "group" %in% names(sel)) {
+  if (which_thr != "none" && metric == "neg_log10_p" && !normalized) {
+    all_thr <- x$get_thresholds()
+    thr_layer <- list()
+    for (kind in .threshold_kinds(which_thr)) {
+      thr <- .threshold_line(all_thr, kind)
+      if (is.null(thr)) next
+      if ("group" %in% names(thr) && any(!is.na(thr$group)) && "group" %in% names(sel))
         thr <- thr[thr$group %in% present, , drop = FALSE]
-      }
-      if (nrow(thr)) {
-        thr$.y <- 1 - thr$threshold / sel_max
-        thr_layer <- ggplot2::geom_hline(data = thr, ggplot2::aes(yintercept = .data$.y),
-          colour = "firebrick", linetype = "dashed", linewidth = 0.4, inherit.aes = FALSE)
-      }
+      if (!nrow(thr)) next
+      # the selection half of the mirror is drawn upside down in [0, 1], so the line has
+      # to be mapped through the same transform as the data
+      thr$.y <- 1 - thr$threshold / sel_max
+      thr_layer[[kind]] <- ggplot2::geom_hline(
+        data = thr, ggplot2::aes(yintercept = .data$.y), inherit.aes = FALSE,
+        colour = if (kind == "fdr") "#2271B2" else "firebrick",
+        linetype = if (kind == "fdr") "dotdash" else "dashed", linewidth = 0.4)
     }
+    if (!length(thr_layer)) thr_layer <- NULL
   }
 
   p <- ggplot2::ggplot() +
@@ -624,7 +762,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
 # per-gene / per-SNP triangle values from the pairwise per-SNP table (the SNP-in-feature
 # path: a gene's value aggregates the pairwise IBD of SNPs strictly inside it). Used for
 # `snps=` and as the fallback when no IBD blocks / overlap table are available.
-.snp_gene_triangle_df <- function(x, genes, snps, agg_fn) {
+.snp_gene_triangle_df <- function(x, genes, snps, agg_fn, within = 0) {
   pw <- x$get_pairwise_group()
   if (is.null(pw)) stop("this IbdResults has no pairwise_group table", call. = FALSE)
   if (!is.null(genes)) .check_gene_request(x$get_genes(), genes)
@@ -635,9 +773,11 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
     if (nrow(gtrack)) feats[["genes"]] <- data.frame(
       name = gtrack$name, chr = normalise_chr(gtrack$chr),
       start = as.numeric(gtrack$start), end = as.numeric(gtrack$end),
-      stringsAsFactors = FALSE)
+      pad = within, stringsAsFactors = FALSE)
   }
-  if (!is.null(snps)) feats[["snps"]] <- .parse_snp_features(snps)
+  # an explicitly requested SNP is never padded -- that would silently fold in its
+  # neighbours, which is not what naming a single variant asks for
+  if (!is.null(snps)) feats[["snps"]] <- cbind(.parse_snp_features(snps), pad = 0)
   feats <- do.call(rbind, feats)
   if (is.null(feats) || !nrow(feats)) {
     stop("nothing to plot: give a genes track (ibd_results(genes=)) and/or snps=", call. = FALSE)
@@ -646,9 +786,11 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
   parts <- list()
   for (i in seq_len(nrow(feats))) {
     f <- feats[i, ]
-    sub <- .snps_in_gene(pw, f$chr, f$start, f$end)
+    sub <- .snps_in_gene(pw, f$chr, f$start - f$pad, f$end + f$pad)
     if (!nrow(sub)) {
-      warning(sprintf("feature '%s' has no overlapping SNPs; skipped", f$name), call. = FALSE)
+      warning(sprintf("feature '%s' has no overlapping SNPs%s; skipped", f$name,
+                      if (f$pad > 0) sprintf(" within %g bp", f$pad) else ""),
+              call. = FALSE)
       next
     }
     ag <- stats::aggregate(frac_pairs_ibd ~ group_a + group_b, data = sub, FUN = agg_fn)
@@ -713,8 +855,12 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
 #'   or a data frame with `chr`, `pos` (and optional `name`). Each is one facet.
 #' @param group For block-based overlap, the metadata column defining the groups
 #'   (default: the first non-`sample` column of the object's `meta`).
-#' @param within For block-based overlap, pad each gene interval by this many bp on both
-#'   sides (default `0`).
+#' @param within Pad each gene interval by this many bp on both sides (default `0`), on
+#'   either path: it widens which IBD blocks count as overlapping the gene, and on the SNP
+#'   fallback it widens which SNPs are taken as the gene's. Raising it is what makes the
+#'   SNP fallback usable on a sparse panel, where a short gene may contain no genotyped
+#'   SNP at all. Features named through `snps` are never padded -- naming one variant asks
+#'   for that variant, not its neighbourhood.
 #' @param agg For the SNP fallback, how a gene's value aggregates its in-gene SNPs:
 #'   `"mean"` (default), `"median"`, or `"max"`.
 #' @param individual If `TRUE`, return a **named list** of one-triangle plots (one per
@@ -755,7 +901,7 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
       df$gene <- factor(as.character(df$gene), levels = levels(ov$gene))
     }
   } else {
-    df <- .snp_gene_triangle_df(x, genes, snps, agg_fn)
+    df <- .snp_gene_triangle_df(x, genes, snps, agg_fn, within = within)
   }
 
   # "shared" pins every feature to one scale, so the pages from individual = TRUE are
@@ -767,7 +913,9 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
     if (!all(is.finite(limits)) || diff(limits) == 0) limits <- NULL
   }
 
-  groups <- sort(unique(c(as.character(df$group_a), as.character(df$group_b))))
+  # axis order: the group columns' own levels (set by group_col_in_meta / set_group_order),
+  # else a natural sort
+  groups <- unique(c(.levels_of(df$group_a), .levels_of(df$group_b)))
   fs <- .ibd_fill_scale("pairs IBD", trans = trans, colors = colors, limits = limits,
                         fill_scale = fill_scale)
   # colours used for the label-contrast luminance (fall back to the default ramp when a
@@ -819,6 +967,14 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
 .triangle_gg <- function(df, groups, fill_scale, label, digits, title = NULL,
                          legend_inside = FALSE, colours = .IBD_FILL_DEFAULT,
                          limits = NULL, trans = "identity") {
+  # place every pair on one side of the diagonal by the axis (`groups`) order, regardless
+  # of how the input canonicalised its pairs -- so cells never straddle the diagonal when
+  # the group order is not alphabetical
+  ga <- as.character(df$group_a); gb <- as.character(df$group_b)
+  ia <- match(ga, groups); ib <- match(gb, groups)
+  swap <- !is.na(ia) & !is.na(ib) & ia > ib
+  df$group_a <- ifelse(swap, gb, ga)
+  df$group_b <- ifelse(swap, ga, gb)
   df$group_a <- factor(df$group_a, levels = groups)
   df$group_b <- factor(df$group_b, levels = rev(groups))
   # fill maps a log-safe copy (0 -> NA), while the label keeps the true value
@@ -849,18 +1005,21 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
   p
 }
 
-# place the fill legend inside the empty upper-right triangle (ggplot2-version-safe)
-.legend_upper_triangle <- function() {
+# place the legend(s) inside the empty upper-right triangle (ggplot2-version-safe).
+# Anchored by the box's top-left, so several stacked legends grow *down* into the empty
+# space rather than up over whatever sits above the panel (a dendrogram / annotation strip).
+.legend_upper_triangle <- function(pos = c(0.60, 0.97)) {
   base <- ggplot2::theme(
     legend.background = ggplot2::element_rect(fill = "white", colour = NA),
     legend.key.size = grid::unit(0.9, "lines"),
     legend.title = ggplot2::element_text(size = 8),
     legend.text = ggplot2::element_text(size = 7))
-  pos <- c(0.82, 0.80)
   if (utils::packageVersion("ggplot2") >= "3.5.0") {
-    base + ggplot2::theme(legend.position = "inside", legend.position.inside = pos)
+    base + ggplot2::theme(legend.position = "inside",
+                          legend.position.inside = pos,
+                          legend.justification.inside = c(0, 1))
   } else {
-    base + ggplot2::theme(legend.position = pos)
+    base + ggplot2::theme(legend.position = pos, legend.justification = c(0, 1))
   }
 }
 

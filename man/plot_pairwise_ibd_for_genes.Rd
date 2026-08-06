@@ -34,8 +34,12 @@ or a data frame with \code{chr}, \code{pos} (and optional \code{name}). Each is 
 \item{group}{For block-based overlap, the metadata column defining the groups
 (default: the first non-\code{sample} column of the object's \code{meta}).}
 
-\item{within}{For block-based overlap, pad each gene interval by this many bp on both
-sides (default \code{0}).}
+\item{within}{Pad each gene interval by this many bp on both sides (default \code{0}), on
+either path: it widens which IBD blocks count as overlapping the gene, and on the SNP
+fallback it widens which SNPs are taken as the gene's. Raising it is what makes the
+SNP fallback usable on a sparse panel, where a short gene may contain no genotyped
+SNP at all. Features named through \code{snps} are never padded -- naming one variant asks
+for that variant, not its neighbourhood.}
 
 \item{agg}{For the SNP fallback, how a gene's value aggregates its in-gene SNPs:
 \code{"mean"} (default), \code{"median"}, or \code{"max"}.}

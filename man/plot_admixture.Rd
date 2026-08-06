@@ -16,7 +16,9 @@ plot_admixture(
   group_colours = NULL,
   border = TRUE,
   border_colour = "black",
-  border_linewidth = 0.15
+  border_linewidth = 0.15,
+  legend_position = c("right", "bottom", "top", "left", "none"),
+  legend_rows = NULL
 )
 }
 \arguments{
@@ -48,6 +50,16 @@ can swamp the fills -- either render wider (\code{\link[=save_plot]{save_plot()}
 set \code{border = FALSE} / a thinner \code{border_linewidth}.}
 
 \item{border_colour, border_linewidth}{Colour and width of the per-sample outline.}
+
+\item{legend_position}{Where the legends go: \code{"right"} (default), \code{"bottom"}, \code{"top"},
+\code{"left"}, or \code{"none"}. A large K makes for a tall legend stack, so \code{"bottom"} often
+fits better on a wide, short admixture panel.}
+
+\item{legend_rows}{Keys per legend column (or per row when the legend is horizontal)
+before wrapping into another column/row. \code{NULL} (default) wraps a side legend every
+10 keys and splits a horizontal one over two
+rows, which keeps \code{K} = 15 plus a group strip on the page. The suggested output height
+accounts for whatever this works out to.}
 }
 \value{
 A ggplot object.

@@ -18,6 +18,30 @@
   }
 }
 
+# Gene intervals to work over: names selected from the object's track, or a supplied
+# interval data frame. Adds `.label`, a display name that stays 1:1 with genes even where
+# GFF Names repeat across families (var/rifin/...), since only gene_id is unique there.
+.gene_track_for <- function(x, genes) {
+  if (is.null(genes) || is.character(genes)) {
+    gtrack <- x$get_genes()
+    if (is.null(gtrack)) stop("no gene track; pass genes= or ibd_results(genes = )", call. = FALSE)
+    if (is.character(genes)) {
+      .check_gene_request(gtrack, genes)
+      gtrack <- gtrack[tolower(gtrack$name) %in% tolower(genes), , drop = FALSE]
+    }
+  } else {
+    gtrack <- .as_gene_track(genes)
+  }
+  gtrack$chr <- normalise_chr(gtrack$chr)
+  gid <- if ("gene_id" %in% names(gtrack)) as.character(gtrack$gene_id) else NULL
+  gtrack$.label <- .disambiguate_gene_labels(gtrack$name, gid)
+  if (!identical(gtrack$.label, as.character(gtrack$name))) {
+    warning("some gene Names repeat (var/rifin/...); disambiguated by gene_id in the ",
+            "`gene` column (`name`/`gene_id` kept as columns)", call. = FALSE)
+  }
+  gtrack
+}
+
 #' Per-gene IBD-block overlap between groups
 #'
 #' For each gene and each pair of groups, the fraction of sample pairs that share an IBD
@@ -51,6 +75,8 @@ gene_ibd_overlap <- function(x, genes = NULL, group = NULL, within = 0) {
     stop("block grouping needs meta with a 'sample' column; pass ibd_results(meta = )",
          call. = FALSE)
   }
+  # the column declared as group_col_in_meta wins, else the first non-`sample` column
+  if (is.null(group)) group <- x$get_group_col()
   if (is.null(group)) group <- setdiff(names(meta), "sample")[1]
   if (!group %in% names(meta)) stop("meta has no column '", group, "'", call. = FALSE)
   s2g <- stats::setNames(as.character(meta[[group]]), as.character(meta$sample))
@@ -59,32 +85,17 @@ gene_ibd_overlap <- function(x, genes = NULL, group = NULL, within = 0) {
   ag <- s2g[x$get_analyzed_samples()]
   ag <- ag[!is.na(ag)]
   cnt <- table(ag)
-  grp_levels <- sort(names(cnt))
+  # follow the object's group order when one is set, else the meta column's own levels
+  want <- x$get_group_order()
+  if (is.null(want)) want <- .levels_of(meta[[group]])
+  grp_levels <- want[want %in% names(cnt)]
   if (length(grp_levels) < 2) stop("need at least two groups among analyzed samples", call. = FALSE)
   total_pairs <- function(a, b) {
     if (a == b) cnt[[a]] * (cnt[[a]] - 1) / 2 else cnt[[a]] * cnt[[b]]
   }
 
-  # gene intervals: names into the track, or a supplied interval data frame
-  if (is.null(genes) || is.character(genes)) {
-    gtrack <- x$get_genes()
-    if (is.null(gtrack)) stop("no gene track; pass genes= or ibd_results(genes = )", call. = FALSE)
-    if (is.character(genes)) {
-      .check_gene_request(gtrack, genes)
-      gtrack <- gtrack[tolower(gtrack$name) %in% tolower(genes), , drop = FALSE]
-    }
-  } else {
-    gtrack <- .as_gene_track(genes)
-  }
-  gtrack$chr <- normalise_chr(gtrack$chr)
-  # GFF Names repeat across gene families (var/rifin/...); gene_id is unique. Key each
-  # feature by a unique display label so duplicate names don't collapse in the table/facets.
+  gtrack <- .gene_track_for(x, genes)
   gid <- if ("gene_id" %in% names(gtrack)) as.character(gtrack$gene_id) else NULL
-  gtrack$.label <- .disambiguate_gene_labels(gtrack$name, gid)
-  if (!identical(gtrack$.label, as.character(gtrack$name))) {
-    warning("some gene Names repeat (var/rifin/...); disambiguated by gene_id in the ",
-            "`gene` column (`name`/`gene_id` kept as columns)", call. = FALSE)
-  }
 
   blocks$chr <- normalise_chr(blocks$chr)
   by_chr <- split(seq_len(nrow(blocks)), blocks$chr)
@@ -126,5 +137,7 @@ gene_ibd_overlap <- function(x, genes = NULL, group = NULL, within = 0) {
   }
   res <- do.call(rbind, out)
   res$gene <- factor(res$gene, levels = gtrack$.label)
+  res$group_a <- factor(res$group_a, levels = grp_levels)   # carry the group order onward
+  res$group_b <- factor(res$group_b, levels = grp_levels)
   tibble::as_tibble(res)
 }

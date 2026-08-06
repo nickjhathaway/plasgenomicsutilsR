@@ -267,7 +267,7 @@ pop_diff_table <- function(x, group = NULL,
 }
 
 # one annotation colour strip aligned above the heatmap columns
-.annotation_panel <- function(name, vals, ord, cols, base_size) {
+.annotation_panel <- function(name, vals, ord, cols, base_size, show_legend = TRUE) {
   # the columns follow `ord` (the clustering), but the annotation's own levels set the
   # colour assignment and legend order, so a value keeps its colour however the axis runs
   adf <- data.frame(col = factor(ord, levels = ord), y = 1,
@@ -275,11 +275,32 @@ pop_diff_table <- function(x, group = NULL,
                     stringsAsFactors = FALSE)
   if (is.null(cols)) cols <- meta_colors(data.frame(value = adf$value))$value
   ggplot2::ggplot(adf, ggplot2::aes(.data$col, .data$y, fill = .data$value)) +
-    ggplot2::geom_tile(colour = "white") +
+    ggplot2::geom_tile(colour = "white", show.legend = show_legend) +
     ggplot2::scale_fill_manual(values = cols, name = name) +
     ggplot2::scale_x_discrete(drop = FALSE) +
     ggplot2::theme_void(base_size = base_size) +
-    ggplot2::theme(legend.position = "right")
+    ggplot2::theme(legend.position = if (show_legend) "right" else "none")
+}
+
+# Give `p` an extra fill scale purely so its legend renders on that panel: one fully
+# transparent tile per level, at a single cell, with the keys forced opaque. Used to move
+# the annotation-strip legends onto the heatmap, where the empty triangle has room.
+.add_legend_only_scale <- function(p, name, vals, cols, x, y) {
+  .need_package("ggnewscale", "annotation legends inside the triangle")
+  lev <- .levels_of(vals)
+  if (!length(lev)) return(p)
+  if (is.null(cols)) {
+    cols <- meta_colors(data.frame(v = factor(lev, levels = lev)))[["v"]]
+  }
+  key <- data.frame(col = x, row = y, .lv = factor(lev, levels = lev),
+                    stringsAsFactors = FALSE)
+  p + ggnewscale::new_scale_fill() +
+    ggplot2::geom_tile(data = key, ggplot2::aes(.data$col, .data$row, fill = .data$.lv),
+                       inherit.aes = FALSE, alpha = 0, width = 0, height = 0) +
+    ggplot2::scale_fill_manual(
+      values = cols, name = name, drop = FALSE,
+      guide = ggplot2::guide_legend(order = 2,
+                                    override.aes = list(alpha = 1, colour = "grey60")))
 }
 
 # horizontal-dendrogram segment coordinates from an hclust (leaves at x = 1..n in order)
@@ -409,9 +430,11 @@ plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
 #' @param meta Metadata data frame for resolving `annotate` column names.
 #' @param annotate_colours Named list `annotation -> (value -> colour)` giving custom
 #'   colours per annotation (unlisted annotations get an automatic palette).
-#' @param group_colours Optional named `group -> colour` vector used to colour the
-#'   dendrogram leaf tips (so the tree carries the same colours as the UMAP / admixture);
-#'   defaults to an automatic palette. A `PopStructure` passes its shared map here.
+#' @param legend_inside Put the legends in the empty half of the matrix rather than in a
+#'   margin column (default: on whenever `triangle` is `TRUE`, since that is what leaves
+#'   the space). The annotation strips' legends move onto the matrix too, so there is one
+#'   legend area. Turn it off when there are few groups: the empty corner is then small
+#'   and the legends would sit over the cells.
 #' @param label Print the value in each cell (default `FALSE`; the text can distract).
 #' @param digits Cell-label digits.
 #' @param colors Fill ramp (low -> high differentiation).
@@ -423,8 +446,9 @@ plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
 #' @export
 plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"), top = 0.05,
                               cluster = TRUE, dendrogram = TRUE, triangle = TRUE,
+                              legend_inside = triangle,
                               annotate = NULL, meta = NULL, annotate_colours = NULL,
-                              group_colours = NULL, label = FALSE, digits = 2,
+                              label = FALSE, digits = 2,
                               colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
                               trans = "identity", base_size = 11) {
   .need_package("ggplot2", "plot_diff_heatmap()")
@@ -435,6 +459,17 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
   # clustering, when asked for, decides the axis order -- that grouping is the point of it.
   # Without it the axes fall back to the group levels (`M` is already in that order).
   ord <- if (is.null(hc)) rownames(M) else rownames(M)[hc$order]
+
+  # Resolve where the legends go before building anything: moving an annotation strip's
+  # legend onto the heatmap needs a second fill scale (ggnewscale), and if that is not
+  # available every legend has to go to the margin together -- a strip legend in the
+  # margin and the fill legend inside would split them across two places.
+  ann_list <- .resolve_annotations(annotate, ord, pd$group_col, meta)
+  if (legend_inside && !is.null(ann_list) && !requireNamespace("ggnewscale", quietly = TRUE)) {
+    warning("annotation legends need the 'ggnewscale' package to sit inside the triangle; ",
+            "putting all legends in the margin instead", call. = FALSE)
+    legend_inside <- FALSE
+  }
 
   df <- expand.grid(row = ord, col = ord, stringsAsFactors = FALSE)
   df$D <- M[cbind(df$row, df$col)]
@@ -459,7 +494,7 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
     ggplot2::theme_minimal(base_size = base_size) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
                    panel.grid = ggplot2::element_blank())
-  if (triangle) hm <- hm + .legend_upper_triangle()
+  if (legend_inside) hm <- hm + .legend_upper_triangle()
   if (label) {
     mid <- stats::median(df$D, na.rm = TRUE)
     hm <- hm + ggplot2::geom_text(
@@ -468,30 +503,29 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
       ggplot2::scale_colour_manual(values = c(`TRUE` = "white", `FALSE` = "grey15"))
   }
 
-  # optional metadata annotation strips (one per annotation, aligned above the columns)
-  ann_list <- .resolve_annotations(annotate, ord, pd$group_col, meta)
+  # the annotation strips themselves (one thin panel each, aligned above the columns)
   ann_panels <- NULL
   if (!is.null(ann_list)) {
     ann_panels <- lapply(names(ann_list), function(nm)
-      .annotation_panel(nm, ann_list[[nm]], ord, annotate_colours[[nm]], base_size))
+      .annotation_panel(nm, ann_list[[nm]], ord, annotate_colours[[nm]], base_size,
+                        show_legend = !legend_inside))
+    # A strip is its own thin panel, so its legend would sit out beside it. Re-key each
+    # one onto the heatmap instead, where the empty triangle already holds the fill
+    # legend -- one legend area, and no wasted margin column.
+    if (legend_inside) {
+      for (nm in names(ann_list)) {
+        hm <- .add_legend_only_scale(hm, nm, ann_list[[nm]], annotate_colours[[nm]],
+                                     x = ord[1], y = utils::tail(ord, 1))
+      }
+    }
   }
 
   dnd_panel <- NULL
   if (dendrogram && !is.null(hc)) {
     seg <- .dendro_segments(hc)
-    # colour the leaf tips by group so the tree matches the UMAP / admixture colours
-    # colours come from the group levels, not the leaf order, so a group keeps its colour
-    glev <- .levels_of(rownames(M))
-    tips <- data.frame(x = seq_along(ord), y = 0, grp = factor(ord, levels = glev),
-                       stringsAsFactors = FALSE)
-    gcols <- if (is.null(group_colours))
-      meta_colors(data.frame(grp = factor(glev, levels = glev)))[["grp"]] else group_colours
     dnd_panel <- ggplot2::ggplot(seg) +
       ggplot2::geom_segment(ggplot2::aes(.data$x, .data$y, xend = .data$xend, yend = .data$yend),
                             linewidth = 0.3, colour = "grey35") +
-      ggplot2::geom_point(data = tips, ggplot2::aes(.data$x, .data$y, colour = .data$grp),
-                          size = 2.6, show.legend = FALSE) +
-      ggplot2::scale_colour_manual(values = gcols) +
       ggplot2::scale_x_continuous(limits = c(0.5, n + 0.5), expand = c(0, 0)) +
       ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.04, 0.05))) +
       ggplot2::theme_void()
@@ -501,10 +535,12 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
   .need_package("patchwork", "the dendrogram / annotation in plot_diff_heatmap()")
   panels <- c(if (!is.null(dnd_panel)) list(dnd_panel), ann_panels, list(hm))
   heights <- c(if (!is.null(dnd_panel)) 0.16, rep(0.06, length(ann_panels)), 1)
-  # collect the annotation-strip legends into one tidy column (the fill legend stays
-  # inside the triangle); patchwork leaves in-panel "inside" legends where they are.
-  patchwork::wrap_plots(panels, ncol = 1, heights = heights) +
-    patchwork::plot_layout(guides = "collect")
+  out <- patchwork::wrap_plots(panels, ncol = 1, heights = heights)
+  # Collecting guides pulls even an in-panel "inside" legend out into a margin column, so
+  # only collect when the legends are meant to live in a margin (a full, untriangled
+  # matrix has no empty corner to put them in).
+  if (!legend_inside) out <- out + patchwork::plot_layout(guides = "collect")
+  out
 }
 
 #' @rdname plot_diff_heatmap

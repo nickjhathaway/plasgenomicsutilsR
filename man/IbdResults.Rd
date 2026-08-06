@@ -25,6 +25,9 @@ Expected columns (superset; extras are kept):
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-IbdResults-initialize}{\code{IbdResults$new()}}
+    \item \href{#method-IbdResults-set_group_order}{\code{IbdResults$set_group_order()}}
+    \item \href{#method-IbdResults-get_group_order}{\code{IbdResults$get_group_order()}}
+    \item \href{#method-IbdResults-get_group_col}{\code{IbdResults$get_group_col()}}
     \item \href{#method-IbdResults-get_per_snp_group}{\code{IbdResults$get_per_snp_group()}}
     \item \href{#method-IbdResults-get_pairwise_group}{\code{IbdResults$get_pairwise_group()}}
     \item \href{#method-IbdResults-get_selection}{\code{IbdResults$get_selection()}}
@@ -43,6 +46,7 @@ Expected columns (superset; extras are kept):
     \item \href{#method-IbdResults-plot_ibd_pairwise_group_heatmap}{\code{IbdResults$plot_ibd_pairwise_group_heatmap()}}
     \item \href{#method-IbdResults-plot_pairwise_ibd_for_genes}{\code{IbdResults$plot_pairwise_ibd_for_genes()}}
     \item \href{#method-IbdResults-gene_ibd_overlap}{\code{IbdResults$gene_ibd_overlap()}}
+    \item \href{#method-IbdResults-gene_ibd_pairs}{\code{IbdResults$gene_ibd_pairs()}}
     \item \href{#method-IbdResults-plot_ibd_network}{\code{IbdResults$plot_ibd_network()}}
     \item \href{#method-IbdResults-pos_selection_genes}{\code{IbdResults$pos_selection_genes()}}
     \item \href{#method-IbdResults-clone}{\code{IbdResults$clone()}}
@@ -64,6 +68,9 @@ Expected columns (superset; extras are kept):
   blocks = NULL,
   meta = NULL,
   gene_overlap = NULL,
+  group_col_in_meta = NULL,
+  min_block_snp = IBD_MIN_BLOCK_SNP,
+  min_block_kb = IBD_MIN_BLOCK_KB,
   reference = "pf3d7"
 )}
     \if{html}{\out{</div>}}
@@ -88,12 +95,72 @@ grouping columns), used to group \code{blocks} pairs.}
       \item{\code{gene_overlap}}{Optional precomputed per-gene per-group-pair block-overlap table
 (from \verb{plasgenomicsutils ibd_gene_overlap}: \code{gene}, \code{group_a}, \code{group_b},
 \code{frac_pairs_ibd}, ...), used directly by the gene triangles.}
+      \item{\code{group_col_in_meta}}{Name of the \code{meta} column that defines the grouping. It
+becomes the default \code{group} for the block-based tools, and if the column is a
+factor its levels set the group order for every loaded table (equivalent to
+calling \verb{$set_group_order(levels(meta[[group_col_in_meta]]))}).}
+      \item{\code{min_block_snp, min_block_kb}}{Discard IBD segments carrying fewer than
+\code{min_block_snp} SNPs or shorter than \code{min_block_kb} kb (defaults \code{15} and \code{15}).
+Short, SNP-poor segments are commonly spurious, and this filter is conventionally
+applied before any IBD summary -- it is built in so the blocks need not be
+pre-filtered. \code{0} disables either criterion. Only the IBD evidence is filtered:
+the analyzed-sample set (the denominator behind every fraction) still comes from
+every row of the blocks file, so a pair whose only segment is short still counts
+as compared. The SNP criterion needs the \code{Nsnp} column hmmibd-rs writes.}
       \item{\code{reference}}{Reference id for chromosome lengths (default \code{"pf3d7"}).}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
     An \code{IbdResults} object (invisibly self).
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-set_group_order"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-set_group_order}{}}}
+\subsection{\code{IbdResults$set_group_order()}}{
+  Set the order of the groups for every loaded table, so facets,
+legends and axes follow it. Errors if a group present in the results is missing
+from \code{levels} (it would silently become \code{NA}); warns about levels no result uses.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$set_group_order(levels)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{levels}}{Group names in the desired order.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly self.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_group_order"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_group_order}{}}}
+\subsection{\code{IbdResults$get_group_order()}}{
+  The current group order (\code{NULL} when none has been set).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_group_order()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_group_col"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_group_col}{}}}
+\subsection{\code{IbdResults$get_group_col()}}{
+  The \code{meta} column naming the grouping, if one was declared.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_group_col()}
+    \if{html}{\out{</div>}}
   }
 }
 
@@ -350,6 +417,25 @@ grouping columns), used to group \code{blocks} pairs.}
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{...}}{Passed to \code{\link[=gene_ibd_overlap]{gene_ibd_overlap()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-gene_ibd_pairs"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-gene_ibd_pairs}{}}}
+\subsection{\code{IbdResults$gene_ibd_pairs()}}{
+  Sample pairs sharing IBD over each gene (see \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$gene_ibd_pairs(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}}.}
     }
     \if{html}{\out{</div>}}
   }

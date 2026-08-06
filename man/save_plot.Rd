@@ -10,6 +10,7 @@ save_plot(
   device = NULL,
   width = NULL,
   height = NULL,
+  fit = TRUE,
   ...
 )
 }
@@ -25,10 +26,21 @@ in \code{.pdf}).}
 (see \code{\link[=pdf_device]{pdf_device()}}); pass \code{grDevices::cairo_pdf}, \code{"pdf"}, or any device
 \code{\link[ggplot2:ggsave]{ggplot2::ggsave()}} accepts to force a choice.}
 
-\item{width, height}{Output size in inches. \code{NULL} (default) uses the size the
-\verb{plot_*()} function attached to the plot (see \code{\link[=plot_dims]{plot_dims()}}), falling back to
-\code{ggsave()}'s default if none is present. For a multi-page list, the page size is the
-largest attached size across the plots (one size for every page).}
+\item{width, height}{Output size in inches. \strong{Give one and the other is computed} from
+the plot's contents; give neither and both are worked out; give both and they are used
+as-is. \code{NULL} for both falls back to the size the \verb{plot_*()} function attached (see
+\code{\link[=plot_dims]{plot_dims()}}), then to \code{ggsave()}'s default. For a multi-page list, one page size
+serves every page: the width every page needs, and the tallest height any page needs at
+that width.}
+
+\item{fit}{Size the canvas to the drawing (default \code{TRUE}). A plot whose panel has a
+locked aspect ratio -- anything using \code{\link[ggplot2:coord_fixed]{ggplot2::coord_fixed()}}, such as
+\code{\link[=plot_ibd_network]{plot_ibd_network()}} or the gene triangles -- only fills a canvas of one particular
+shape; on any other shape the leftover appears as blank margin above and below (or
+beside) the drawing. Fitting measures the built plot's fixed furniture (titles,
+legends, axes, margins) and its panel ratio, then solves for the dimension you did not
+supply so there is no leftover. Set \code{FALSE} to use the requested / attached numbers
+verbatim.}
 
 \item{...}{Passed to \code{\link[ggplot2:ggsave]{ggplot2::ggsave()}} (e.g. \code{dpi}, \code{units}) for a single plot;
 ignored for a multi-page list (which honours only \code{width} / \code{height} / \code{device}).}

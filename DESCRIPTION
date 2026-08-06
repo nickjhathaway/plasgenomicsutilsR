@@ -1,14 +1,19 @@
 Package: plasgenomicsutilsR
 Title: Utilities for Visualizing Plasmodium Genomics Data
-Version: 0.1.1
+Version: 0.2.0
 Authors@R:
     person("Nicholas", "Hathaway", email = "nickjhathaway@gmail.com",
            role = c("aut", "cre"))
 Description: A collection of utilities for visualizing and analyzing the outputs
     of Plasmodium genomics post processing (IBD analysis, Fws within-host
-    diversity, and related summaries produced by the companion Python package
-    plasgenomicsutils). Reference-genome facts are namespaced by species so the
-    tools generalize beyond Plasmodium falciparum.
+    diversity, population structure and differentiation, and related summaries
+    produced by the companion Python package plasgenomicsutils). Provides R6
+    workspaces for IBD results and population structure, genome-wide and
+    group-by-group figures, sample-level IBD networks, per-gene IBD sharing
+    tables, and admixture model selection. Genomic coordinates follow a single
+    convention throughout (0-based, half-open intervals), and reference-genome
+    facts are namespaced by species so the tools generalize beyond Plasmodium
+    falciparum.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
@@ -17,6 +22,7 @@ Depends:
     R (>= 4.1.0)
 Imports:
     dplyr,
+    methods,
     R6,
     rlang,
     tibble
@@ -35,7 +41,12 @@ Suggests:
     gdsfmt,
     uwot,
     LEA,
-    ggnewscale
+    ggnewscale,
+    rehh,
+    pegas,
+    poppr,
+    adegenet,
+    ape
 biocViews: Software
 Config/testthat/edition: 3
 VignetteBuilder: knitr

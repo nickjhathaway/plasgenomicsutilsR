@@ -8,8 +8,12 @@ plot_ibd_network(
   x,
   gene = NULL,
   locus = NULL,
-  group = NULL,
+  color_group = NULL,
+  colors = NULL,
+  shape_group = NULL,
+  shapes = NULL,
   within = 0,
+  sharing = c("overlap", "complete"),
   include_isolated = FALSE,
   layout = "fr",
   spread = 1.5,
@@ -18,7 +22,6 @@ plot_ibd_network(
   edge_colour = "grey65",
   edge_alpha = 0.5,
   edge_width = 1,
-  colours = NULL,
   title = NULL,
   subtitle = TRUE,
   seed = 42
@@ -35,9 +38,33 @@ are 0-based half-open (see \link{plasgenomicsutilsR-coordinates}), so \code{"chr
 the 1000 bases from 0-based 1000 up to but not including 2000, and a bare \code{"chr:1000"}
 is the single base at 0-based 1000.}
 
-\item{group}{Optional metadata column to colour nodes by (needs \code{meta}).}
+\item{color_group}{Optional metadata column to colour nodes by (needs \code{meta}).}
+
+\item{colors}{Colours for \code{color_group}. A \strong{named} \code{level -> colour} vector maps by
+name and may cover only some levels (the rest keep their automatic colour); an
+unnamed vector is taken positionally, in the column's level order. \code{NULL} (default)
+uses \code{\link[=meta_colors]{meta_colors()}}, so the same mapping can be shared with other plots.}
+
+\item{shape_group}{Optional metadata column to set node \strong{shape} by, so a second
+variable can be read off the same plot (needs \code{meta}). Independent of \code{color_group}:
+use either, both, or neither.}
+
+\item{shapes}{Shapes for \code{shape_group}, named or positional exactly like \code{colors}
+(values are \pkg{ggplot2} shape codes). \code{NULL} picks distinguishable defaults and
+errors if the column has more levels than there are distinct shapes.}
 
 \item{within}{Pad the interval by this many bp on both sides (default \code{0}).}
+
+\item{sharing}{What an edge requires of a pair's IBD segment:
+\describe{
+\item{\code{"overlap"}}{(default) the segment touches the interval anywhere -- the pair
+shares \emph{some} of the gene/locus.}
+\item{\code{"complete"}}{the segment spans the whole interval -- the pair shares the
+\emph{entire} gene/locus. A stricter, usually much sparser graph.}
+}
+\code{within} applies either way, so with padding \code{"complete"} asks the segment to cover the
+padded interval. Use \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}} to see per-pair which of the two each segment
+satisfies (its \code{coverage} column) and how much of the gene is covered.}
 
 \item{include_isolated}{Keep samples with no IBD edge (default \code{FALSE}). \code{TRUE} also
 shows every analyzed sample; the isolated samples are drawn in a grid below the
@@ -65,8 +92,6 @@ the cost of them taking up more of the canvas. Applies to weight-aware layouts
 \item{edge_alpha}{Edge opacity (default \code{0.5}). \code{NULL} instead scales opacity down with
 edge count (\code{~120 / n_edges}, clamped to [0.06, 0.6]).}
 
-\item{colours}{Optional named \code{group -> colour} vector for the node fill.}
-
 \item{title}{Plot title: \code{NULL} (default) uses \code{"IBD network: <label>"}, a string sets a
 custom title, and \code{NA}/\code{FALSE} draws no title.}
 
@@ -80,7 +105,7 @@ A ggplot (\pkg{ggraph}) object.
 \description{
 A sample-level network for one gene or locus: each node is a sample and an edge joins
 two samples whose pair shares an \strong{IBD block overlapping} the interval. Optionally
-colours nodes by a metadata group, and optionally drops isolated (unconnected) nodes
+colours and/or shapes nodes by metadata columns, and optionally drops isolated nodes
 for a cleaner picture -- or keeps them so the total sample count is visible.
 }
 \details{
@@ -90,7 +115,13 @@ sample set). See \code{\link[=gene_ibd_overlap]{gene_ibd_overlap()}} for the pai
 \examples{
 \dontrun{
 ibd <- ibd_results(blocks = "hmm.txt", meta = meta, genes = PF_EXAMPLE_DRUG_GENES)
-plot_ibd_network(ibd, gene = "pfcrt", group = "region")
+plot_ibd_network(ibd, gene = "pfcrt", color_group = "region")
+# colour by region, shape by year: two variables on one plot
+plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
+                 shape_group = "collection_year")
+# a named vector pins chosen levels; the rest keep their automatic colour
+plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
+                 colors = c(North = "#1f78b4", East = "#33a02c"))
 plot_ibd_network(ibd, locus = "Pf3D7_07_v3:403500", include_isolated = TRUE)
 }
 }

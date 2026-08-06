@@ -335,7 +335,8 @@ make_block_obj <- function() {
     end   = c(405000, 405500, 405800, 950000, 20),
     different = c(0, 0, 0, 0, 1))            # last row non-IBD (keeps s5/s6 "analyzed")
   meta <- data.frame(sample = paste0("s", 1:6), region = c("A", "A", "B", "B", "A", "B"))
-  ibd_results(genes = genes, blocks = blocks, meta = meta, reference = "pf3d7")
+  ibd_results(genes = genes, blocks = blocks, meta = meta,
+              min_block_snp = 0, min_block_kb = 0, reference = "pf3d7")
 }
 
 test_that("blocks are stored IBD-only but analyzed samples come from all rows", {
@@ -409,7 +410,7 @@ test_that("plot_ibd_network builds, honours include_isolated, and parses a locus
   testthat::skip_if_not_installed("igraph")
   testthat::skip_if_not_installed("ggraph")
   ibd <- make_block_obj()
-  connected <- plot_ibd_network(ibd, gene = "pfcrt", group = "region")
+  connected <- plot_ibd_network(ibd, gene = "pfcrt", color_group = "region")
   expect_s3_class(connected, "ggplot")
   expect_silent(ggplot2::ggplotGrob(connected))
   full <- plot_ibd_network(ibd, gene = "pfcrt", include_isolated = TRUE)
@@ -482,6 +483,7 @@ test_that("plot_ibd_network draws edges and an isolated grid", {
     data.frame(sample1 = "s26", sample2 = "s27", chr = "Pf3D7_01_v3",
                start = 1, end = 2, different = 1))   # keeps s26..s40 analyzed, none IBD
   ibd <- ibd_results(blocks = blocks, meta = data.frame(sample = samps, region = "A"),
+                     min_block_snp = 0, min_block_kb = 0, 
                      genes = data.frame(name = "g", chr = "7", start = 889883, end = 899213),
                      reference = "pf3d7")
   seg_layers <- function(p) sum(vapply(ggplot2::ggplot_build(p)$data,
@@ -523,7 +525,7 @@ test_that("spread opens up a dense cluster relative to sparser structure", {
   blocks <- data.frame(sample1 = c(dense[, 1], pairs[, 1]),   # group edges first
                        sample2 = c(dense[, 2], pairs[, 2]),
                        chr = "Pf3D7_07_v3", start = 889000, end = 900000, different = 0)
-  ibd <- ibd_results(blocks = blocks,
+  ibd <- ibd_results(blocks = blocks, min_block_snp = 0, min_block_kb = 0, 
                      genes = data.frame(name = "g", chr = "7", start = 889883, end = 899213),
                      reference = "pf3d7")
   # nodes are laid out in first-seen order, so the first 14 points are the dense group
@@ -535,4 +537,399 @@ test_that("spread opens up a dense cluster relative to sparser structure", {
   }
   expect_gt(group_sep(plot_ibd_network(ibd, gene = "g", spread = 1)),
             group_sep(plot_ibd_network(ibd, gene = "g", spread = 0)))
+})
+
+test_that("group_col_in_meta and set_group_order drive every table's group order", {
+  want <- c("Delta", "Charlie", "Alpha")          # deliberately not alphabetical
+  meta <- data.frame(sample = paste0("s", 1:6),
+                     region = factor(rep(want, each = 2), levels = want),
+                     stringsAsFactors = FALSE)
+  per_snp <- data.frame(chr = "Pf3D7_01_v3", pos = c(10, 20, 30),
+                        group = c("Alpha", "Charlie", "Delta"), frac_pairs_ibd = 0.1)
+  pw <- data.frame(chr = "Pf3D7_01_v3", pos = 10,
+                   group_a = c("Alpha", "Alpha", "Charlie"),
+                   group_b = c("Charlie", "Delta", "Delta"), frac_pairs_ibd = 0.2)
+
+  obj <- ibd_results(per_snp_group = per_snp, pairwise_group = pw, meta = meta,
+                     group_col_in_meta = "region", reference = "pf3d7")
+  expect_equal(obj$get_group_col(), "region")
+  expect_equal(obj$get_group_order(), want)
+  expect_equal(levels(obj$get_per_snp_group()$group), want)
+  expect_equal(levels(obj$get_pairwise_group()$group_a), want)
+  expect_equal(levels(obj$get_pairwise_group()$group_b), want)
+
+  # set_group_order re-stamps everything
+  obj$set_group_order(c("Alpha", "Delta", "Charlie"))
+  expect_equal(levels(obj$get_per_snp_group()$group), c("Alpha", "Delta", "Charlie"))
+
+  # a group present in the results but absent from the order would become NA -> error
+  expect_error(obj$set_group_order(c("Alpha", "Delta")), "missing from")
+  # a level no result uses is only a warning
+  expect_warning(obj$set_group_order(c(want, "Atlantis")), "no IBD result uses")
+  expect_error(obj$set_group_order(c("Alpha", "Alpha", "Charlie", "Delta")), "duplicated")
+
+  # a non-factor meta column is accepted and natural-sorted
+  meta2 <- meta; meta2$region <- as.character(meta2$region)
+  obj2 <- ibd_results(per_snp_group = per_snp, meta = meta2,
+                      group_col_in_meta = "region", reference = "pf3d7")
+  expect_equal(obj2$get_group_order(), c("Alpha", "Charlie", "Delta"))
+  expect_error(ibd_results(per_snp_group = per_snp, meta = meta,
+                           group_col_in_meta = "nope", reference = "pf3d7"),
+               "not a column of meta")
+})
+
+test_that("a non-alphabetical group order keeps the triangle on one side of the diagonal", {
+  skip_if_no_ggplot()
+  want <- c("Delta", "Charlie", "Alpha")     # string order disagrees with level order
+  # pairs canonicalised the way the block/python paths do it: alphabetically
+  tab <- data.frame(
+    gene = "g",
+    group_a = c("Alpha", "Alpha", "Alpha", "Charlie", "Charlie", "Delta"),
+    group_b = c("Alpha", "Charlie", "Delta", "Charlie", "Delta", "Delta"),
+    frac_pairs_ibd = c(0.5, 0.1, 0.2, 0.6, 0.3, 0.7), stringsAsFactors = FALSE)
+  obj <- ibd_results(gene_overlap = tab, reference = "pf3d7")
+  obj$set_group_order(want)
+  p <- plot_pairwise_ibd_for_genes(obj)
+  d <- ggplot2::ggplot_build(p)$data[[1]]
+  # y is drawn on reversed levels, so every tile must sit at or below the diagonal
+  expect_true(all(d$x + d$y <= length(want) + 1))
+  expect_equal(nrow(d), 6L)                  # no pair lost or duplicated by the reorient
+})
+
+test_that("per-group thresholds do not reorder the facets", {
+  skip_if_no_ggplot()
+  want <- c("Delta", "Charlie", "Alpha")
+  sel <- data.frame(chr = "Pf3D7_01_v3", pos = c(10, 20, 30),
+                    group = want, neg_log10_p = c(5, 6, 7), stringsAsFactors = FALSE)
+  thr <- data.frame(group = want, threshold = c(4, 4, 4), stringsAsFactors = FALSE)
+  obj <- ibd_results(selection = sel, threshold = thr,
+                     genes = data.frame(name = "g", chr = "1", start = 5, end = 40),
+                     reference = "pf3d7")
+  obj$set_group_order(want)
+  # the threshold hline layer carries the facet column too; as a character vector it used
+  # to make ggplot merge the layers' facet values alphabetically
+  expect_true(is.factor(obj$get_thresholds()$group))
+  b <- ggplot2::ggplot_build(
+    plot_selection_manhattan(obj, draw_threshold = TRUE, label_genes = TRUE))
+  expect_equal(as.character(b$layout$layout$group), want)
+})
+
+test_that("plot_ibd_network maps colour and shape independently", {
+  skip_if_no_ggplot()
+  testthat::skip_if_not_installed("igraph")
+  testthat::skip_if_not_installed("ggraph")
+  set.seed(9); samps <- paste0("s", 1:12)
+  pr <- t(replicate(30, sample(samps, 2)))
+  blocks <- data.frame(sample1 = pr[, 1], sample2 = pr[, 2], chr = "Pf3D7_07_v3",
+                       start = 889000, end = 900000, different = 0)
+  meta <- data.frame(sample = samps,
+                     region = factor(rep(c("Delta", "Alpha"), each = 6),
+                                     levels = c("Delta", "Alpha")),
+                     marker = rep(c("wt", "mut", "mix"), 4), stringsAsFactors = FALSE)
+  ibd <- ibd_results(blocks = blocks, meta = meta, min_block_snp = 0, min_block_kb = 0, 
+                     genes = data.frame(name = "g", chr = "7", start = 889883, end = 899213),
+                     reference = "pf3d7")
+  pts <- function(p) {
+    d <- ggplot2::ggplot_build(p)$data
+    d[[which(vapply(d, function(z) "shape" %in% names(z), logical(1)))[1]]]
+  }
+  # colour only
+  p1 <- plot_ibd_network(ibd, gene = "g", color_group = "region")
+  expect_equal(length(unique(pts(p1)$colour)), 2)
+  expect_equal(length(unique(pts(p1)$shape)), 1)
+  # shape only -- nodes keep a single colour
+  p2 <- plot_ibd_network(ibd, gene = "g", shape_group = "marker")
+  expect_equal(length(unique(pts(p2)$colour)), 1)
+  expect_equal(length(unique(pts(p2)$shape)), 3)
+  # both at once
+  p3 <- plot_ibd_network(ibd, gene = "g", color_group = "region", shape_group = "marker")
+  expect_equal(length(unique(pts(p3)$colour)), 2)
+  expect_equal(length(unique(pts(p3)$shape)), 3)
+  # neither
+  expect_equal(length(unique(pts(plot_ibd_network(ibd, gene = "g"))$colour)), 1)
+  expect_error(plot_ibd_network(ibd, gene = "g", color_group = "nope"), "no column")
+})
+
+test_that("colors/shapes accept named or positional values", {
+  lv <- c("Delta", "Charlie", "Alpha")
+  pal <- function(n) paste0("auto", seq_len(n))
+  # named: maps by name in any order, partial mappings keep the automatic rest
+  got <- .match_scale_values(c(Alpha = "red", Delta = "blue"), lv, "colors", pal)
+  expect_equal(unname(got[c("Delta", "Charlie", "Alpha")]), c("blue", "auto2", "red"))
+  expect_equal(names(got), lv)                       # order follows the levels
+  # unnamed: positional against the level order
+  expect_equal(unname(.match_scale_values(c("a", "b", "c"), lv, "colors", pal)),
+               c("a", "b", "c"))
+  # too few positional values is an error; a stray name is only a warning
+  expect_error(.match_scale_values(c("a", "b"), lv, "colors", pal), "one per level")
+  expect_warning(.match_scale_values(c(Nope = "x"), lv, "colors", pal), "not among the levels")
+  # more shape levels than distinguishable shapes is an error, not a silent recycle
+  expect_error(.shape_palette(length(.SHAPE_PALETTE) + 1), "distinguishable")
+})
+
+test_that("gene_ibd_pairs lists the IBD pairs over each gene with their coverage", {
+  genes <- data.frame(name = c("g1", "g2"), chr = c("7", "7"),
+                      start = c(1000, 5000), end = c(2000, 6000),
+                      gene_id = c("PF3D7_g1", "PF3D7_g2"), stringsAsFactors = FALSE)
+  blocks <- data.frame(
+    sample1 = c("a", "c", "e", "z", "m"),
+    sample2 = c("b", "d", "f", "a", "n"),
+    chr = "Pf3D7_07_v3",
+    # hmmibd end is inclusive, so subtract one from the half-open end we want
+    start = c(500, 1500, 3000, 5499, 500),
+    end   = c(2499, 2499, 3999, 6499, 2499) - 1,
+    different = c(0, 0, 0, 0, 1), stringsAsFactors = FALSE)
+  ibd <- ibd_results(blocks = blocks, genes = genes, min_block_snp = 0, min_block_kb = 0, reference = "pf3d7")
+
+  out <- gene_ibd_pairs(ibd)
+  # only pairs that are IBD (different == 0) and actually reach a gene
+  expect_setequal(paste(out$sample1, out$sample2), c("a b", "c d", "a z"))
+
+  g1 <- out[out$gene == "g1", ]
+  a <- g1[g1$sample1 == "a" & g1$sample2 == "b", ]
+  expect_equal(a$coverage, "complete")
+  expect_equal(c(a$covered_start, a$covered_end), c(1000, 2000))   # the gene's own bounds
+  expect_equal(a$percent_covered, 100)
+  cd <- g1[g1$sample1 == "c", ]
+  expect_equal(cd$coverage, "partial")
+  expect_equal(c(cd$covered_start, cd$covered_end), c(1500, 2000))
+  expect_equal(cd$percent_covered, 50)
+
+  # pairs are order-normalised; several genes arrive in one table
+  expect_true(all(out$sample1 < out$sample2))
+  expect_setequal(as.character(unique(out$gene)), c("g1", "g2"))
+
+  # `within` widens selection only -- coverage stays measured on the gene
+  far <- ibd_results(genes = genes, min_block_snp = 0, min_block_kb = 0, reference = "pf3d7",
+                     blocks = data.frame(sample1 = "a", sample2 = "b", chr = "Pf3D7_07_v3",
+                                         start = 2100, end = 2199, different = 0))
+  expect_equal(nrow(gene_ibd_pairs(far)), 0)
+  w <- gene_ibd_pairs(far, within = 500)
+  expect_equal(nrow(w), 1)
+  expect_equal(w$covered_bp, 0)
+  expect_true(is.na(w$covered_start))
+
+  expect_error(gene_ibd_pairs(ibd_results(genes = genes, reference = "pf3d7")), "no IBD blocks")
+})
+
+test_that("within pads the SNP fallback but never an explicit snps= request", {
+  skip_if_no_ggplot()
+  # a gene with no SNP inside it, and SNPs 3 kb either side
+  genes <- data.frame(name = "g", chr = "1", start = 10000, end = 11000,
+                      stringsAsFactors = FALSE)
+  pw <- data.frame(chr = "Pf3D7_01_v3", pos = c(7000, 14000),
+                   group_a = "A", group_b = "B", frac_pairs_ibd = c(0.2, 0.4),
+                   stringsAsFactors = FALSE)
+  ibd <- ibd_results(pairwise_group = pw, genes = genes, reference = "pf3d7")
+
+  # unpadded, the gene contains nothing -- the honest answer on a sparse panel
+  expect_error(suppressWarnings(plot_pairwise_ibd_for_genes(ibd)), "no.*overlapping SNPs")
+  # the warning names the padding it did use
+  expect_warning(expect_error(plot_pairwise_ibd_for_genes(ibd, within = 500)),
+                 "within 500 bp")
+  # padding wide enough to reach the flanking SNPs makes the gene plottable
+  p <- plot_pairwise_ibd_for_genes(ibd, within = 4000)
+  expect_equal(levels(p$data$gene), "g")
+  expect_equal(p$data$frac_pairs_ibd, mean(c(0.2, 0.4)))   # both flanking SNPs aggregated
+
+  # an explicitly named SNP is never widened, however large `within` is
+  one <- plot_pairwise_ibd_for_genes(ibd, snps = "Pf3D7_01_v3:7000", within = 1e6)
+  expect_equal(nlevels(one$data$gene), 1L)
+  expect_equal(one$data$frac_pairs_ibd, 0.2)               # only that SNP, not its neighbour
+})
+
+test_that("ibd_results filters short / SNP-poor IBD blocks by default", {
+  # hmmibd end is inclusive, so `end` here is one less than the half-open end
+  blocks <- data.frame(
+    sample1 = c("a", "c", "e", "g"), sample2 = c("b", "d", "f", "h"),
+    chr = "Pf3D7_07_v3",
+    start = 0,
+    end   = c(20000, 14999, 20000, 15000) - 1,
+    Nsnp  = c(30, 30, 14, 15),
+    different = 0, stringsAsFactors = FALSE)
+
+  keep <- ibd_results(blocks = blocks, reference = "pf3d7")$get_blocks()
+  expect_equal(keep$sample1, c("a", "g"))            # long+SNP-rich, and exactly at bounds
+
+  # every compared pair is still known, so no denominator shrinks
+  obj <- ibd_results(blocks = blocks, reference = "pf3d7")
+  expect_setequal(obj$get_analyzed_samples(), c("a", "b", "c", "d", "e", "f", "g", "h"))
+
+  # either criterion can be switched off
+  expect_equal(ibd_results(blocks = blocks, min_block_kb = 0,
+                           reference = "pf3d7")$get_blocks()$sample1, c("a", "c", "g"))
+  expect_equal(ibd_results(blocks = blocks, min_block_snp = 0,
+                           reference = "pf3d7")$get_blocks()$sample1, c("a", "e", "g"))
+  expect_equal(nrow(ibd_results(blocks = blocks, min_block_snp = 0, min_block_kb = 0,
+                                reference = "pf3d7")$get_blocks()), 4)
+
+  # no Nsnp column: warn, and fall back to the length criterion alone
+  expect_warning(
+    got <- ibd_results(blocks = blocks[, setdiff(names(blocks), "Nsnp")],
+                       reference = "pf3d7")$get_blocks(),
+    "no 'Nsnp' column")
+  expect_equal(got$sample1, c("a", "e", "g"))
+})
+
+test_that("plot_ibd_network sharing = 'complete' requires the whole interval", {
+  skip_if_no_ggplot()
+  testthat::skip_if_not_installed("igraph")
+  testthat::skip_if_not_installed("ggraph")
+  genes <- data.frame(name = "g", chr = "7", start = 1000, end = 2000,
+                      stringsAsFactors = FALSE)
+  # a,b span the gene; c,d cover only its back half; e,f sit outside it entirely
+  blocks <- data.frame(
+    sample1 = c("a", "c", "e"), sample2 = c("b", "d", "f"), chr = "Pf3D7_07_v3",
+    start = c(500, 1500, 3000),
+    end   = c(2500, 2500, 4000) - 1,     # hmmibd end is inclusive
+    different = 0, stringsAsFactors = FALSE)
+  ibd <- ibd_results(blocks = blocks, genes = genes,
+                     min_block_snp = 0, min_block_kb = 0, reference = "pf3d7")
+  n_edges <- function(p) {
+    d <- ggplot2::ggplot_build(p)$data
+    i <- which(vapply(d, function(z) all(c("x", "xend") %in% names(z)), logical(1)))[1]
+    if (is.na(i)) 0L else nrow(d[[i]])
+  }
+  expect_equal(n_edges(plot_ibd_network(ibd, gene = "g")), 2)                    # a-b and c-d
+  expect_equal(n_edges(plot_ibd_network(ibd, gene = "g", sharing = "complete")), 1)  # only a-b
+
+  # the subtitle says which criterion produced the graph
+  expect_match(plot_ibd_network(ibd, gene = "g")$labels$subtitle, "part of the interval")
+  expect_match(plot_ibd_network(ibd, gene = "g", sharing = "complete")$labels$subtitle,
+               "the whole interval")
+
+  # `within` applies to both: padding makes "complete" ask for more, so a-b stops qualifying
+  expect_equal(n_edges(plot_ibd_network(ibd, gene = "g", within = 1000)), 2)
+  expect_error(plot_ibd_network(ibd, gene = "g", within = 1000, sharing = "complete"),
+               "no samples share")
+  expect_error(plot_ibd_network(ibd, gene = "g", sharing = "nope"), "'arg' should be one of")
+})
+
+test_that("both threshold plots accept the same draw_threshold values", {
+  skip_if_not_installed("ggplot2")
+  ibd <- example_ibd_results()
+  # the FDR columns a current `ibd_selection_statistic` writes
+  thr <- ibd$get_thresholds()
+  sel <- ibd$get_selection()
+  skip_if(is.null(thr) || is.null(sel))
+
+  fns <- list(manhattan = plot_selection_manhattan, tugofwar = plot_ibd_tugofwar)
+  for (nm in names(fns)) {
+    for (w in list(TRUE, FALSE, "bonferroni", "none")) {
+      p <- fns[[nm]](ibd, draw_threshold = w)
+      expect_s3_class(p, "ggplot")
+    }
+    # a bad value is rejected the same way by both, rather than reaching `&&`
+    expect_error(fns[[nm]](ibd, draw_threshold = "nope"), "should be one of|must be")
+  }
+})
+
+test_that("an FDR line is drawn when the thresholds carry one", {
+  skip_if_not_installed("ggplot2")
+  sel <- data.frame(
+    group = "a", chr = "Pf3D7_07_v3", pos = seq(1000, by = 1000, length.out = 50),
+    neg_log10_p = seq(0.1, 8, length.out = 50), stringsAsFactors = FALSE)
+  thr <- data.frame(group = "a", threshold = 6, neg_log10_p_fdr_threshold = 3)
+  ibd <- ibd_results(selection = sel, threshold = thr, genes = PF_EXAMPLE_DRUG_GENES)
+
+  n_lines <- function(p) sum(vapply(p$layers,
+    function(l) inherits(l$geom, "GeomHline"), logical(1)))
+  bonf <- plot_selection_manhattan(ibd, draw_threshold = "bonferroni")
+  both <- plot_selection_manhattan(ibd, draw_threshold = "both")
+  none <- plot_selection_manhattan(ibd, draw_threshold = FALSE)
+  expect_gt(n_lines(both), n_lines(bonf))
+  expect_gt(n_lines(bonf), n_lines(none))
+
+  # an older run with no FDR column says so instead of drawing the wrong line
+  old <- ibd_results(selection = sel, threshold = data.frame(group = "a", threshold = 6))
+  expect_error(plot_selection_manhattan(old, draw_threshold = "fdr"), "no FDR threshold")
+})
+
+# --------------------------------------------------------------------------- #
+#  Fill-scale breaks and labels                                                #
+# --------------------------------------------------------------------------- #
+
+test_that("fill breaks are the transform's round numbers, topped by the maximum", {
+  lg <- plasgenomicsutilsR:::.fill_breaks(c(0.00054, 0.52), "log2")
+  expect_equal(max(lg), 0.52)                      # the top of the bar is labelled
+  # everything below it is a power of two, which is what log2 should read as
+  pw <- lg[lg < 0.52]
+  expect_true(all(abs(log2(pw) - round(log2(pw))) < 1e-8))
+
+  lin <- plasgenomicsutilsR:::.fill_breaks(c(0, 0.52), "identity")
+  expect_equal(max(lin), 0.52)
+  expect_true(all(lin >= 0 & lin <= 0.52))
+})
+
+test_that("a round break too close to the maximum is dropped, not printed on top of it", {
+  b <- plasgenomicsutilsR:::.fill_breaks(c(0, 0.52), "identity")
+  expect_false(any(abs(b - 0.5) < 1e-8))           # 0.5 would collide with 0.52
+  # ...but a maximum that *is* round keeps it, with no duplicate
+  b2 <- plasgenomicsutilsR:::.fill_breaks(c(0, 0.5), "identity")
+  expect_equal(max(b2), 0.5)
+  expect_equal(anyDuplicated(b2), 0L)
+})
+
+test_that("a non-linear scale says so in its title", {
+  expect_equal(plasgenomicsutilsR:::.fill_scale_name("pairs IBD", "identity"), "pairs IBD")
+  expect_equal(plasgenomicsutilsR:::.fill_scale_name("pairs IBD", "log2"),
+               "pairs IBD (log2)")
+  expect_equal(plasgenomicsutilsR:::.fill_scale_name("pairs IBD", "sqrt"),
+               "pairs IBD (sqrt)")
+})
+
+test_that("degenerate limits fall back to the default breaks", {
+  expect_null(plasgenomicsutilsR:::.fill_breaks(NULL, "identity"))
+  expect_null(plasgenomicsutilsR:::.fill_breaks(c(1, 1), "identity"))
+  expect_null(plasgenomicsutilsR:::.fill_breaks(c(NA, 1), "identity"))
+  expect_null(plasgenomicsutilsR:::.fill_breaks(c(0, 1), "log2"))   # log needs lo > 0
+})
+
+test_that("labels keep small values legible instead of rounding them to zero", {
+  # the real case: a log2 scale whose bottom break is a few ten-thousandths
+  lab <- plasgenomicsutilsR:::.fill_labels(c(0.00054, 0.0053, 0.053, 0.52))
+  expect_equal(lab, c("0.00054", "0.0053", "0.053", "0.52"))
+  expect_false(any(lab == "0"))                       # 2 decimal places would give "0"
+  # no ten-decimal padding, and a true zero still reads as 0
+  expect_equal(plasgenomicsutilsR:::.fill_labels(c(0, 0.25, 0.5)), c("0", "0.25", "0.5"))
+  # precision is the least that keeps the breaks distinct: 3 digits separates these
+  expect_equal(plasgenomicsutilsR:::.fill_labels(c(0.1234, 0.1236)), c("0.123", "0.124"))
+  # ...and it grows when that is not enough
+  expect_equal(plasgenomicsutilsR:::.fill_labels(c(0.12341, 0.12342)),
+               c("0.12341", "0.12342"))
+})
+
+test_that("the drawn legend ends at the data maximum, shared or per-page", {
+  skip_if_not_installed("ggplot2")
+  # a precomputed overlap table, so the values under the legend are known exactly
+  grid <- expand.grid(group_a = c("a", "b", "c"), group_b = c("a", "b", "c"),
+                      gene = c("g1", "g2"), stringsAsFactors = FALSE)
+  grid <- grid[grid$group_a <= grid$group_b, ]
+  set.seed(1)
+  grid$frac_pairs_ibd <- c(seq(0.001, 0.10, length.out = 6),      # g1 tops out at 0.10
+                           seq(0.001, 0.52, length.out = 6))      # g2 tops out at 0.52
+  ibd <- ibd_results(gene_overlap = grid)
+
+  top <- function(p) {
+    g <- ggplot2::ggplot_build(p)
+    as.numeric(utils::tail(g$plot$scales$get_scales("fill")$get_labels(), 1))
+  }
+  faceted <- plot_pairwise_ibd_for_genes(ibd)
+  expect_equal(top(faceted), 0.52, tolerance = 0.01)
+
+  # per page, each scales to its own maximum...
+  free <- plot_pairwise_ibd_for_genes(ibd, individual = TRUE)
+  expect_equal(unname(sort(vapply(free, top, numeric(1)))), c(0.10, 0.52), tolerance = 0.01)
+
+  # ...and limits = "shared" pins every page to the overall maximum, which is the whole
+  # point: before this, a log scale's last label stopped below the strongest colour
+  shared <- plot_pairwise_ibd_for_genes(ibd, individual = TRUE, limits = "shared")
+  expect_equal(unname(vapply(shared, top, numeric(1))), c(0.52, 0.52), tolerance = 0.01)
+
+  lg <- plot_pairwise_ibd_for_genes(ibd, individual = TRUE, trans = "log2",
+                                    limits = "shared")
+  expect_equal(unname(vapply(lg, top, numeric(1))), c(0.52, 0.52), tolerance = 0.01)
+  # and the log scale announces itself
+  title <- ggplot2::ggplot_build(lg[[1]])$plot$scales$get_scales("fill")$name
+  expect_equal(title, "pairs IBD (log2)")
 })
