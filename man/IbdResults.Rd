@@ -306,6 +306,13 @@ from \code{levels} (it would silently become \code{NA}); warns about levels no r
     \preformatted{IbdResults$print(...)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Ignored; present for the \code{print()} generic.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}

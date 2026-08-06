@@ -86,8 +86,13 @@ IBD_MIN_BLOCK_KB <- 15
     rcol <- intersect(c("group", "population"), names(df))[1]
     # the FDR cutoff and the calibration diagnostic ride along when present, so a plot can
     # draw either line and the printed object can show why neither may be trustworthy
-    extra <- intersect(c("neg_log10_p_fdr_threshold", "fdr_alpha", "alpha", "n_tests",
-                         "n_significant", "n_significant_fdr", "lambda_gc"), names(df))
+    extra <- intersect(c("neg_log10_p_fdr_threshold", "neg_log10_p_perm_threshold",
+                         "neg_log10_p_emp_fdr_threshold",
+                         "fdr_alpha", "alpha", "n_tests", "n_significant",
+                         "n_significant_fdr", "n_significant_perm",
+                         "n_significant_fdr_perm", "n_perm", "q_empirical_floor",
+                         "empirical_pool", "lambda_gc"),
+                       names(df))
     out <- if (is.na(rcol))
       tibble::tibble(group = NA_character_, threshold = as.numeric(df[[tcol]])[1])
     else
@@ -286,6 +291,7 @@ IbdResults <- R6::R6Class(
     reference_id = function() private$reference,
 
     #' @description Compact summary of what the object holds.
+    #' @param ... Ignored; present for the `print()` generic.
     print = function(...) {
       cat("<IbdResults>  reference:", private$reference, "\n")
       shape <- function(df) if (is.null(df)) "-" else paste(nrow(df), "rows")
@@ -427,8 +433,7 @@ IbdResults <- R6::R6Class(
 #'
 #' Convenience wrapper for `IbdResults$new()`.
 #'
-#' @inheritParams IbdResults
-#' @param ... Passed to [IbdResults]'s constructor.
+#' @param ... Passed to [IbdResults]'s constructor; see there for the arguments.
 #' @return An [IbdResults] object.
 #' @export
 ibd_results <- function(...) {

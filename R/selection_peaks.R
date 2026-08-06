@@ -39,16 +39,24 @@ PEAK_GAP_BP <- 20000L
     }
     return(keep)
   }
-  # bonferroni / fdr: prefer the flag the scan already carries, else the stored line
-  flag <- if (criterion == "fdr") "significant_fdr" else "significant"
+  # bonferroni / fdr / permutation: prefer the flag the scan already carries, else the
+  # stored line
+  flag <- switch(criterion, fdr = "significant_fdr",
+                 permutation = "significant_perm",
+                 empirical = "significant_fdr_perm", "significant")
   if (flag %in% names(df)) return(.flag_true(df[[flag]]))
   if (is.null(thresholds))
     stop(sprintf("the scan has no `%s` column and no thresholds were supplied", flag),
          call. = FALSE)
-  col <- if (criterion == "fdr") "neg_log10_p_fdr_threshold" else "threshold"
+  col <- switch(criterion, fdr = "neg_log10_p_fdr_threshold",
+                permutation = "neg_log10_p_perm_threshold",
+                empirical = "neg_log10_p_emp_fdr_threshold", "threshold")
   if (!col %in% names(thresholds))
-    stop(sprintf("the thresholds have no `%s`; regenerate with a current %s", col,
-                 "`ibd_selection_statistic`"), call. = FALSE)
+    stop(sprintf("the thresholds have no `%s`; %s", col,
+                 if (criterion %in% c("permutation", "empirical"))
+                   "rerun `ibd_selection_statistic --permute 200`"
+                 else "regenerate with a current `ibd_selection_statistic`"),
+         call. = FALSE)
   line <- thresholds[[col]][match(as.character(df$.grp), as.character(thresholds$group))]
   if (all(is.na(line)) && nrow(thresholds) == 1L) line <- thresholds[[col]][1]
   is.finite(v) & is.finite(line) & v >= line
@@ -74,6 +82,12 @@ PEAK_GAP_BP <- 20000L
 #' @param criterion How a SNP qualifies:
 #'   * `"bonferroni"` (default) / `"fdr"` — the scan's own `significant` /
 #'     `significant_fdr` flag, or the matching stored threshold line.
+#'   * `"permutation"` — the `significant_perm` flag from
+#'     `ibd_selection_statistic --permute`: family-wise control against a null drawn from
+#'     the data rather than a chi-square(1). Prefer it when `lambda_gc` is far from 1.
+#'   * `"empirical"` — the `significant_fdr_perm` flag from the same run: Benjamini-Hochberg
+#'     over the permutation's own per-SNP p-values. The FDR counterpart of `"permutation"`,
+#'     and the only FDR here resting on calibrated p-values.
 #'   * `"top"` — the top `top` fraction within each group, the convention for scans whose
 #'     null is not trustworthy.
 #'   * `"value"` — at or above `cutoff`.
@@ -120,7 +134,9 @@ PEAK_GAP_BP <- 20000L
 #' b <- beta_score(ps, group = "country", window = 300000, min_window_snps = 1)
 #' selection_peaks(b, criterion = "top", top = 0.2, genes = PF_EXAMPLE_DRUG_GENES)
 #' @export
-selection_peaks <- function(x, criterion = c("bonferroni", "fdr", "top", "value"),
+selection_peaks <- function(x,
+                            criterion = c("bonferroni", "fdr", "permutation",
+                                          "empirical", "top", "value"),
                             metric = NULL, cutoff = NULL, top = 0.01,
                             gap = PEAK_GAP_BP, min_snps = 1L, pad = 0,
                             genes = NULL, thresholds = NULL) {

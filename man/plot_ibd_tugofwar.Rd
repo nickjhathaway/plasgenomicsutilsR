@@ -41,10 +41,12 @@ requesting a name not in the track is an error.}
 \item{label_genes}{Label the genes. \code{NULL} (default) labels them only when
 \code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
-\item{draw_threshold}{Which significance line to draw (only for \code{neg_log10_p}, and
-only when not \code{normalized}): \code{TRUE} / \code{"bonferroni"} for the family-wise line,
-\code{"fdr"} for the Benjamini-Hochberg cutoff, \code{"both"}, or \code{FALSE}. Mapped through the
-same transform as the mirrored selection half, so it lands where the data does.}
+\item{draw_threshold}{Which significance line(s) to draw (only for \code{neg_log10_p}, and
+only when not \code{normalized}): \code{TRUE} / \code{"bonferroni"} (red dashed), \code{"fdr"} (blue
+dot-dash), \code{"permutation"} (green solid), \code{"both"} for the first two, \code{"all"} for all
+three, or \code{FALSE} -- the same set \code{plot_selection_manhattan()} takes, resolved by the
+same helper. Each line is mapped through the same transform as the mirrored selection
+half, so it lands where the data does.}
 
 \item{selection_colour, ibd_colour}{Bar and axis colours for the two tracks.}
 }

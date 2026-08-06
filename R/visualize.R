@@ -4,14 +4,29 @@
 
 # ---- shared plotting pieces ------------------------------------------------
 
-# alternating grey chromosome bands behind a genome-wide track
-.chr_band_layer <- function(layout) {
-  bands <- layout[layout$band == "a", , drop = FALSE]
-  ggplot2::geom_rect(
-    data = bands,
-    ggplot2::aes(xmin = .data$xmin, xmax = .data$xmax, ymin = -Inf, ymax = Inf),
-    fill = "#ebebeb", inherit.aes = FALSE
-  )
+# Alternating chromosome bands behind a genome-wide track. By default the second band is
+# the panel itself (`NA` = draw nothing), which is what a track of points wants.
+#
+# Two greys instead, for a track whose *fill* carries the meaning: the IBD scales start at
+# white, so a zero tile drawn over a white band vanishes while the same tile over a grey
+# band is plainly there -- the plot would then show sequenced-but-not-IBD positions on
+# every other chromosome only. Both bands grey keeps a white tile visible throughout.
+.CHR_BAND_TILE <- c("#d9d9d9", "#f0f0f0")
+
+# One layer per band rather than one layer with a vector of fills: a faceted plot
+# replicates each layer's data across panels, so a per-row fill would no longer line up.
+.chr_band_layer <- function(layout, fills = c("#ebebeb", NA)) {
+  out <- lapply(seq_along(c("a", "b")), function(i) {
+    d <- layout[layout$band == c("a", "b")[i], , drop = FALSE]
+    if (is.na(fills[i]) || !nrow(d)) return(NULL)
+    ggplot2::geom_rect(
+      data = d,
+      ggplot2::aes(xmin = .data$xmin, xmax = .data$xmax, ymin = -Inf, ymax = Inf),
+      fill = fills[i], inherit.aes = FALSE
+    )
+  })
+  out <- Filter(Negate(is.null), out)
+  if (!length(out)) NULL else out
 }
 
 # chromosome axis: ticks at each chromosome mid-point, labelled by number
@@ -127,22 +142,43 @@
   if (isFALSE(x) || is.null(x)) return("none")
   if (!is.character(x))
     stop("`draw_threshold` must be TRUE/FALSE or one of \"bonferroni\", \"fdr\", ",
-         "\"both\", \"none\"", call. = FALSE)
-  match.arg(x, c("bonferroni", "fdr", "both", "none"))
+         "\"permutation\", \"empirical\", \"all\", \"both\", \"none\"", call. = FALSE)
+  match.arg(x, c("bonferroni", "fdr", "permutation", "empirical", "all", "both", "none"))
 }
 
 .threshold_kinds <- function(which_thr) {
-  if (which_thr == "both") c("bonferroni", "fdr") else which_thr
+  switch(which_thr,
+         none = character(0),
+         both = c("bonferroni", "fdr"),
+         all = c("bonferroni", "fdr", "permutation", "empirical"),
+         which_thr)
 }
 
+# colour / linetype per threshold kind, so one line always means one thing
+# The two chi2(1)-based lines are warm, the two permutation-based ones cool-to-green, so
+# which family a line belongs to reads off the plot before the legend does.
+.THRESHOLD_STYLE <- list(
+  bonferroni  = list(colour = "firebrick", linetype = "dashed"),
+  fdr         = list(colour = "#E69F00",  linetype = "dotdash"),
+  permutation = list(colour = "#117733",  linetype = "solid"),
+  empirical   = list(colour = "#2271B2",  linetype = "longdash")
+)
+
 # One kind of threshold as a group/threshold frame, or NULL when it is not available.
-.threshold_line <- function(thr, kind) {
+# `strict` says the caller named this kind, so a run that lacks it is an error rather
+# than something to skip; under "all" the kinds are implied and missing ones are skipped.
+.threshold_line <- function(thr, kind, strict = TRUE) {
   if (is.null(thr)) return(NULL)
-  col <- if (kind == "fdr") "neg_log10_p_fdr_threshold" else "threshold"
+  col <- switch(kind, fdr = "neg_log10_p_fdr_threshold",
+                permutation = "neg_log10_p_perm_threshold",
+                empirical = "neg_log10_p_emp_fdr_threshold", "threshold")
   if (!col %in% names(thr)) {
-    if (kind == "fdr")
+    if (strict && kind == "fdr")
       stop("this selection run has no FDR threshold; regenerate with a current ",
            "`ibd_selection_statistic`", call. = FALSE)
+    if (strict && kind %in% c("permutation", "empirical"))
+      stop("this selection run has no ", kind, " threshold; rerun ",
+           "`ibd_selection_statistic --permute 200`", call. = FALSE)
     return(NULL)
   }
   out <- thr[c(intersect("group", names(thr)), col)]
@@ -397,11 +433,16 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
 #'   track is an error.
 #' @param label_genes Label the genes. `NULL` (default) labels them only when
 #'   `highlight_genes` is given; `TRUE`/`FALSE` forces it.
-#' @param draw_threshold Draw a significance line (only for `neg_log10_p`): `TRUE` /
-#'   `"bonferroni"` for the family-wise line, `"fdr"` for the Benjamini-Hochberg cutoff,
-#'   `"both"` for both, `FALSE` for none. Read either against the `lambda_gc` reported by
-#'   `ibd_selection_statistic`: far from 1 means the chi2(1) null does not fit and both
-#'   lines rest on miscalibrated p-values.
+#' @param draw_threshold Which significance line(s) to draw (only for `neg_log10_p`):
+#'   `TRUE` / `"bonferroni"` (red dashed), `"fdr"` (blue dot-dash), `"permutation"`
+#'   (green solid), `"both"` for the first two, `"all"` for all three, or `FALSE`.
+#'   Prefer the permutation line where it disagrees with the other two: it is built by
+#'   re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
+#'   it accounts for one segment spanning many SNPs. On real data it lands several times
+#'   higher than Bonferroni's. `lambda_gc` says how far that reference is from fitting;
+#'   the further from 1, the less the two parametric lines mean.
+#'   A run that did not write the line asked for is an error, but `"all"` quietly draws
+#'   whichever kinds the threshold table carries.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours Optional length-2 colour vector for the alternating chromosome bands.
 #' @return A ggplot object.
@@ -443,36 +484,24 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
 
   thr <- x$get_thresholds()
   which_thr <- .resolve_threshold(draw_threshold)
-  if (which_thr %in% c("fdr", "both") && metric == "neg_log10_p" && !is.null(thr)) {
-    fdr <- .threshold_line(thr, "fdr")
-    if (!is.null(fdr)) {
-      has_g <- "group" %in% names(fdr) && any(!is.na(fdr$group)) && "group" %in% names(df)
-      p <- p + if (has_g)
-        ggplot2::geom_hline(data = fdr[fdr$group %in% df$group, , drop = FALSE],
-          ggplot2::aes(yintercept = .data$threshold), colour = "#2271B2",
-          linetype = "dotdash", linewidth = 0.4)
-      else
-        ggplot2::geom_hline(yintercept = fdr$threshold[1], colour = "#2271B2",
-          linetype = "dotdash", linewidth = 0.4)
-    }
-  }
-  if (which_thr %in% c("bonferroni", "both") && metric == "neg_log10_p" && !is.null(thr)) {
-    # Drop non-finite thresholds up front: a group with no valid SNPs gets a
-    # NaN threshold (written as an empty cell by `ibd_selection_statistic`), and
-    # feeding NA to geom_hline draws nothing but warns ("Removed N rows ...").
-    thr <- thr[is.finite(thr$threshold), , drop = FALSE]
-    has_group <- "group" %in% names(thr) && any(!is.na(thr$group))
-    if (has_group && "group" %in% names(df)) {
-      thr <- thr[thr$group %in% df$group, , drop = FALSE]
-      if (nrow(thr)) {
-        p <- p + ggplot2::geom_hline(data = thr,
-          ggplot2::aes(yintercept = .data$threshold), colour = "firebrick",
-          linetype = "dashed", linewidth = 0.4)
-      }
-    } else if (nrow(thr)) {
-      p <- p + ggplot2::geom_hline(yintercept = thr$threshold[1], colour = "firebrick",
-        linetype = "dashed", linewidth = 0.4)
-    }
+  kinds <- .threshold_kinds(which_thr)
+  if (metric == "neg_log10_p") for (kind in kinds) {
+    # `.threshold_line()` drops non-finite thresholds: a group with no valid SNPs gets a
+    # NaN threshold (written as an empty cell by `ibd_selection_statistic`), and feeding
+    # NA to geom_hline draws nothing but warns ("Removed N rows ...").
+    line <- .threshold_line(thr, kind, strict = which_thr == kind)
+    if (is.null(line)) next
+    sty <- .THRESHOLD_STYLE[[kind]]
+    has_g <- "group" %in% names(line) && any(!is.na(line$group)) && "group" %in% names(df)
+    if (has_g) line <- line[line$group %in% df$group, , drop = FALSE]
+    if (!nrow(line)) next
+    p <- p + if (has_g)
+      ggplot2::geom_hline(data = line,
+        ggplot2::aes(yintercept = .data$threshold), colour = sty$colour,
+        linetype = sty$linetype, linewidth = 0.4)
+    else
+      ggplot2::geom_hline(yintercept = line$threshold[1], colour = sty$colour,
+        linetype = sty$linetype, linewidth = 0.4)
   }
   if ("group" %in% names(df)) {
     p <- p + ggplot2::facet_wrap(~ .data$group, ncol = 1, strip.position = "right")
@@ -538,7 +567,7 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 
   p <- ggplot2::ggplot(full, ggplot2::aes(.data$cum_pos, .data$group_b,
                                           fill = .data$frac_pairs_ibd)) +
-    .chr_band_layer(layout) +                          # alternating grey chromosome bands
+    .chr_band_layer(layout, .CHR_BAND_TILE) +          # two greys: see .chr_band_layer()
     ggplot2::geom_tile(width = tile_w, height = 0.9) +
     .chr_boundary_layer(layout) +                      # + a thin line at each chromosome edge
     .gene_line_layer(genes) +
@@ -586,10 +615,12 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #'   requesting a name not in the track is an error.
 #' @param label_genes Label the genes. `NULL` (default) labels them only when
 #'   `highlight_genes` is given; `TRUE`/`FALSE` forces it.
-#' @param draw_threshold Which significance line to draw (only for `neg_log10_p`, and
-#'   only when not `normalized`): `TRUE` / `"bonferroni"` for the family-wise line,
-#'   `"fdr"` for the Benjamini-Hochberg cutoff, `"both"`, or `FALSE`. Mapped through the
-#'   same transform as the mirrored selection half, so it lands where the data does.
+#' @param draw_threshold Which significance line(s) to draw (only for `neg_log10_p`, and
+#'   only when not `normalized`): `TRUE` / `"bonferroni"` (red dashed), `"fdr"` (blue
+#'   dot-dash), `"permutation"` (green solid), `"both"` for the first two, `"all"` for all
+#'   three, or `FALSE` -- the same set `plot_selection_manhattan()` takes, resolved by the
+#'   same helper. Each line is mapped through the same transform as the mirrored selection
+#'   half, so it lands where the data does.
 #' @param selection_colour,ibd_colour Bar and axis colours for the two tracks.
 #' @return A ggplot object.
 #' @export
@@ -621,13 +652,16 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
   genes <- .genes_for_layout(x$get_genes(), layout, highlight_genes)
   genome_frac <- sum(layout$len) / sum(x$chrom_layout()$len)
 
-  present <- sort(unique(c(sel$group, ibd$group)))
+  # a table written before the grouping column was standardised names it after the
+  # grouping instead ("region"); reaching for `$group` there warns and silently unfacets
+  .grp_of <- function(df) if ("group" %in% names(df)) as.character(df$group) else NULL
+  present <- sort(unique(c(.grp_of(sel), .grp_of(ibd))))
   faceted <- ("group" %in% names(sel)) && length(present) > 1
   top_level <- if (faceted) present[1] else NULL
 
   # normalise each track so its tallest bar reaches the centre (y = 0). common =
   # one shared max (panels comparable); free = each group to its own max.
-  normalized <- scale == "free" && "group" %in% names(sel)
+  normalized <- scale == "free" && "group" %in% names(sel) && "group" %in% names(ibd)
   if (normalized) {
     sm <- tapply(sel[[metric]], sel$group, max, na.rm = TRUE)
     im <- tapply(ibd$frac_pairs_ibd, ibd$group, max, na.rm = TRUE)
@@ -678,7 +712,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
     all_thr <- x$get_thresholds()
     thr_layer <- list()
     for (kind in .threshold_kinds(which_thr)) {
-      thr <- .threshold_line(all_thr, kind)
+      thr <- .threshold_line(all_thr, kind, strict = which_thr == kind)
       if (is.null(thr)) next
       if ("group" %in% names(thr) && any(!is.na(thr$group)) && "group" %in% names(sel))
         thr <- thr[thr$group %in% present, , drop = FALSE]
@@ -686,10 +720,10 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
       # the selection half of the mirror is drawn upside down in [0, 1], so the line has
       # to be mapped through the same transform as the data
       thr$.y <- 1 - thr$threshold / sel_max
+      sty <- .THRESHOLD_STYLE[[kind]]
       thr_layer[[kind]] <- ggplot2::geom_hline(
         data = thr, ggplot2::aes(yintercept = .data$.y), inherit.aes = FALSE,
-        colour = if (kind == "fdr") "#2271B2" else "firebrick",
-        linetype = if (kind == "fdr") "dotdash" else "dashed", linewidth = 0.4)
+        colour = sty$colour, linetype = sty$linetype, linewidth = 0.4)
     }
     if (!length(thr_layer)) thr_layer <- NULL
   }

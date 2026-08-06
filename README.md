@@ -67,8 +67,9 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
 - **`IbdResults` + `plot_*()`** — an R6 container over the tables the Python
   `plasgenomicsutils ibd` tools emit, and genome-wide plots reading from it:
   - `plot_ibd_sharing_manhattan()` — per-SNP fraction of pairs IBD along the genome
-  - `plot_selection_manhattan()` — the IBD selection statistic, with the
-    Bonferroni threshold line
+  - `plot_selection_manhattan()` — the IBD selection statistic, with a
+    `draw_threshold =` line: `"bonferroni"`, `"fdr"`, `"permutation"`, `"empirical"`
+    (whichever the Python side wrote), or `"all"`
   - `plot_ibd_pairwise_group_heatmap()` — group × group IBD as tiles along the genome
   - `plot_ibd_tugofwar()` — selection (top) vs IBD (bottom) mirror for one group
   - `plot_pairwise_ibd_for_genes()` — group × group IBD-sharing triangles, per gene. With

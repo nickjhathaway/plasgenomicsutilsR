@@ -6,7 +6,7 @@
 \usage{
 selection_peaks(
   x,
-  criterion = c("bonferroni", "fdr", "top", "value"),
+  criterion = c("bonferroni", "fdr", "permutation", "empirical", "top", "value"),
   metric = NULL,
   cutoff = NULL,
   top = 0.01,
@@ -24,6 +24,12 @@ selection_peaks(
 \itemize{
 \item \code{"bonferroni"} (default) / \code{"fdr"} — the scan's own \code{significant} /
 \code{significant_fdr} flag, or the matching stored threshold line.
+\item \code{"permutation"} — the \code{significant_perm} flag from
+\code{ibd_selection_statistic --permute}: family-wise control against a null drawn from
+the data rather than a chi-square(1). Prefer it when \code{lambda_gc} is far from 1.
+\item \code{"empirical"} — the \code{significant_fdr_perm} flag from the same run: Benjamini-Hochberg
+over the permutation's own per-SNP p-values. The FDR counterpart of \code{"permutation"},
+and the only FDR here resting on calibrated p-values.
 \item \code{"top"} — the top \code{top} fraction within each group, the convention for scans whose
 null is not trustworthy.
 \item \code{"value"} — at or above \code{cutoff}.

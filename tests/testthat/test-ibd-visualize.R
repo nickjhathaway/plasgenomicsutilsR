@@ -454,10 +454,12 @@ test_that("group heatmap shows chromosome bands + full genome extent, log fill i
   expect_silent(ggplot2::ggplotGrob(plot_ibd_pairwise_group_heatmap(ex, trans = "log2")))
   p <- plot_ibd_pairwise_group_heatmap(ex)
   b <- ggplot2::ggplot_build(p)
-  # a grey chromosome-band rect layer is present
-  has_bands <- any(vapply(b$data, function(d)
-    all(c("xmin", "xmax") %in% names(d)) && any(d$fill == "#ebebeb", na.rm = TRUE), logical(1)))
-  expect_true(has_bands)
+  # the chromosome-band rect layers are present, in this plot's own two-grey palette
+  band <- plasgenomicsutilsR:::.CHR_BAND_TILE
+  has_bands <- vapply(band, function(col) any(vapply(b$data, function(d)
+    all(c("xmin", "xmax") %in% names(d)) && any(d$fill == col, na.rm = TRUE), logical(1))),
+    logical(1))
+  expect_true(all(has_bands))
   # the x-axis spans the full chromosome lengths (empty regions shown), not just SNP positions
   xr <- b$layout$panel_params[[1]]$x.range
   expect_gte(xr[2], max(ex$chrom_layout()$xmax) * 0.99)
@@ -845,6 +847,53 @@ test_that("an FDR line is drawn when the thresholds carry one", {
   expect_error(plot_selection_manhattan(old, draw_threshold = "fdr"), "no FDR threshold")
 })
 
+test_that("the permutation line is drawn, and 'all' draws every kind available", {
+  skip_if_not_installed("ggplot2")
+  sel <- data.frame(
+    group = "a", chr = "Pf3D7_07_v3", pos = seq(1000, by = 1000, length.out = 50),
+    neg_log10_p = seq(0.1, 20, length.out = 50), stringsAsFactors = FALSE)
+  thr <- data.frame(group = "a", threshold = 6, neg_log10_p_fdr_threshold = 3,
+                    neg_log10_p_perm_threshold = 15,
+                    neg_log10_p_emp_fdr_threshold = 11)
+  psg <- data.frame(group = "a", chr = sel$chr, pos = sel$pos,
+                    frac_pairs_ibd = seq(0, 0.4, length.out = 50))
+  ibd <- ibd_results(selection = sel, threshold = thr, per_snp_group = psg,
+                     genes = PF_EXAMPLE_DRUG_GENES)
+
+  # the tug-of-war also draws a plain hline at its mirror axis; only the threshold lines
+  # carry a `threshold` column
+  hlines <- function(p) Filter(
+    function(l) inherits(l$geom, "GeomHline") && !is.null(l$data$threshold), p$layers)
+  at <- function(p) unname(sort(vapply(hlines(p),
+    function(l) l$data$threshold[1], numeric(1))))
+
+  for (nm in c("plot_selection_manhattan", "plot_ibd_tugofwar")) {
+    f <- get(nm)
+    expect_equal(at(f(ibd, draw_threshold = "permutation")), 15)
+    expect_equal(at(f(ibd, draw_threshold = "empirical")), 11)
+    expect_equal(at(f(ibd, draw_threshold = "all")), c(3, 6, 11, 15))
+    # each kind gets its own linetype, so "all" is readable
+    lt <- vapply(hlines(f(ibd, draw_threshold = "all")),
+                 function(l) as.character(l$aes_params$linetype), character(1))
+    expect_equal(length(unique(lt)), 4L)
+  }
+
+  # the empirical-FDR line sits between the family-wise permutation line and plain BH,
+  # which is what controlling FDR against a data-driven null should look like
+  a <- at(plot_selection_manhattan(ibd, draw_threshold = "all"))
+  expect_true(a[2] < a[3] && a[3] < a[4])   # fdr < bonferroni < empirical < permutation
+
+  # a run without --permute says so rather than silently dropping the line
+  no_perm <- ibd_results(selection = sel, per_snp_group = psg,
+                         threshold = data.frame(group = "a", threshold = 6))
+  expect_error(plot_selection_manhattan(no_perm, draw_threshold = "permutation"),
+               "no permutation threshold")
+  expect_error(plot_selection_manhattan(no_perm, draw_threshold = "empirical"),
+               "no empirical threshold")
+  # "all" on that run falls back to what is there
+  expect_equal(at(plot_selection_manhattan(no_perm, draw_threshold = "all")), 6)
+})
+
 # --------------------------------------------------------------------------- #
 #  Fill-scale breaks and labels                                                #
 # --------------------------------------------------------------------------- #
@@ -932,4 +981,45 @@ test_that("the drawn legend ends at the data maximum, shared or per-page", {
   # and the log scale announces itself
   title <- ggplot2::ggplot_build(lg[[1]])$plot$scales$get_scales("fill")$name
   expect_equal(title, "pairs IBD (log2)")
+})
+
+
+test_that("the heatmap's chromosome bands are both grey, so zero tiles stay visible", {
+  skip_if_not_installed("ggplot2")
+  ibd <- example_ibd_results()
+  skip_if(is.null(ibd$get_pairwise_group()))
+
+  rect_fills <- function(p) unique(unlist(lapply(
+    Filter(function(x) inherits(x$geom, "GeomRect"), p$layers),
+    function(l) l$aes_params$fill)))
+  # the fill scale starts at white, so a zero tile over a white band would disappear:
+  # both bands must be grey, and distinguishable from each other
+  fills <- rect_fills(plot_ibd_pairwise_group_heatmap(ibd))
+  expect_equal(length(fills), 2L)
+  expect_false(any(tolower(fills) %in% c("white", "#ffffff")))
+  expect_false(fills[1] == fills[2])
+  rgb <- vapply(fills, function(f) mean(grDevices::col2rgb(f)), numeric(1))
+  expect_true(all(rgb < 250))                       # both clearly off-white
+
+  # the point/bar plots keep the plain grey-on-panel default -- nothing there is white
+  expect_equal(length(rect_fills(plot_ibd_sharing_manhattan(ibd))), 1L)
+})
+
+test_that("a band layer given no second fill draws only the first band", {
+  skip_if_not_installed("ggplot2")
+  layout <- example_ibd_results()$chrom_layout()
+  rows <- function(ls) sum(vapply(ls, function(l) nrow(l$data), numeric(1)))
+
+  one <- plasgenomicsutilsR:::.chr_band_layer(layout)
+  expect_equal(length(one), 1L)
+  expect_equal(rows(one), sum(layout$band == "a"))
+
+  # two fills cover every chromosome, and each layer carries a SCALAR fill -- a per-row
+  # vector would break the moment the plot is faceted
+  two <- plasgenomicsutilsR:::.chr_band_layer(layout, c("grey80", "grey95"))
+  expect_equal(length(two), 2L)
+  expect_equal(rows(two), nrow(layout))
+  expect_true(all(vapply(two, function(l) length(l$aes_params$fill), numeric(1)) == 1))
+
+  expect_null(plasgenomicsutilsR:::.chr_band_layer(layout, c(NA, NA)))
 })

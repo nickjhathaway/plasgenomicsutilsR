@@ -7,7 +7,7 @@
 ibd_results(...)
 }
 \arguments{
-\item{...}{Passed to \link{IbdResults}'s constructor.}
+\item{...}{Passed to \link{IbdResults}'s constructor; see there for the arguments.}
 }
 \value{
 An \link{IbdResults} object.

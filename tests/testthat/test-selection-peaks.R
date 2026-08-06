@@ -59,6 +59,40 @@ test_that("a threshold table is used when the scan carries no flag", {
   expect_error(selection_peaks(s, "bonferroni"), "no `significant` column")
 })
 
+test_that("the empirical criterion reads the permutation's own FDR flag", {
+  s <- .scan(seq(1000, by = 100000, length.out = 100), seq(1, 20, length.out = 100))
+  s$significant_perm     <- s$neg_log10_p > 15    # family-wise, against the same null
+  s$significant_fdr_perm <- s$neg_log10_p > 10    # FDR, against the same null
+  n <- function(k) sum(selection_peaks(s, criterion = k)$n_snps)
+  expect_gt(n("empirical"), n("permutation"))     # FDR is the looser of the pair
+
+  thr <- data.frame(group = "a", threshold = 5, neg_log10_p_emp_fdr_threshold = 10)
+  bare <- .scan(c(1000, 2000), c(4, 20))
+  expect_equal(sum(selection_peaks(bare, "empirical", thresholds = thr)$n_snps), 1L)
+  expect_error(selection_peaks(bare, "empirical",
+                               thresholds = data.frame(group = "a", threshold = 5)),
+               "--permute")
+})
+
+test_that("the permutation criterion is the strictest of the three", {
+  s <- .scan(seq(1000, by = 100000, length.out = 100), seq(1, 20, length.out = 100))
+  s$significant      <- s$neg_log10_p > 6
+  s$significant_fdr  <- s$neg_log10_p > 3
+  s$significant_perm <- s$neg_log10_p > 15
+  n <- function(k) sum(selection_peaks(s, criterion = k)$n_snps)
+  expect_lt(n("permutation"), n("bonferroni"))
+  expect_lt(n("bonferroni"), n("fdr"))
+
+  # falls back to the stored line when the scan has no flag, and says so when it has
+  # neither -- a scan from a run without --permute
+  bare <- .scan(c(1000, 2000), c(4, 20))
+  thr <- data.frame(group = "a", threshold = 5, neg_log10_p_perm_threshold = 15)
+  expect_equal(sum(selection_peaks(bare, "permutation", thresholds = thr)$n_snps), 1L)
+  expect_error(selection_peaks(bare, "permutation",
+                               thresholds = data.frame(group = "a", threshold = 5)),
+               "--permute")
+})
+
 test_that("genes are named at the peak SNP, not at the interval's midpoint", {
   # the top SNP is in pfcrt at the far left; the interval's midpoint falls in `other`
   s <- .scan(c(403500, 404000, 500000), c(6, 9, 6))

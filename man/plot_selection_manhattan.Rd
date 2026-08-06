@@ -38,11 +38,16 @@ track is an error.}
 \item{label_genes}{Label the genes. \code{NULL} (default) labels them only when
 \code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
-\item{draw_threshold}{Draw a significance line (only for \code{neg_log10_p}): \code{TRUE} /
-\code{"bonferroni"} for the family-wise line, \code{"fdr"} for the Benjamini-Hochberg cutoff,
-\code{"both"} for both, \code{FALSE} for none. Read either against the \code{lambda_gc} reported by
-\code{ibd_selection_statistic}: far from 1 means the chi2(1) null does not fit and both
-lines rest on miscalibrated p-values.}
+\item{draw_threshold}{Which significance line(s) to draw (only for \code{neg_log10_p}):
+\code{TRUE} / \code{"bonferroni"} (red dashed), \code{"fdr"} (blue dot-dash), \code{"permutation"}
+(green solid), \code{"both"} for the first two, \code{"all"} for all three, or \code{FALSE}.
+Prefer the permutation line where it disagrees with the other two: it is built by
+re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
+it accounts for one segment spanning many SNPs. On real data it lands several times
+higher than Bonferroni's. \code{lambda_gc} says how far that reference is from fitting;
+the further from 1, the less the two parametric lines mean.
+A run that did not write the line asked for is an error, but \code{"all"} quietly draws
+whichever kinds the threshold table carries.}
 
 \item{point_size, point_alpha}{Point aesthetics.}
 
