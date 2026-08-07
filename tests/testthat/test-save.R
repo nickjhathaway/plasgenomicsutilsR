@@ -103,3 +103,24 @@ test_that("multi-page output uses one page size that fits the tallest page", {
   tall <- .fit_plot_dims(plots[[2]], width = 6)$height
   expect_gt(tall, .fit_plot_dims(plots[[1]], width = 6)$height)
 })
+
+test_that("output is still written when cairo claims to exist but cannot open", {
+  skip_if_not_installed("ggplot2")
+  # The condition that broke macOS R-devel CI: `capabilities("cairo")` reports TRUE because
+  # R was built with cairo, but the shared object's X11 dependencies are missing, so opening
+  # the device warns ("failed to load cairo DLL") and writes nothing. `pdf_device()` must
+  # judge cairo by opening one, not by the build-time capability.
+  local_mocked_bindings(.cairo_pdf_works = function() FALSE)
+  expect_identical(pdf_device(), "pdf")
+
+  p <- ggplot2::ggplot(data.frame(x = 1:3, y = 1:3), ggplot2::aes(x, y)) + ggplot2::geom_point()
+  single <- tempfile(fileext = ".pdf")
+  multi <- tempfile(fileext = ".pdf")
+  on.exit(unlink(c(single, multi)), add = TRUE)
+
+  suppressMessages(save_plot(single, p))
+  expect_true(file.exists(single) && file.size(single) > 0)
+
+  suppressMessages(save_plot(multi, list(p, p)))
+  expect_true(file.exists(multi) && file.size(multi) > 0)
+})

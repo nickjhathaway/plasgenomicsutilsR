@@ -80,11 +80,37 @@ plot_dims <- function(x, type = c("manhattan", "selection", "tugofwar",
 }
 
 
+# `capabilities("cairo")` answers what R was BUILT with, not whether the shared object can
+# be loaded now: an R build can ship a cairo.so whose X11 dependencies are absent, so the
+# capability reports TRUE and opening the device then fails with "failed to load cairo DLL"
+# and writes nothing. Open one for real and see. Probed once per session, since the answer
+# cannot change and the probe costs a file.
+.cairo_pdf_works <- local({
+  known <- NULL
+  function() {
+    if (!is.null(known)) return(known)
+    known <<- isTRUE(capabilities("cairo")) && .Platform$OS.type != "windows" &&
+      tryCatch({
+        f <- tempfile(fileext = ".pdf")
+        on.exit(unlink(f), add = TRUE)
+        before <- grDevices::dev.cur()
+        # a broken cairo warns rather than errors, so judge it by whether a device opened
+        suppressWarnings(grDevices::cairo_pdf(f))
+        opened <- !identical(grDevices::dev.cur(), before)
+        if (opened) grDevices::dev.off()
+        opened
+      }, error = function(e) FALSE)
+    known
+  }
+})
+
 #' The preferred PDF graphics device
 #'
-#' Returns [grDevices::cairo_pdf()] when cairo is available and the platform is not
-#' Windows (cairo embeds fonts more reliably, but its PDF output can be unreliable on
-#' Windows), otherwise the string `"pdf"`. Use it with [ggplot2::ggsave()]:
+#' Returns [grDevices::cairo_pdf()] when a cairo device can actually be opened and the
+#' platform is not Windows (cairo embeds fonts more reliably, but its PDF output can be
+#' unreliable on Windows), otherwise the string `"pdf"`. Availability is settled by opening
+#' a throwaway device rather than by `capabilities("cairo")`, which reports what R was built
+#' with and so can claim a cairo that fails to load. Use it with [ggplot2::ggsave()]:
 #' `ggsave(file, plot, device = pdf_device())`.
 #'
 #' @return A device function ([grDevices::cairo_pdf]) or the string `"pdf"`.
@@ -92,8 +118,7 @@ plot_dims <- function(x, type = c("manhattan", "selection", "tugofwar",
 #' pdf_device()
 #' @export
 pdf_device <- function() {
-  cairo_ok <- isTRUE(capabilities("cairo")) && .Platform$OS.type != "windows"
-  if (cairo_ok) grDevices::cairo_pdf else "pdf"
+  if (.cairo_pdf_works()) grDevices::cairo_pdf else "pdf"
 }
 
 #' Save a plot, preferring the cairo PDF device

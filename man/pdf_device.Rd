@@ -10,9 +10,11 @@ pdf_device()
 A device function (\link[grDevices:cairo_pdf]{grDevices::cairo_pdf}) or the string \code{"pdf"}.
 }
 \description{
-Returns \code{\link[grDevices:cairo_pdf]{grDevices::cairo_pdf()}} when cairo is available and the platform is not
-Windows (cairo embeds fonts more reliably, but its PDF output can be unreliable on
-Windows), otherwise the string \code{"pdf"}. Use it with \code{\link[ggplot2:ggsave]{ggplot2::ggsave()}}:
+Returns \code{\link[grDevices:cairo_pdf]{grDevices::cairo_pdf()}} when a cairo device can actually be opened and the
+platform is not Windows (cairo embeds fonts more reliably, but its PDF output can be
+unreliable on Windows), otherwise the string \code{"pdf"}. Availability is settled by opening
+a throwaway device rather than by \code{capabilities("cairo")}, which reports what R was built
+with and so can claim a cairo that fails to load. Use it with \code{\link[ggplot2:ggsave]{ggplot2::ggsave()}}:
 \code{ggsave(file, plot, device = pdf_device())}.
 }
 \examples{
