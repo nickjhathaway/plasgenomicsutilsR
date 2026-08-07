@@ -10,13 +10,25 @@ reference:
   - IbdResults
   - ibd_results
 - title: Plots
-  desc: Genome-wide and region-by-region IBD figures.
+  desc: Genome-wide and group-by-group IBD figures.
   contents:
-  - plot_ibd_manhattan
+  - plot_ibd_sharing_manhattan
   - plot_selection_manhattan
   - plot_ibd_tugofwar
-  - plot_ibd_region_heatmap
-  - plot_drug_gene_triangles
+  - plot_ibd_pairwise_group_heatmap
+  - plot_pairwise_ibd_for_genes
+  - plot_ibd_network
+- title: Gene IBD-block overlap
+  desc: >
+    Which pairs share a gene by IBD: the fraction per group pair (block-based, not
+    SNP-in-gene), and the underlying pair-by-pair adjacency list with gene coverage.
+  contents:
+  - gene_ibd_overlap
+  - gene_ibd_pairs
+- title: Selection genes
+  desc: Genes hit by an above-threshold IBD selection signal.
+  contents:
+  - pos_selection_genes
 - title: Population structure
   desc: PCA / UMAP and sNMF admixture from genotypes, wrapped in one R6 workspace.
   contents:
@@ -29,37 +41,99 @@ reference:
   - run_snmf
   - snmf_best_k
   - snmf_q
+  - snmf_cross_entropy
+  - plot_snmf_cross_entropy
   - admixture_order
   - plot_admixture
+  - plot_admixture_multi_k
   - plot_structure_figure
   - load_pop_structure
   - example_pop_structure
 - title: Population differentiation
   desc: >
-    Per-SNP allele differentiation between metadata groups (Jost's D, Nei's Gst,
-    Hedrick's G'st, Hudson's Fst), a group summary + triangle heatmap, and marker
+    Per-SNP allele differentiation between metadata groups (Jost's D, Hedrick's G'st,
+    Hudson's Fst), a group summary + triangle heatmap, a genome-wide track, and marker
     selection.
   contents:
   - pop_diff
   - jost_d
+  - pop_diff_snps
   - pop_diff_matrix
+  - jost_d_matrix
   - pop_diff_table
   - plot_diff_heatmap
+  - plot_jost_d_heatmap
+  - plot_diff_manhattan
   - top_differentiating_snps
+- title: Within-population diversity
+  desc: >
+    Nucleotide diversity (per accessible base pair), expected heterozygosity, Watterson's
+    theta, Tajima's D and haplotype/multilocus-genotype diversity, genome-wide, per gene
+    or in windows, for each metadata group.
+  contents:
+  - pop_diversity
+  - tajima_d
+  - tajima_d_pvalue
+  - plot_diversity
+- title: Linkage disequilibrium
+  desc: >
+    The multilocus index of association as a genome-wide measure of clonality, and the
+    reader/plot for the r-squared decay curve computed by `plasgenomicsutils ld_decay`.
+  contents:
+  - ld_index
+  - read_ld_decay
+  - plot_ld_decay
+- title: Selection scans
+  desc: >
+    Recent directional selection from extended haplotype homozygosity (iHS within a
+    population, Rsb and XP-EHH between two), and long-term balancing selection from
+    clustered allele frequencies (beta).
+  contents:
+  - parasite_haplotypes
+  - run_ihs
+  - run_rsb
+  - run_xpehh
+  - ihs_genes
+  - plot_ihs
+  - beta_score
+  - beta_genes
+  - plot_beta
+  - selection_peaks
+- title: Sequencing coverage QC
+  desc: >
+    Read the depth tables written by `plasgenomicsutils coverage_depth_stats` /
+    `coverage_dropout_regions`, apply per-sample QC floors, and plot depth per sample,
+    per chromosome, and the regions almost no sample amplifies.
+  contents:
+  - read_coverage
+  - coverage_qc
+  - plot_coverage_summary
+  - plot_coverage_by_chrom
+  - plot_coverage_dropout
 - title: Colours
   desc: Colour-blind-friendly palettes and a shared level-to-colour map.
   contents:
   - meta_colors
-  - color_palettes
+  - color_palette
 - title: Saving and sizing
   contents:
   - save_plot
   - pdf_device
   - plot_dims
-- title: Example data
+- title: Genomic intervals
+  desc: >
+    Overlap two BED-style interval tables (genes vs. core / paralog regions, ...). All
+    coordinates in the package follow one convention.
+  contents:
+  - bed_intersect
+  - plasgenomicsutilsR-coordinates
+- title: Example & reference data
   contents:
   - example_ibd_results
-  - EXAMPLE_DRUG_GENES
+  - PF3D7_GENES
+  - PF_EXAMPLE_DRUG_GENES
+  - PF3D7_CORE_REGIONS
+  - PF3D7_PARALOG_GENES
 - title: Reference genome
   desc: Species- and assembly-specific facts, namespaced so the tools stay general.
   contents:

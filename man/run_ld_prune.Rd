@@ -7,29 +7,50 @@
 run_ld_prune(
   vcf,
   gds = NULL,
+  prune = TRUE,
   ld_threshold = 0.2,
   slide_max_bp = 20000,
   slide_max_n = 200,
   autosome_only = FALSE,
   maf = NaN,
   missing_rate = NaN,
-  seed = 42
+  seed = 42,
+  vcf_dir = NULL,
+  allele = c("alt", "ref")
 )
 }
 \arguments{
-\item{vcf}{Path to a (bgzipped) VCF.}
+\item{vcf}{Path to a (bgzipped) VCF, or a \strong{BCF} -- SNPRelate reads VCF text only, so
+a BCF is converted first with \code{bcftools}, reusing any VCF already sitting next to it
+rather than making another copy.}
 
 \item{gds}{Optional GDS path; derived from \code{vcf} if \code{NULL}.}
 
+\item{prune}{LD-prune (default \code{TRUE}). \code{FALSE} returns \strong{every} biallelic SNP,
+unpruned -- use this for the genotype matrix fed to \code{\link[=pop_diff]{pop_diff()}} /
+\code{\link[=pop_diff_table]{pop_diff_table()}}, since LD-pruning removes the very SNPs that carry the
+differentiation signal.}
+
 \item{ld_threshold, slide_max_bp, slide_max_n, autosome_only}{Passed to
-\code{\link[SNPRelate:snpgdsLDpruning]{SNPRelate::snpgdsLDpruning()}} (defaults 0.2 / 20000 / 200 / \code{FALSE}).}
+\code{\link[SNPRelate:snpgdsLDpruning]{SNPRelate::snpgdsLDpruning()}} (defaults 0.2 / 20000 / 200 / \code{FALSE}); ignored
+when \code{prune = FALSE}.}
 
 \item{maf, missing_rate}{Optional MAF / per-SNP missing-rate cutoffs for pruning.}
 
 \item{seed}{Random seed for the pruning.}
+
+\item{vcf_dir}{Where to put the VCF converted from a BCF (default: alongside the BCF).
+Point it somewhere scratch to keep converted copies out of the data directory.}
+
+\item{allele}{Which allele the returned dosage counts. \pkg{SNPRelate} counts the
+\strong{reference} allele; the default \code{"alt"} flips that so the matrix means what the
+rest of the package says it means. Only reported allele frequencies (and the
+arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
+and selection statistic here is symmetric in \code{p} and \code{1 - p}.}
 }
 \value{
-A list with \code{genotype} (matrix), \code{sample.id}, and \code{snp.id}.
+A list with \code{genotype} (matrix; sample row names and \code{chr:pos} column names),
+\code{sample.id}, and \code{snp.id}.
 }
 \description{
 Converts a VCF to GDS (only when needed), LD-prunes, and returns the pruned

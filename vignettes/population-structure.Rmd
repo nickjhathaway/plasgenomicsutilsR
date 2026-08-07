@@ -59,6 +59,48 @@ ord <- admixture_order(ps$q(ps$best_k()), meta = ps$get_meta(), group = "site")
 ps$plot_admixture(K = ps$best_k(), group = "site", sample_order = ord)
 ```
 
+### Choosing K
+
+sNMF fits several replicates per K and scores each by cross-entropy. `q()` and
+`plot_admixture()` use the **minimum**-cross-entropy replicate, so `min` is the column
+describing the ancestry you actually see; `mean`/`max` show how far the replicates
+disagreed. Picking K is a separate judgement — read the elbow, and treat a flat stretch or
+a wide min–max band as "the data don't pin K down", whatever `best_k()` returns:
+
+```r
+ps$cross_entropy()        # K, n_runs, min, mean, max, best_run
+ps$plot_cross_entropy()   # the elbow; best K in red, grey band = replicate spread
+```
+
+### Every K on its own page
+
+`plot_admixture_multi_k()` returns a list of plots — the elbow first, then one page per K —
+which `save_plot()` writes as a multi-page PDF. All pages share one sample order taken from
+the best K, so a sample sits at the same x on every page and you can follow it as K changes.
+The best K's page says so in its title:
+
+```r
+pages <- ps$plot_admixture_multi_k(group = "site", group_bar = TRUE, border = FALSE)
+save_plot("admixture_all_k.pdf", pages)
+
+# cross_entropy_first = FALSE   drop the elbow page
+# sample_order_best_k = FALSE   let each K cluster its own samples
+# sample_order = my_order       impose an order of your own
+# K = 2:10, best_k = 6          narrow the pages / override which K is "best"
+```
+
+Clusters read `K1`, `K2`, … `K15` in numeric order, and the cluster legend always sits above
+the group legend. At a large K that cluster legend is long, so `plot_admixture()` wraps it and
+reports a canvas tall enough to hold the whole thing (`...` carries these through the pages
+above). Down the side the keys wrap into extra columns; along the bottom they become a shallow
+two-row block that adds to the height rather than squeezing the bars:
+
+```r
+ps$plot_admixture_multi_k(group = "site", legend_position = "bottom")
+ps$plot_admixture(K = 15, legend_rows = 5)       # 5 keys per column -> 3 columns
+ps$plot_admixture(K = 15, legend_position = "none")
+```
+
 ## One combined figure
 
 `plot_structure_figure()` draws the UMAP and the admixture as **one** figure sharing a
@@ -97,3 +139,20 @@ ps <- PopStructure$new(geno, meta = sample_meta)      # sample, region, country,
 ps$run_umap(pca_components = 10)
 ps$run_snmf(K = 1:8, cache_dir = "snmf_cache")        # persistent cache survives sessions
 ```
+
+## Ordering the groups
+
+Groups read in a natural sort by default (so `site2` precedes `site10`). `set_levels()`
+imposes your own order, and it applies to **every** output — PCA and UMAP legends, the
+admixture facets and sample sweep, the differentiation matrix, and the composite figure:
+
+```r
+ps$set_levels("site", c("Uganda_North", "Uganda_East", "Kenya_West", "Kenya_East",
+                        "Tanzania_West", "Tanzania_East", "DRC"))
+```
+
+Two things to know. Levels you leave out are dropped, so those samples vanish from the
+plots — `admixture_order()` warns when that happens rather than shrinking the figure
+silently. And in a *clustered* heatmap the clustering decides the axis order, since that
+grouping is the point of clustering; see `plot_diff_heatmap(cluster = FALSE)` in the
+differentiation article for an axis that follows the levels exactly.

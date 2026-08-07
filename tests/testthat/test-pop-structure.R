@@ -88,6 +88,32 @@ test_that("plot_admixture builds from a bare Q, with grouping and a group strip"
   expect_s3_class(p, "ggplot")
 })
 
+test_that("the group strip is one colour per facet (not repeated across facets)", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("ggnewscale")
+  set.seed(1)
+  q <- matrix(stats::runif(60), ncol = 3); rownames(q) <- paste0("s", 1:20)
+  meta <- data.frame(sample = rownames(q), region = rep(c("A", "B"), each = 10))
+  p <- plot_admixture(q, meta = meta, group = "region", group_bar = TRUE, border = FALSE)
+  b <- ggplot2::ggplot_build(p)
+  strip <- Filter(function(d) "fill" %in% names(d) && any(abs(d$y - 1.06) < 1e-6), b$data)[[1]]
+  per_panel <- tapply(strip$fill, strip$PANEL, function(f) length(unique(f)))
+  expect_true(all(per_panel == 1))                    # each facet shows only its own colour
+})
+
+test_that("admixture bars are bordered by default and the border toggles off", {
+  testthat::skip_if_not_installed("ggplot2")
+  q <- matrix(stats::runif(2 * 10), ncol = 2); rownames(q) <- paste0("s", 1:10)
+  bar_colour <- function(p) {
+    d <- ggplot2::ggplot_build(p)$data[[which(vapply(ggplot2::ggplot_build(p)$data,
+      function(x) "ymin" %in% names(x), logical(1)))[1]]]
+    unique(d$colour)
+  }
+  expect_equal(bar_colour(plot_admixture(q)), "black")               # default: black borders
+  expect_equal(bar_colour(plot_admixture(q, border_colour = "grey30")), "grey30")
+  expect_true(all(is.na(bar_colour(plot_admixture(q, border = FALSE)))))   # toggled off
+})
+
 test_that("run_snmf caches: a second identical call reuses the project", {
   testthat::skip_if_not_installed("LEA")
   cache <- tempfile("snmf_cache_")
@@ -190,4 +216,288 @@ test_that("run_ld_prune converts a VCF and returns a genotype matrix", {
   expect_true(is.matrix(res$genotype))
   expect_equal(nrow(res$genotype), n_s)
   expect_length(res$sample.id, n_s)
+})
+
+test_that("group factor levels drive the order of every output", {
+  testthat::skip_if_not_installed("ggplot2")
+  set.seed(3)
+  n <- 24
+  meta <- data.frame(sample = paste0("s", 1:n),
+                     site = rep(c("Delta", "Alpha", "Charlie"), each = n / 3),
+                     stringsAsFactors = FALSE)
+  want <- c("Delta", "Charlie", "Alpha")            # deliberately not alphabetical
+  meta$site <- factor(meta$site, levels = want)
+  q <- matrix(runif(n * 3), nrow = n, dimnames = list(meta$sample, paste0("K", 1:3)))
+  q <- q / rowSums(q)
+
+  facets <- function(p) as.character(ggplot2::ggplot_build(p)$layout$layout$site)
+  # the group colour bar used to force alphabetical facets by carrying a character column
+  expect_equal(facets(plot_admixture(q, meta$sample, meta, "site")), want)
+  expect_equal(facets(plot_admixture(q, meta$sample, meta, "site", group_bar = TRUE)), want)
+
+  # sample sweep follows the levels too
+  ord <- admixture_order(q, meta$sample, meta, "site")
+  site_of <- stats::setNames(as.character(meta$site), meta$sample)
+  expect_equal(unique(site_of[ord]), want)
+
+  # samples outside the declared levels are dropped, but not silently
+  meta2 <- meta
+  meta2$site <- factor(as.character(meta2$site), levels = c("Delta", "Charlie"))
+  expect_warning(admixture_order(q, meta2$sample, meta2, "site"), "no level")
+})
+
+test_that("diff heatmap follows group levels, exactly when unclustered", {
+  testthat::skip_if_not_installed("ggplot2")
+  set.seed(5)
+  n <- 30
+  meta <- data.frame(sample = paste0("s", 1:n),
+                     site = factor(rep(c("Delta", "Alpha", "Charlie"), each = n / 3),
+                                   levels = c("Delta", "Charlie", "Alpha")),
+                     stringsAsFactors = FALSE)
+  g <- matrix(rbinom(n * 40, 2, 0.4), nrow = n, dimnames = list(meta$sample, NULL))
+  pd <- pop_diff(g, group = "site", meta = meta)
+  expect_equal(rownames(pop_diff_matrix(pd)), levels(meta$site))
+  xo <- function(p) ggplot2::ggplot_build(p)$layout$panel_params[[1]]$x$get_labels()
+  # unclustered follows the levels; clustered follows the clustering, which is the point
+  expect_equal(xo(plot_diff_heatmap(pd, cluster = FALSE)), levels(meta$site))
+  expect_setequal(xo(plot_diff_heatmap(pd)), levels(meta$site))
+})
+
+test_that("annotation colours follow the annotation's levels, not the axis order", {
+  testthat::skip_if_not_installed("ggplot2")
+  meta <- data.frame(site = c("S_a", "S_b", "S_c", "S_d"),
+                     country = factor(c("Zed", "Alpha", "Zed", "Alpha"),
+                                      levels = c("Zed", "Alpha")),
+                     stringsAsFactors = FALSE)
+  ord <- c("S_b", "S_d", "S_a", "S_c")          # as a clustering would order them
+  ann <- .resolve_annotations("country", ord, "site", meta)
+  expect_true(is.factor(ann$country))           # the column's factor must survive
+  p <- .annotation_panel("country", ann$country, ord, NULL, 11)
+  expect_equal(levels(p$data$value), c("Zed", "Alpha"))   # not the axis order Alpha, Zed
+
+  meta$country <- c("c10", "c2", "c10", "c2")   # no factor -> natural sort
+  a2 <- .resolve_annotations("country", ord, "site", meta)
+  expect_equal(levels(.annotation_panel("country", a2$country, ord, NULL, 11)$data$value),
+               c("c2", "c10"))
+})
+
+test_that("without a factor, group order is a natural sort", {
+  expect_equal(.natural_sort(c("site10", "site2", "site1")), c("site1", "site2", "site10"))
+  expect_equal(.levels_of(c("s10", "s2", "s1")), c("s1", "s2", "s10"))
+  # a factor keeps its own order untouched
+  expect_equal(.levels_of(factor(c("b", "a"), levels = c("b", "a"))), c("b", "a"))
+  expect_equal(.natural_sort(c("chr10", "chrX", "chr2")), c("chr2", "chr10", "chrX"))
+})
+
+test_that("plot_snmf_cross_entropy reads an elbow table and marks the best K", {
+  testthat::skip_if_not_installed("ggplot2")
+  ce <- tibble::tibble(K = 1:5, n_runs = 3L,
+                       min  = c(0.70, 0.66, 0.64, 0.645, 0.65),
+                       mean = c(0.71, 0.67, 0.65, 0.655, 0.66),
+                       max  = c(0.72, 0.68, 0.66, 0.665, 0.67),
+                       best_run = 1L)
+  p <- plot_snmf_cross_entropy(ce)                       # a table is accepted directly
+  b <- ggplot2::ggplot_build(p)
+  # the line follows `min` by default -- the replicate snmf_q() actually returns
+  expect_equal(p$data$.y, ce$min)
+  expect_equal(p$data$K[p$data$.best], 3L)               # lowest min
+  labels <- vapply(b$plot$layers,
+                   function(l) paste0(l$aes_params$label %||% "", collapse = ""), character(1))
+  expect_true(any(grepl("best K = 3", labels)))
+  # stat = "mean" follows the other column and can pick a different K
+  expect_equal(plot_snmf_cross_entropy(ce, stat = "mean")$data$.y, ce$mean)
+  # best_k is overridable, and NA marks none
+  expect_equal(plot_snmf_cross_entropy(ce, best_k = 5)$data$K[
+    plot_snmf_cross_entropy(ce, best_k = 5)$data$.best], 5L)
+  expect_false(any(plot_snmf_cross_entropy(ce, best_k = NA)$data$.best))
+  # the min-max band is what shows a flat / unreproducible K
+  ribbons <- vapply(b$plot$layers, function(l) inherits(l$geom, "GeomRibbon"), logical(1))
+  expect_true(any(ribbons))
+  expect_false(any(vapply(ggplot2::ggplot_build(plot_snmf_cross_entropy(ce, show_range = FALSE))$plot$layers,
+                          function(l) inherits(l$geom, "GeomRibbon"), logical(1))))
+})
+
+test_that("snmf_cross_entropy summarises replicates per K", {
+  testthat::skip_if_not_installed("LEA")
+  set.seed(2)
+  g <- matrix(rbinom(40 * 60, 2, rep(c(0.2, 0.8), each = 20 * 60)), nrow = 40,
+              dimnames = list(paste0("s", 1:40), NULL))
+  fit <- run_snmf(g, K = 1:3, rep = 3, cache = FALSE)
+  ce <- snmf_cross_entropy(fit)
+  expect_equal(ce$K, 1:3)
+  expect_true(all(ce$n_runs == 3))
+  expect_true(all(ce$min <= ce$mean & ce$mean <= ce$max))
+  # best_run is the replicate index snmf_q() defaults to
+  k <- ce$K[which.min(ce$min)]
+  expect_equal(ce$best_run[ce$K == k],
+               which.min(LEA::cross.entropy(fit$project, K = k)))
+})
+
+test_that("plot_admixture_multi_k pages every K, best K first-page-marked", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("LEA")
+  set.seed(4)
+  n <- 40
+  g <- matrix(rbinom(n * 60, 2, rep(c(0.2, 0.8), each = (n / 2) * 60)), nrow = n,
+              dimnames = list(paste0("s", 1:n), NULL))
+  meta <- data.frame(sample = rownames(g), pop = rep(c("A", "B"), each = n / 2),
+                     stringsAsFactors = FALSE)
+  ps <- PopStructure$new(g, meta = meta)
+  ps$run_snmf(K = 1:4, rep = 2, cpu = 1)
+
+  # pin best_k so the assertion does not depend on which K this tiny fit prefers
+  pages <- ps$plot_admixture_multi_k(group = "pop", best_k = 3)
+  # elbow first, then one page per K >= 2 (K = 1 carries no structure)
+  expect_equal(names(pages), c("cross_entropy", paste0("K=", 2:4)))
+  expect_true(all(vapply(pages, function(p) inherits(p, "ggplot"), logical(1))))
+  expect_match(pages[["K=3"]]$labels$title, "best by")
+  expect_equal(pages[["K=2"]]$labels$title, "K = 2")          # the others are plain
+  expect_equal(pages$cross_entropy$labels$title, "sNMF cross-entropy by K")
+
+  # one shared sample order keeps a sample at the same x on every page
+  ords <- lapply(pages[-1], function(p) levels(p$data$sample))
+  expect_length(unique(ords), 1)
+
+  # turning it off lets each page cluster its own samples
+  free <- ps$plot_admixture_multi_k(group = "pop", sample_order_best_k = FALSE)
+  expect_true(length(unique(lapply(free[-1], function(p) levels(p$data$sample)))) >= 1)
+
+  # an explicit order wins, and the elbow page can be dropped
+  want <- rev(rownames(g))
+  ex <- ps$plot_admixture_multi_k(group = "pop", sample_order = want,
+                                  cross_entropy_first = FALSE)
+  expect_false("cross_entropy" %in% names(ex))
+  expect_equal(levels(ex[[1]]$data$sample), want)
+
+  # K can be narrowed, and best_k overridden
+  two <- ps$plot_admixture_multi_k(K = 3:4, best_k = 4, cross_entropy_first = FALSE)
+  expect_equal(names(two), c("K=3", "K=4"))
+  expect_match(two[["K=4"]]$labels$title, "best by")
+
+  # the pages go straight into a multi-page PDF
+  f <- tempfile(fileext = ".pdf")
+  save_plot(f, pages)
+  expect_true(file.exists(f) && file.size(f) > 0)
+})
+
+test_that("the diff heatmap has no dendrogram tip dots and keeps legends inside", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("patchwork")
+  testthat::skip_if_not_installed("ggnewscale")
+  set.seed(7)
+  n <- 40
+  meta <- data.frame(sample = paste0("s", 1:n),
+                     site = rep(c("a", "b", "c", "d", "e"), each = n / 5),
+                     country = rep(c("X", "Y"), each = n / 2), stringsAsFactors = FALSE)
+  g <- matrix(rbinom(n * 60, 2, 0.4), nrow = n, dimnames = list(meta$sample, NULL))
+  pd <- pop_diff(g, group = "site", meta = meta)
+
+  p <- plot_diff_heatmap(pd, annotate = "country", meta = meta)
+  panels <- Filter(function(z) inherits(z, "ggplot"), p$patches$plots)
+  geoms <- unlist(lapply(panels, function(pl) vapply(pl$layers,
+                    function(l) class(l$geom)[1], character(1))))
+  # the dendrogram used to carry a coloured dot per group at each leaf
+  expect_false("GeomPoint" %in% geoms)
+  expect_true("GeomSegment" %in% geoms)
+
+  # legends live on the heatmap panel (inside the empty triangle), so nothing is collected
+  scale_names <- function(pl) {
+    out <- lapply(pl$scales$scales, function(s) s$name)
+    unlist(Filter(function(z) is.character(z) && length(z) == 1, out))
+  }
+  hm <- p[[length(p)]]
+  expect_true("country" %in% scale_names(hm))       # annotation legend moved onto the matrix
+  expect_null(p$patches$layout$guides)              # not collected to a margin column
+
+  # the fallback keeps working, and puts them back in the margin
+  m <- plot_diff_heatmap(pd, annotate = "country", meta = meta, legend_inside = FALSE)
+  expect_s3_class(m, "patchwork")
+  expect_equal(m$patches$layout$guides, "collect")
+  expect_false("country" %in% scale_names(m[[length(m)]]))
+})
+
+test_that("inside legends are anchored top-left so a stack grows downward", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if(utils::packageVersion("ggplot2") < "3.5.0")
+  th <- .legend_upper_triangle()
+  # centre-anchoring let a tall stack of legends ride up over the panel above
+  expect_equal(th$legend.justification.inside, c(0, 1))
+  expect_equal(th$legend.position, "inside")
+})
+
+test_that("admixture clusters read K1..K15, not K1 K10 K11 K2", {
+  testthat::skip_if_not_installed("ggplot2")
+  q <- matrix(stats::runif(12 * 12), 12, 12,
+              dimnames = list(paste0("s", 1:12), paste0("K", 1:12)))
+  q <- q / rowSums(q)
+  p <- plot_admixture(q)
+  # reshape() leaves `cluster` a character, which ggplot would sort as K1, K10, K11, K12, K2...
+  expect_equal(levels(p$data$cluster), paste0("K", 1:12))
+})
+
+test_that("legends wrap and the suggested height clears them", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("ggnewscale")
+  set.seed(2)
+  n <- 60; K <- 15
+  q <- matrix(stats::runif(n * K), n, K,
+              dimnames = list(paste0("s", 1:n), paste0("K", 1:K)))
+  q <- q / rowSums(q)
+  meta <- data.frame(sample = rownames(q),
+                     region = rep(c("a", "b", "c", "d", "e", "f"), length.out = n),
+                     stringsAsFactors = FALSE)
+  h <- function(p) unname(attr(p, "plasgenomics_dims")[["height"]])
+  legend_h <- function(p) .guide_box_height(ggplot2::ggplotGrob(p))
+
+  side <- plot_admixture(q, meta = meta, group = "region", group_bar = TRUE)
+  # 15 keys wrap into columns of 10, and the canvas is tall enough for the whole stack
+  expect_gt(h(side), 4)
+  expect_gte(h(side), legend_h(side))
+
+  # along the bottom the legend is a layout row, so it adds to the height
+  bottom <- plot_admixture(q, meta = meta, group = "region", group_bar = TRUE,
+                           legend_position = "bottom")
+  expect_gt(h(bottom), 4)
+  expect_equal(.guide_box_height(ggplot2::ggplotGrob(bottom)), 0)   # nothing on the side
+
+  # no legend at all -> back to the bare panel height
+  expect_equal(h(plot_admixture(q, meta = meta, group = "region", group_bar = TRUE,
+                                legend_position = "none")), 4)
+
+  # legend_rows controls the wrap: fewer per column -> more columns -> a shorter legend
+  wide <- plot_admixture(q, meta = meta, group = "region", group_bar = TRUE, legend_rows = 4)
+  expect_lt(legend_h(wide), legend_h(side))
+})
+
+test_that("guide order is fixed, so the legends do not swap between plots", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("ggnewscale")
+  q <- matrix(stats::runif(8 * 3), 8, 3, dimnames = list(paste0("s", 1:8), paste0("K", 1:3)))
+  q <- q / rowSums(q)
+  meta <- data.frame(sample = rownames(q), region = rep(c("a", "b"), 4),
+                     stringsAsFactors = FALSE)
+  orders <- replicate(4, {
+    p <- plot_admixture(q, meta = meta, group = "region", group_bar = TRUE)
+    paste(vapply(p$scales$scales, function(s) {
+      o <- s$guide$params$order %||% s$guide$order %||% NA
+      paste0(s$aesthetics[1], ":", o)
+    }, character(1)), collapse = "|")
+  })
+  expect_length(unique(orders), 1)
+})
+
+test_that("a saved workspace is re-bound to the installed class", {
+  ps <- example_pop_structure(umap = FALSE)
+  ps$set_levels("country", c("Ghana", "Cambodia"))
+  f <- tempfile(fileext = ".rds")
+  ps$save(f)
+  back <- load_pop_structure(f)
+  expect_equal(back$get_samples(), ps$get_samples())
+  expect_equal(levels(back$get_meta()$country), c("Ghana", "Cambodia"))
+  expect_equal(dim(back$pca_scores()), dim(ps$pca_scores()))
+  # an .rds written before a method existed still gets it: an R6 object serialises its own
+  # methods, so the loader has to take them from the class as it stands now
+  expect_true(all(names(PopStructure$public_methods) %in% ls(back)))
+  expect_identical(body(back$plot_admixture),
+                   body(PopStructure$public_methods$plot_admixture))
 })

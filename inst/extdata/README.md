@@ -9,13 +9,15 @@ samples across five African countries (Tanzania, Kenya, DRC, Ethiopia, Sudan;
 tools and downsampled to ~1,357 SNPs for a compact fixture. Values are real (not
 synthetic). Regions are the sample countries.
 
-Files (all region-level; no per-sample genotype data):
+Files (all group-level; no per-sample genotype data). Here the grouping is the sample
+country, so the `group` columns hold country names. `pos` is the variant's 0-based
+position, matching the package convention (`?plasgenomicsutilsR-coordinates`):
 
-- `ibd_per_snp_region.tsv.gz` — per-SNP fraction of pairs IBD, per region
-  (`chr`, `pos`, `region`, `frac_pairs_ibd`)
-- `ibd_pairwise_region.tsv.gz` — per-SNP IBD between region pairs
-  (`chr`, `pos`, `region_a`, `region_b`, `frac_pairs_ibd`)
-- `ibd_selection_per_region.tsv.gz` (+ `..._threshold.tsv`) — per-region IBD
+- `ibd_per_snp_group.tsv.gz` — per-SNP fraction of pairs IBD, per group
+  (`chr`, `pos`, `group`, `frac_pairs_ibd`)
+- `ibd_pairwise_group.tsv.gz` — per-SNP IBD between group pairs
+  (`chr`, `pos`, `group_a`, `group_b`, `frac_pairs_ibd`)
+- `ibd_selection_per_group.tsv.gz` (+ `..._threshold.tsv`) — per-group IBD
   selection statistic
 - `ibd_selection_global.tsv.gz` (+ `..._threshold.txt`) — genome-wide selection
   statistic

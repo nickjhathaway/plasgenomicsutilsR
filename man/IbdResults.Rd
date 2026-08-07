@@ -4,7 +4,7 @@
 \alias{IbdResults}
 \title{IBD post-analysis results}
 \description{
-A container for the per-SNP, pairwise-region, and selection-statistic tables
+A container for the per-SNP, pairwise-group, and selection-statistic tables
 produced by the Python \verb{plasgenomicsutils ibd} tools, plus the shared
 cumulative-genome coordinate the genome-wide plots use. Pass file paths or
 data frames; each argument is optional so you can hold only what you plan to
@@ -12,27 +12,57 @@ plot. The \verb{plot_*()} functions read from an object of this class.
 
 Expected columns (superset; extras are kept):
 \itemize{
-\item \code{per_snp_region}: \code{chr}, \code{pos}, \code{frac_pairs_ibd}, optionally \code{region}
-(output of \code{analyze_ibd_matrix} per-SNP / per-SNP-per-region).
-\item \code{pairwise_region}: \code{chr}, \code{pos}, \code{region_a}, \code{region_b}, \code{frac_pairs_ibd}
-(per-SNP pairwise-region output).
+\item \code{per_snp_group}: \code{chr}, \code{pos}, \code{frac_pairs_ibd}, optionally \code{group}
+(output of \code{analyze_ibd_matrix} per-SNP / per-SNP-per-group).
+\item \code{pairwise_group}: \code{chr}, \code{pos}, \code{group_a}, \code{group_b}, \code{frac_pairs_ibd}
+(per-SNP pairwise-group output).
 \item \code{selection}: \code{chr}, \code{pos}, a metric column (\code{neg_log10_p}, \code{chi2_stat}, or
-\code{z_score}), optionally \code{region} and \code{significant}
+\code{z_score}), optionally \code{group} and \code{significant}
 (output of \code{ibd_selection_statistic}).
 }
+}
+\examples{
+ibd <- example_ibd_results()
+groups <- levels(factor(ibd$get_selection()$group))
+
+# everything except one group, or only the ones named
+ibd$subset_groups(drop = groups[1])
+pair <- ibd$subset_groups(keep = groups[1:2])
+pair$plot_selection_manhattan()
+
+# `restrict_groups()` is the same thing in place
+ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
 }
 \section{Methods}{
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-IbdResults-initialize}{\code{IbdResults$new()}}
-    \item \href{#method-IbdResults-get_per_snp_region}{\code{IbdResults$get_per_snp_region()}}
-    \item \href{#method-IbdResults-get_pairwise_region}{\code{IbdResults$get_pairwise_region()}}
+    \item \href{#method-IbdResults-set_group_order}{\code{IbdResults$set_group_order()}}
+    \item \href{#method-IbdResults-restrict_groups}{\code{IbdResults$restrict_groups()}}
+    \item \href{#method-IbdResults-subset_groups}{\code{IbdResults$subset_groups()}}
+    \item \href{#method-IbdResults-get_group_order}{\code{IbdResults$get_group_order()}}
+    \item \href{#method-IbdResults-get_group_col}{\code{IbdResults$get_group_col()}}
+    \item \href{#method-IbdResults-get_per_snp_group}{\code{IbdResults$get_per_snp_group()}}
+    \item \href{#method-IbdResults-get_pairwise_group}{\code{IbdResults$get_pairwise_group()}}
     \item \href{#method-IbdResults-get_selection}{\code{IbdResults$get_selection()}}
     \item \href{#method-IbdResults-get_thresholds}{\code{IbdResults$get_thresholds()}}
     \item \href{#method-IbdResults-get_genes}{\code{IbdResults$get_genes()}}
+    \item \href{#method-IbdResults-get_blocks}{\code{IbdResults$get_blocks()}}
+    \item \href{#method-IbdResults-get_analyzed_samples}{\code{IbdResults$get_analyzed_samples()}}
+    \item \href{#method-IbdResults-get_meta}{\code{IbdResults$get_meta()}}
+    \item \href{#method-IbdResults-get_gene_overlap}{\code{IbdResults$get_gene_overlap()}}
     \item \href{#method-IbdResults-chrom_layout}{\code{IbdResults$chrom_layout()}}
     \item \href{#method-IbdResults-reference_id}{\code{IbdResults$reference_id()}}
     \item \href{#method-IbdResults-print}{\code{IbdResults$print()}}
+    \item \href{#method-IbdResults-plot_ibd_sharing_manhattan}{\code{IbdResults$plot_ibd_sharing_manhattan()}}
+    \item \href{#method-IbdResults-plot_selection_manhattan}{\code{IbdResults$plot_selection_manhattan()}}
+    \item \href{#method-IbdResults-plot_ibd_tugofwar}{\code{IbdResults$plot_ibd_tugofwar()}}
+    \item \href{#method-IbdResults-plot_ibd_pairwise_group_heatmap}{\code{IbdResults$plot_ibd_pairwise_group_heatmap()}}
+    \item \href{#method-IbdResults-plot_pairwise_ibd_for_genes}{\code{IbdResults$plot_pairwise_ibd_for_genes()}}
+    \item \href{#method-IbdResults-gene_ibd_overlap}{\code{IbdResults$gene_ibd_overlap()}}
+    \item \href{#method-IbdResults-gene_ibd_pairs}{\code{IbdResults$gene_ibd_pairs()}}
+    \item \href{#method-IbdResults-plot_ibd_network}{\code{IbdResults$plot_ibd_network()}}
+    \item \href{#method-IbdResults-pos_selection_genes}{\code{IbdResults$pos_selection_genes()}}
     \item \href{#method-IbdResults-clone}{\code{IbdResults$clone()}}
   }
 }
@@ -44,11 +74,17 @@ Expected columns (superset; extras are kept):
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{IbdResults$new(
-  per_snp_region = NULL,
-  pairwise_region = NULL,
+  per_snp_group = NULL,
+  pairwise_group = NULL,
   selection = NULL,
   threshold = NULL,
   genes = NULL,
+  blocks = NULL,
+  meta = NULL,
+  gene_overlap = NULL,
+  group_col_in_meta = NULL,
+  min_block_snp = IBD_MIN_BLOCK_SNP,
+  min_block_kb = IBD_MIN_BLOCK_KB,
   reference = "pf3d7"
 )}
     \if{html}{\out{</div>}}
@@ -56,13 +92,35 @@ Expected columns (superset; extras are kept):
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{per_snp_region}}{Per-SNP (optionally per-region) IBD table: path or data frame.}
-      \item{\code{pairwise_region}}{Per-SNP pairwise-region IBD table: path or data frame.}
+      \item{\code{per_snp_group}}{Per-SNP (optionally per-group) IBD table: path or data frame.}
+      \item{\code{pairwise_group}}{Per-SNP pairwise-group IBD table: path or data frame.}
       \item{\code{selection}}{IBD selection-statistic table: path or data frame.}
       \item{\code{threshold}}{Significance threshold(s): a scalar, a named vector or
-\code{region}/\code{threshold} data frame (per region), or a path to a one-number file.}
+\code{group}/\code{threshold} data frame (per group), or a path to a one-number file.}
       \item{\code{genes}}{Optional gene-annotation track (\code{name}, \code{chr}, \code{start}, \code{end})
 drawn as reference lines on the Manhattan plots.}
+      \item{\code{blocks}}{Optional hmmibd-rs IBD segments (path or data frame:
+\code{sample1}, \code{sample2}, \code{chr}, \code{start}, \code{end}, optional \code{different}). Enables
+block-based gene triangles (\code{\link[=gene_ibd_overlap]{gene_ibd_overlap()}} / \code{\link[=plot_pairwise_ibd_for_genes]{plot_pairwise_ibd_for_genes()}}):
+only IBD segments (\code{different == 0}) are kept, but the analyzed-sample set (the
+denominator) is taken from every row first, so pairs that are never IBD still count.}
+      \item{\code{meta}}{Optional sample metadata (path or data frame with a \code{sample} column plus
+grouping columns), used to group \code{blocks} pairs.}
+      \item{\code{gene_overlap}}{Optional precomputed per-gene per-group-pair block-overlap table
+(from \verb{plasgenomicsutils ibd_gene_overlap}: \code{gene}, \code{group_a}, \code{group_b},
+\code{frac_pairs_ibd}, ...), used directly by the gene triangles.}
+      \item{\code{group_col_in_meta}}{Name of the \code{meta} column that defines the grouping. It
+becomes the default \code{group} for the block-based tools, and if the column is a
+factor its levels set the group order for every loaded table (equivalent to
+calling \verb{$set_group_order(levels(meta[[group_col_in_meta]]))}).}
+      \item{\code{min_block_snp, min_block_kb}}{Discard IBD segments carrying fewer than
+\code{min_block_snp} SNPs or shorter than \code{min_block_kb} kb (defaults \code{15} and \code{15}).
+Short, SNP-poor segments are commonly spurious, and this filter is conventionally
+applied before any IBD summary -- it is built in so the blocks need not be
+pre-filtered. \code{0} disables either criterion. Only the IBD evidence is filtered:
+the analyzed-sample set (the denominator behind every fraction) still comes from
+every row of the blocks file, so a pair whose only segment is short still counts
+as compared. The SNP criterion needs the \code{Nsnp} column hmmibd-rs writes.}
       \item{\code{reference}}{Reference id for chromosome lengths (default \code{"pf3d7"}).}
     }
     \if{html}{\out{</div>}}
@@ -73,25 +131,131 @@ drawn as reference lines on the Manhattan plots.}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-IbdResults-get_per_snp_region"></a>}}
-\if{latex}{\out{\hypertarget{method-IbdResults-get_per_snp_region}{}}}
-\subsection{\code{IbdResults$get_per_snp_region()}}{
-  Per-SNP (optionally per-region) IBD table with \code{cum_pos}.
+\if{html}{\out{<a id="method-IbdResults-set_group_order"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-set_group_order}{}}}
+\subsection{\code{IbdResults$set_group_order()}}{
+  Set the order of the groups for every loaded table, so facets,
+legends and axes follow it. Errors if a group present in the results is missing
+from \code{levels} (it would silently become \code{NA}); warns about levels no result uses.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{IbdResults$get_per_snp_region()}
+    \preformatted{IbdResults$set_group_order(levels)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{levels}}{Group names in the desired order.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly self.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-restrict_groups"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-restrict_groups}{}}}
+\subsection{\code{IbdResults$restrict_groups()}}{
+  Drop or keep groups, in place. \code{subset_groups()} is the copying form.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$restrict_groups(keep = NULL, drop = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{keep}}{Group labels to keep (\code{NULL} keeps all).}
+      \item{\code{drop}}{Group labels to remove. Applied after \code{keep}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly self.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-subset_groups"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-subset_groups}{}}}
+\subsection{\code{IbdResults$subset_groups()}}{
+  A new \code{IbdResults} holding only some of the groups.
+
+Everything this object carries is either summarised per group or per group pair, so
+groups are the natural unit to cut on. All of the per-SNP, group-pair, selection and
+threshold tables are filtered; a group-pair row survives only when \strong{both} of its
+groups do, a cell against a dropped group having no meaning. \code{meta}, \code{blocks} and the
+analysed-sample set narrow to the samples belonging to the surviving groups, so
+block-derived output — \code{\link[=gene_ibd_overlap]{gene_ibd_overlap()}}, \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}},
+\code{\link[=plot_ibd_network]{plot_ibd_network()}} — follows as well. The group order is trimmed to what survives.
+
+Narrowing groups cannot recompute a summary, so every number kept is still the one
+computed over that group's full sample set. Groups are dropped, never re-derived.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$subset_groups(keep = NULL, drop = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{keep}}{Group labels to keep (\code{NULL} keeps all).}
+      \item{\code{drop}}{Group labels to remove. Applied after \code{keep}, so passing only \code{drop} is
+the usual "everything except these" form.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A new \code{IbdResults}; this object is unchanged.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_group_order"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_group_order}{}}}
+\subsection{\code{IbdResults$get_group_order()}}{
+  The current group order (\code{NULL} when none has been set).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_group_order()}
     \if{html}{\out{</div>}}
   }
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-IbdResults-get_pairwise_region"></a>}}
-\if{latex}{\out{\hypertarget{method-IbdResults-get_pairwise_region}{}}}
-\subsection{\code{IbdResults$get_pairwise_region()}}{
-  Per-SNP pairwise-region IBD table with \code{cum_pos}.
+\if{html}{\out{<a id="method-IbdResults-get_group_col"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_group_col}{}}}
+\subsection{\code{IbdResults$get_group_col()}}{
+  The \code{meta} column naming the grouping, if one was declared.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{IbdResults$get_pairwise_region()}
+    \preformatted{IbdResults$get_group_col()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_per_snp_group"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_per_snp_group}{}}}
+\subsection{\code{IbdResults$get_per_snp_group()}}{
+  Per-SNP (optionally per-group) IBD table with \code{cum_pos}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_per_snp_group()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_pairwise_group"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_pairwise_group}{}}}
+\subsection{\code{IbdResults$get_pairwise_group()}}{
+  Per-SNP pairwise-group IBD table with \code{cum_pos}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_pairwise_group()}
     \if{html}{\out{</div>}}
   }
 }
@@ -112,7 +276,7 @@ drawn as reference lines on the Manhattan plots.}
 \if{html}{\out{<a id="method-IbdResults-get_thresholds"></a>}}
 \if{latex}{\out{\hypertarget{method-IbdResults-get_thresholds}{}}}
 \subsection{\code{IbdResults$get_thresholds()}}{
-  Threshold tibble (\code{region}, \code{threshold}) or \code{NULL}.
+  Threshold tibble (\code{group}, \code{threshold}) or \code{NULL}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{IbdResults$get_thresholds()}
@@ -128,6 +292,54 @@ drawn as reference lines on the Manhattan plots.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{IbdResults$get_genes()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_blocks"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_blocks}{}}}
+\subsection{\code{IbdResults$get_blocks()}}{
+  IBD segment table (\code{sample1}, \code{sample2}, \code{chr}, \code{start}, \code{end}), or \code{NULL}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_blocks()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_analyzed_samples"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_analyzed_samples}{}}}
+\subsection{\code{IbdResults$get_analyzed_samples()}}{
+  Analyzed-sample ids (from every block row, pre IBD filter), or \code{NULL}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_analyzed_samples()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_meta"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_meta}{}}}
+\subsection{\code{IbdResults$get_meta()}}{
+  Sample metadata data frame, or \code{NULL}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_meta()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_gene_overlap"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_gene_overlap}{}}}
+\subsection{\code{IbdResults$get_gene_overlap()}}{
+  Precomputed per-gene block-overlap table, or \code{NULL}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_gene_overlap()}
     \if{html}{\out{</div>}}
   }
 }
@@ -164,6 +376,185 @@ drawn as reference lines on the Manhattan plots.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{IbdResults$print(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Ignored; present for the \code{print()} generic.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_ibd_sharing_manhattan"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_ibd_sharing_manhattan}{}}}
+\subsection{\code{IbdResults$plot_ibd_sharing_manhattan()}}{
+  Genome-wide per-SNP IBD-sharing Manhattan. See \code{\link[=plot_ibd_sharing_manhattan]{plot_ibd_sharing_manhattan()}}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_ibd_sharing_manhattan(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_ibd_sharing_manhattan]{plot_ibd_sharing_manhattan()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_selection_manhattan"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_selection_manhattan}{}}}
+\subsection{\code{IbdResults$plot_selection_manhattan()}}{
+  IBD selection-statistic Manhattan. See \code{\link[=plot_selection_manhattan]{plot_selection_manhattan()}}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_selection_manhattan(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_selection_manhattan]{plot_selection_manhattan()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_ibd_tugofwar"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_ibd_tugofwar}{}}}
+\subsection{\code{IbdResults$plot_ibd_tugofwar()}}{
+  Selection/IBD "tug-of-war" mirror. See \code{\link[=plot_ibd_tugofwar]{plot_ibd_tugofwar()}}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_ibd_tugofwar(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_ibd_tugofwar]{plot_ibd_tugofwar()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_ibd_pairwise_group_heatmap"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_ibd_pairwise_group_heatmap}{}}}
+\subsection{\code{IbdResults$plot_ibd_pairwise_group_heatmap()}}{
+  Group x group IBD heatmap along the genome. See \code{\link[=plot_ibd_pairwise_group_heatmap]{plot_ibd_pairwise_group_heatmap()}}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_ibd_pairwise_group_heatmap(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_ibd_pairwise_group_heatmap]{plot_ibd_pairwise_group_heatmap()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_pairwise_ibd_for_genes"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_pairwise_ibd_for_genes}{}}}
+\subsection{\code{IbdResults$plot_pairwise_ibd_for_genes()}}{
+  Per-gene (or per-SNP) group x group IBD triangles. See \code{\link[=plot_pairwise_ibd_for_genes]{plot_pairwise_ibd_for_genes()}}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_pairwise_ibd_for_genes(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_pairwise_ibd_for_genes]{plot_pairwise_ibd_for_genes()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-gene_ibd_overlap"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-gene_ibd_overlap}{}}}
+\subsection{\code{IbdResults$gene_ibd_overlap()}}{
+  Per-gene IBD-block overlap between groups (see \code{\link[=gene_ibd_overlap]{gene_ibd_overlap()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$gene_ibd_overlap(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=gene_ibd_overlap]{gene_ibd_overlap()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-gene_ibd_pairs"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-gene_ibd_pairs}{}}}
+\subsection{\code{IbdResults$gene_ibd_pairs()}}{
+  Sample pairs sharing IBD over each gene (see \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$gene_ibd_pairs(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_ibd_network"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_ibd_network}{}}}
+\subsection{\code{IbdResults$plot_ibd_network()}}{
+  Sample-level IBD network at a gene / locus (see \code{\link[=plot_ibd_network]{plot_ibd_network()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_ibd_network(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_ibd_network]{plot_ibd_network()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-pos_selection_genes"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-pos_selection_genes}{}}}
+\subsection{\code{IbdResults$pos_selection_genes()}}{
+  Genes overlapping (or within \code{within} bp of) above-threshold
+selection SNPs. See \code{\link[=pos_selection_genes]{pos_selection_genes()}}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$pos_selection_genes(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=pos_selection_genes]{pos_selection_genes()}}.}
+    }
     \if{html}{\out{</div>}}
   }
 }

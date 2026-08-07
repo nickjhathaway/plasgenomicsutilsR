@@ -11,9 +11,9 @@ An \link{IbdResults} object.
 }
 \description{
 Returns an \link{IbdResults} built from the small public example dataset shipped in
-\code{inst/extdata}: per-SNP-per-region IBD, pairwise-region IBD, and the per-region
+\code{inst/extdata}: per-SNP-per-group IBD, pairwise-group IBD, and the per-group
 selection statistic (with thresholds) for five African countries, plus the
-\link{EXAMPLE_DRUG_GENES} track. Use it to try the \verb{plot_*()} functions without your
+\link{PF_EXAMPLE_DRUG_GENES} track. Use it to try the \verb{plot_*()} functions without your
 own data.
 }
 \details{

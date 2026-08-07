@@ -7,11 +7,11 @@
 plot_selection_manhattan(
   x,
   metric = c("neg_log10_p", "chi2_stat", "z_score"),
-  regions = NULL,
+  groups = NULL,
   chroms = NULL,
   skip_chr = NULL,
   highlight_genes = NULL,
-  label_genes = FALSE,
+  label_genes = NULL,
   draw_threshold = TRUE,
   point_size = 0.5,
   point_alpha = 0.6,
@@ -24,7 +24,7 @@ plot_selection_manhattan(
 \item{metric}{Which column to plot: \code{"neg_log10_p"} (default), \code{"chi2_stat"},
 or \code{"z_score"}.}
 
-\item{regions}{Optional character vector to keep (needs a \code{region} column).}
+\item{groups}{Optional character vector to keep (needs a \code{group} column).}
 
 \item{chroms}{Optional chromosomes to keep (any spelling); others are dropped and
 the remaining ones re-laid-out contiguously.}
@@ -32,11 +32,25 @@ the remaining ones re-laid-out contiguously.}
 \item{skip_chr}{Optional chromosomes to drop (complement of \code{chroms}).}
 
 \item{highlight_genes}{Optional gene names (from the object's \code{genes} track) to draw
-as reference lines; default all genes in the track.}
+as reference lines; default all genes in the track. Requesting a name not in the
+track is an error.}
 
-\item{label_genes}{Label the highlighted genes (top panel only, outside the plot).}
+\item{label_genes}{Label the genes. \code{NULL} (default) labels them only when
+\code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
-\item{draw_threshold}{Draw the significance threshold line (only for \code{neg_log10_p}).}
+\item{draw_threshold}{Which significance line(s) to draw (only for \code{neg_log10_p}).
+The two read off a chi-square(1) are warm, the two built by permutation cool:
+\code{TRUE} / \code{"bonferroni"} (red dashed), \code{"fdr"} (orange dot-dash), \code{"permutation"}
+(family-wise, green solid), \code{"empirical"} (FDR over the permutation's own p-values,
+blue long-dash). Also \code{"both"} for the first two, \code{"all"} for every kind present, or
+\code{FALSE} for none.
+Prefer a permutation line where it disagrees with a parametric one: it is built by
+re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
+it accounts for one segment spanning many SNPs. On real data it lands several times
+higher than Bonferroni's. \code{lambda_gc} says how far that reference is from fitting;
+the further from 1, the less the parametric lines mean.
+Naming a kind the run did not write is an error; \code{"all"} draws whichever kinds the
+threshold table carries.}
 
 \item{point_size, point_alpha}{Point aesthetics.}
 

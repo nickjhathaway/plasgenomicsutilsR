@@ -7,7 +7,7 @@
 plot_dims(
   x,
   type = c("manhattan", "selection", "tugofwar", "heatmap", "triangles"),
-  regions = NULL,
+  groups = NULL,
   chroms = NULL,
   skip_chr = NULL,
   genes = NULL,
@@ -22,7 +22,7 @@ plot_dims(
 \item{type}{One of \code{"manhattan"}, \code{"selection"}, \code{"tugofwar"}, \code{"heatmap"},
 \code{"triangles"}.}
 
-\item{regions, chroms, skip_chr, genes, snps, ncol, label_genes}{The same selection
+\item{groups, chroms, skip_chr, genes, snps, ncol, label_genes}{The same selection
 arguments you pass to the plot, so the counts match what will be drawn.}
 }
 \value{
@@ -30,7 +30,7 @@ A named numeric vector \code{c(width = , height = )} in inches.
 }
 \description{
 Returns a \code{c(width, height)} (inches) that scales with how much a plot will draw:
-the genome fraction shown across (chromosomes kept), and the number of region
+the genome fraction shown across (chromosomes kept), and the number of group
 panels / triangle features down. The \verb{plot_*()} functions already attach this to
 the plot they return, so \code{\link[=save_plot]{save_plot()}} uses it automatically; call \code{plot_dims()}
 yourself only to inspect or override the numbers.

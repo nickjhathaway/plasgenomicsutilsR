@@ -4,25 +4,80 @@
 
 # ---- genotypes -------------------------------------------------------------
 
+# SNPRelate parses a VCF as text, so a binary BCF reaches it as mojibake and fails deep
+# inside the parser with "invalid multibyte string". Hand it a VCF instead: reuse one
+# already sitting next to the BCF if there is one, otherwise convert with bcftools into
+# `vcf_dir` (default: alongside the BCF). Reusing rather than re-converting is the point
+# -- these files are large and otherwise accumulate one copy per analysis.
+.as_text_vcf <- function(path, vcf_dir = NULL) {
+  if (!grepl("\\.bcf$", path, ignore.case = TRUE)) return(path)
+  base <- sub("\\.bcf$", "", path, ignore.case = TRUE)
+  out <- if (is.null(vcf_dir)) paste0(base, ".vcf.gz")
+         else file.path(vcf_dir, paste0(basename(base), ".vcf.gz"))
+
+  for (cand in unique(c(out, paste0(base, ".vcf.gz"), paste0(base, ".vcf")))) {
+    if (!file.exists(cand)) next
+    if (file.mtime(cand) < file.mtime(path))
+      warning(sprintf("%s is older than the BCF beside it; delete it to reconvert",
+                      basename(cand)), call. = FALSE)
+    message("reusing the existing VCF: ", cand)
+    return(cand)
+  }
+
+  bcftools <- Sys.which("bcftools")
+  if (!nzchar(bcftools))
+    stop(sprintf(paste0("`%s` is a BCF, which SNPRelate cannot read, and bcftools is ",
+                        "not on PATH to convert it.\n  bcftools view -Oz -o %s %s"),
+                 basename(path), out, path), call. = FALSE)
+  if (!is.null(vcf_dir)) dir.create(vcf_dir, showWarnings = FALSE, recursive = TRUE)
+  message("converting BCF to ", out, " (SNPRelate reads VCF text only)")
+  log <- system2(bcftools, c("view", "-Oz", "-o", shQuote(out), shQuote(path)),
+                 stdout = TRUE, stderr = TRUE)
+  st <- attr(log, "status")
+  if ((!is.null(st) && st != 0L) || !file.exists(out))
+    stop("bcftools failed to convert ", path, ":\n  ",
+         paste(utils::tail(log, 3), collapse = "\n  "), call. = FALSE)
+  out
+}
+
 #' LD-prune a VCF and return the genotype matrix
 #'
 #' Converts a VCF to GDS (only when needed), LD-prunes, and returns the pruned
 #' genotype matrix (samples x SNPs, coded 0/1/2, `NA` for missing) via
 #' \pkg{SNPRelate}.
 #'
-#' @param vcf Path to a (bgzipped) VCF.
+#' @param vcf Path to a (bgzipped) VCF, or a **BCF** -- SNPRelate reads VCF text only, so
+#'   a BCF is converted first with `bcftools`, reusing any VCF already sitting next to it
+#'   rather than making another copy.
 #' @param gds Optional GDS path; derived from `vcf` if `NULL`.
+#' @param prune LD-prune (default `TRUE`). `FALSE` returns **every** biallelic SNP,
+#'   unpruned -- use this for the genotype matrix fed to [pop_diff()] /
+#'   [pop_diff_table()], since LD-pruning removes the very SNPs that carry the
+#'   differentiation signal.
 #' @param ld_threshold,slide_max_bp,slide_max_n,autosome_only Passed to
-#'   [SNPRelate::snpgdsLDpruning()] (defaults 0.2 / 20000 / 200 / `FALSE`).
+#'   [SNPRelate::snpgdsLDpruning()] (defaults 0.2 / 20000 / 200 / `FALSE`); ignored
+#'   when `prune = FALSE`.
 #' @param maf,missing_rate Optional MAF / per-SNP missing-rate cutoffs for pruning.
 #' @param seed Random seed for the pruning.
-#' @return A list with `genotype` (matrix), `sample.id`, and `snp.id`.
+#' @param vcf_dir Where to put the VCF converted from a BCF (default: alongside the BCF).
+#'   Point it somewhere scratch to keep converted copies out of the data directory.
+#' @param allele Which allele the returned dosage counts. \pkg{SNPRelate} counts the
+#'   **reference** allele; the default `"alt"` flips that so the matrix means what the
+#'   rest of the package says it means. Only reported allele frequencies (and the
+#'   arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
+#'   and selection statistic here is symmetric in `p` and `1 - p`.
+#' @return A list with `genotype` (matrix; sample row names and `chr:pos` column names),
+#'   `sample.id`, and `snp.id`.
 #' @export
-run_ld_prune <- function(vcf, gds = NULL, ld_threshold = 0.2, slide_max_bp = 20000,
-                         slide_max_n = 200, autosome_only = FALSE, maf = NaN,
-                         missing_rate = NaN, seed = 42) {
+run_ld_prune <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
+                         slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
+                         maf = NaN, missing_rate = NaN, seed = 42, vcf_dir = NULL,
+                         allele = c("alt", "ref")) {
   .need_package("SNPRelate", "run_ld_prune()")
   .need_package("gdsfmt", "run_ld_prune()")
+  allele <- match.arg(allele)
+  if (!file.exists(vcf)) stop(sprintf("no such file: %s", vcf), call. = FALSE)
+  vcf <- .as_text_vcf(vcf, vcf_dir)
   if (is.null(gds)) gds <- sub("\\.vcf(\\.gz)?$", ".gds", vcf, ignore.case = TRUE)
   if (identical(gds, vcf)) gds <- paste0(vcf, ".gds")
   if (!file.exists(gds) || file.mtime(gds) < file.mtime(vcf)) {
@@ -30,13 +85,27 @@ run_ld_prune <- function(vcf, gds = NULL, ld_threshold = 0.2, slide_max_bp = 200
   }
   h <- SNPRelate::snpgdsOpen(gds)
   on.exit(SNPRelate::snpgdsClose(h), add = TRUE)
-  set.seed(seed)
-  snpset <- SNPRelate::snpgdsLDpruning(
-    h, autosome.only = autosome_only, ld.threshold = ld_threshold,
-    slide.max.bp = slide_max_bp, slide.max.n = slide_max_n,
-    maf = maf, missing.rate = missing_rate, verbose = FALSE)
-  snp_ids <- unlist(snpset, use.names = FALSE)
+  snpinfo <- SNPRelate::snpgdsSNPList(h)              # snp.id, chromosome, position
+  if (prune) {
+    set.seed(seed)
+    snpset <- SNPRelate::snpgdsLDpruning(
+      h, autosome.only = autosome_only, ld.threshold = ld_threshold,
+      slide.max.bp = slide_max_bp, slide.max.n = slide_max_n,
+      maf = maf, missing.rate = missing_rate, verbose = FALSE)
+    snp_ids <- unlist(snpset, use.names = FALSE)
+  } else {
+    snp_ids <- snpinfo$snp.id
+  }
   geno <- SNPRelate::snpgdsGetGeno(h, snp.id = snp_ids, with.id = TRUE, verbose = FALSE)
+  idx <- match(geno$snp.id, snpinfo$snp.id)
+  rownames(geno$genotype) <- geno$sample.id
+  colnames(geno$genotype) <- paste0(snpinfo$chromosome[idx], ":", snpinfo$position[idx])
+  # SNPRelate counts the *reference* allele, while this package documents and reports
+  # alt dosage everywhere, so flip once here rather than leaving each caller to guess.
+  # Every statistic downstream is symmetric in p <-> 1 - p, so this changes only reported
+  # allele frequencies and the arbitrary sign of a PCA axis, never a differentiation,
+  # diversity, LD or selection value.
+  if (identical(allele, "alt")) geno$genotype <- 2L - geno$genotype
   list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id)
 }
 
@@ -125,6 +194,27 @@ print.pop_structure <- function(x, ...) {
 .ps_meta_join <- function(df, meta) {
   if (is.null(meta) || !"sample" %in% names(meta)) return(df)
   merge(df, meta, by = "sample", all.x = TRUE, sort = FALSE)
+}
+
+# Grouping values for a set of samples as a factor, carrying the metadata column's own
+# level order through. Every plot derives its group ordering from here, so setting levels
+# on the metadata (or via PopStructure$set_levels()) drives them all the same way. A
+# column that is not a factor is natural-sorted (see .levels_of()).
+.group_factor <- function(meta, group, samples = NULL) {
+  v <- meta[[group]]
+  if (!is.null(samples)) v <- v[match(samples, meta$sample)]
+  .as_group_factor(v)
+}
+
+# The levels actually present, in the column's level order (empty levels dropped).
+.group_order <- function(v) {
+  f <- .as_group_factor(v)
+  levels(f)[levels(f) %in% as.character(f[!is.na(f)])]
+}
+
+# A factor keeps its own level order; anything else gets one from .levels_of().
+.as_group_factor <- function(v) {
+  if (is.factor(v)) v else factor(as.character(v), levels = .levels_of(v))
 }
 
 # ---- plots -----------------------------------------------------------------
@@ -322,6 +412,184 @@ snmf_best_k <- function(x, K = NULL, stat = c("mean", "min")) {
   K[which.min(vals)]
 }
 
+#' Cross-entropy of every sNMF replicate, summarised per K
+#'
+#' sNMF fits `rep` independent replicates at each K and scores each by cross-entropy
+#' (lower is better). [snmf_q()] and [plot_admixture()] use the **minimum**-cross-entropy
+#' replicate, so the `min` column is the one that describes the ancestry actually plotted;
+#' `mean` and `max` show how much the replicates disagreed, which is worth a look before
+#' trusting a K.
+#'
+#' Picking K is a separate judgement from picking a replicate: read the elbow of `min`
+#' across K with [plot_snmf_cross_entropy()]. A curve that keeps falling or is flat means
+#' the data do not support a well-defined K, whatever [snmf_best_k()] returns.
+#'
+#' @param x An [run_snmf()] result (or a raw LEA project, with `K` given).
+#' @param K Candidate K values (defaults to the fitted range).
+#' @return A tibble, one row per K: `K`, `n_runs`, `min`, `mean`, `max`, and `best_run`
+#'   (the replicate index attaining `min`, i.e. the one [snmf_q()] returns).
+#' @seealso [plot_snmf_cross_entropy()], [snmf_best_k()], [snmf_q()]
+#' @export
+snmf_cross_entropy <- function(x, K = NULL) {
+  .need_package("LEA", "snmf_cross_entropy()")
+  project <- .snmf_project(x)
+  if (is.null(K)) {
+    if (inherits(x, "snmf_fit")) K <- x$K
+    else stop("pass K (the fitted range) when giving a raw sNMF project", call. = FALSE)
+  }
+  rows <- lapply(K, function(k) {
+    ce <- as.numeric(LEA::cross.entropy(project, K = k))
+    ce <- ce[is.finite(ce)]
+    if (!length(ce)) {
+      return(data.frame(K = k, n_runs = 0L, min = NA_real_, mean = NA_real_,
+                        max = NA_real_, best_run = NA_integer_))
+    }
+    data.frame(K = k, n_runs = length(ce), min = min(ce), mean = mean(ce),
+               max = max(ce), best_run = which.min(ce))
+  })
+  tibble::as_tibble(do.call(rbind, rows))
+}
+
+#' Cross-entropy elbow plot for choosing K
+#'
+#' Cross-entropy against K, so the elbow (or the absence of one) is visible. The line
+#' follows `stat`, and `show_range = TRUE` adds the replicate min-max band -- a wide band
+#' means the replicates disagreed and that K is not reproducible.
+#'
+#' @param x An [run_snmf()] result, or a table from [snmf_cross_entropy()].
+#' @param K Candidate K values (defaults to the fitted range).
+#' @param stat Which summary the line follows: `"min"` (default -- the replicate that
+#'   [snmf_q()] plots) or `"mean"`.
+#' @param show_range Draw the replicate min-max band (default `TRUE`).
+#' @param best_k K to mark in red; `NULL` (default) marks the K minimising `stat`, `NA`
+#'   marks none.
+#' @param point_size,line_width Point and line sizes.
+#' @return A ggplot object.
+#' @examples
+#' \dontrun{
+#' fit <- run_snmf(geno, K = 1:10, rep = 10)
+#' snmf_cross_entropy(fit)          # the numbers
+#' plot_snmf_cross_entropy(fit)     # the elbow
+#' }
+#' @export
+plot_snmf_cross_entropy <- function(x, K = NULL, stat = c("min", "mean"),
+                                    show_range = TRUE, best_k = NULL,
+                                    point_size = 2.4, line_width = 0.6) {
+  .need_package("ggplot2", "plot_snmf_cross_entropy()")
+  stat <- match.arg(stat)
+  ce <- if (is.data.frame(x) && all(c("K", "min", "mean") %in% names(x))) x
+        else snmf_cross_entropy(x, K)
+  ce <- ce[is.finite(ce[[stat]]), , drop = FALSE]
+  if (!nrow(ce)) stop("no finite cross-entropy values to plot", call. = FALSE)
+  if (is.null(best_k)) best_k <- ce$K[which.min(ce[[stat]])]
+  ce$.y <- ce[[stat]]
+  ce$.best <- !is.na(best_k) & ce$K == best_k
+
+  p <- ggplot2::ggplot(ce, ggplot2::aes(.data$K, .data$.y))
+  if (show_range && any(is.finite(ce$max))) {
+    p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin = .data$min, ymax = .data$max),
+                                  fill = "grey80", alpha = 0.5)
+  }
+  p <- p +
+    ggplot2::geom_line(linewidth = line_width, colour = "grey30") +
+    ggplot2::geom_point(ggplot2::aes(colour = .data$.best), size = point_size) +
+    ggplot2::scale_colour_manual(values = c(`TRUE` = "firebrick", `FALSE` = "grey25"),
+                                 guide = "none") +
+    ggplot2::scale_x_continuous(breaks = ce$K) +
+    ggplot2::labs(x = "K", y = sprintf("cross-entropy (%s of replicates)", stat),
+                  title = "sNMF cross-entropy by K") +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+  if (!is.na(best_k) && any(ce$.best)) {
+    p <- p + ggplot2::annotate("text", x = best_k, y = ce$.y[ce$.best],
+                               label = paste0("  best K = ", best_k),
+                               hjust = 0, vjust = -0.9, colour = "firebrick", size = 3.4)
+  }
+  p
+}
+
+#' Admixture bar plots across every K, as pages
+#'
+#' One [plot_admixture()] per K, returned as a named list -- hand it straight to
+#' [save_plot()] for a multi-page PDF, one K per page. Optionally leads with the
+#' cross-entropy elbow ([plot_snmf_cross_entropy()]) so the page that tells you which K to
+#' believe comes first, with the best K marked in red.
+#'
+#' Bars stay in the same place from page to page when a shared `sample_order` is used,
+#' which is what makes the pages comparable: a sample sits at the same x on every K.
+#'
+#' @param x A [PopStructure] with a fitted sNMF, or an [run_snmf()] result (then give
+#'   `meta` and `samples`).
+#' @param K Which K values to draw (default: every fitted K with a Q matrix, K >= 2 --
+#'   K = 1 is a single block and carries no information).
+#' @param group Metadata column to facet by (e.g. `"region"`).
+#' @param cross_entropy_first Lead with the cross-entropy elbow page (default `TRUE`).
+#' @param sample_order Explicit sample order shared by every page. Overrides
+#'   `sample_order_best_k`.
+#' @param sample_order_best_k Derive one shared sample order from the best K's Q and use
+#'   it on every page (default `TRUE`). `FALSE` lets each page cluster its own samples,
+#'   so bars move between pages.
+#' @param best_k The K to treat as best; `NULL` (default) uses [snmf_best_k()].
+#' @param stat How [snmf_best_k()] and the elbow combine replicates: `"mean"` (default)
+#'   or `"min"`.
+#' @param meta,samples Metadata and sample ids, needed only when `x` is a raw
+#'   [run_snmf()] result.
+#' @param ... Passed to [plot_admixture()] (e.g. `group_bar`, `border`, `colours`).
+#' @return A named list of ggplots: `"cross_entropy"` (when asked for) then `"K=2"`,
+#'   `"K=3"`, ... The best K's page is titled as such.
+#' @examples
+#' \dontrun{
+#' ps$run_snmf(K = 1:12)
+#' pages <- ps$plot_admixture_multi_k(group = "region")
+#' save_plot("admixture_all_k.pdf", pages)     # one K per page
+#' }
+#' @seealso [plot_snmf_cross_entropy()], [plot_admixture()], [save_plot()]
+#' @export
+plot_admixture_multi_k <- function(x, K = NULL, group = NULL,
+                                   cross_entropy_first = TRUE,
+                                   sample_order = NULL, sample_order_best_k = TRUE,
+                                   best_k = NULL, stat = c("mean", "min"),
+                                   meta = NULL, samples = NULL, ...) {
+  .need_package("ggplot2", "plot_admixture_multi_k()")
+  stat <- match.arg(stat)
+  is_ps <- inherits(x, "PopStructure")
+  fit <- if (is_ps) x$get_snmf_fit() else x
+  if (is.null(fit)) stop("run_snmf() first", call. = FALSE)
+  if (is.null(meta)) meta <- if (is_ps) x$get_meta() else NULL
+  if (is.null(samples)) samples <- if (is_ps) x$get_samples() else fit$samples
+
+  fitted_k <- if (inherits(fit, "snmf_fit")) fit$K else K
+  if (is.null(K)) K <- fitted_k[fitted_k >= 2]
+  K <- as.integer(K)
+  if (!length(K)) stop("no K values to draw (K = 1 alone carries no structure)", call. = FALSE)
+  if (is.null(best_k)) best_k <- snmf_best_k(fit, K = fitted_k, stat = stat)
+
+  q_at <- function(k) {
+    qq <- snmf_q(fit, K = k)
+    if (!is.null(samples)) qq <- qq[rownames(qq) %in% samples, , drop = FALSE]
+    qq
+  }
+  # one shared order keeps a sample at the same x on every page
+  if (is.null(sample_order) && isTRUE(sample_order_best_k)) {
+    sample_order <- admixture_order(q_at(best_k), meta = meta, group = group)
+  }
+
+  pages <- list()
+  if (isTRUE(cross_entropy_first)) {
+    pages[["cross_entropy"]] <- plot_snmf_cross_entropy(fit, K = fitted_k, stat = stat,
+                                                        best_k = best_k)
+  }
+  for (k in K) {
+    ttl <- if (!is.na(best_k) && k == best_k) sprintf("K = %d  (best by %s cross-entropy)", k, stat)
+           else sprintf("K = %d", k)
+    p <- plot_admixture(q_at(k), meta = meta, group = group,
+                        sample_order = sample_order, ...) +
+      ggplot2::labs(title = ttl)
+    pages[[sprintf("K=%d", k)]] <- p
+  }
+  pages
+}
+
 #' Best-run Q (ancestry proportion) matrix for a given K
 #'
 #' @param x An [run_snmf()] result (or a raw LEA project).
@@ -340,6 +608,25 @@ snmf_q <- function(x, K, run = NULL) {
   q
 }
 
+# A legend of `n` keys, wrapped so it does not run off the canvas: down the side it grows
+# into extra columns, along the bottom into extra rows. `rows` caps the keys per column
+# (or per row when horizontal); NULL uses a default that keeps a right-hand legend inside a
+# typical page.
+.LEGEND_MAX_KEYS <- 10L
+
+.LEGEND_MAX_ROWS_HORIZONTAL <- 2L
+
+.legend_wrap <- function(n, rows = NULL, position = "right", order = 0) {
+  if (identical(position, "none")) return("none")
+  if (position %in% c("bottom", "top")) {
+    # along the bottom, keep it shallow so it does not eat the panel's height
+    nr <- if (is.null(rows)) .LEGEND_MAX_ROWS_HORIZONTAL else max(1L, as.integer(rows))
+    return(ggplot2::guide_legend(order = order, nrow = min(n, nr)))
+  }
+  per <- if (is.null(rows)) .LEGEND_MAX_KEYS else max(1L, as.integer(rows))
+  ggplot2::guide_legend(order = order, ncol = max(1L, ceiling(n / per)))
+}
+
 #' Sample order for admixture bars
 #'
 #' Orders samples within each `group` by hierarchical clustering of their ancestry
@@ -355,18 +642,25 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
   q <- as.matrix(q)
   if (is.null(samples)) samples <- rownames(q)
   if (is.null(samples)) samples <- as.character(seq_len(nrow(q)))
-  grp <- rep("all", length(samples))
+  grp <- factor(rep("all", length(samples)))
   if (!is.null(meta) && !is.null(group) && "sample" %in% names(meta) && group %in% names(meta)) {
-    grp <- as.character(meta[[group]][match(samples, meta$sample)])
+    grp <- .group_factor(meta, group, samples)
   }
   ord <- character(0)
-  for (g in unique(grp)) {
-    idx <- which(grp == g)
+  # groups are swept in the column's level order, so samples sit in the requested order
+  for (g in .group_order(grp)) {
+    idx <- which(!is.na(grp) & grp == g)
     if (length(idx) > 2) {
       hc <- stats::hclust(stats::dist(q[idx, , drop = FALSE]), method = "ward.D2")
       idx <- idx[hc$order]
     }
     ord <- c(ord, samples[idx])
+  }
+  # samples whose group is not one of the levels are left out (set_levels() drops unlisted
+  # levels), which silently shrinks the plot -- so say how many went
+  if (anyNA(grp)) {
+    warning(sum(is.na(grp)), " sample(s) have no level in the grouping column and are ",
+            "not plotted; add their level with set_levels() to keep them", call. = FALSE)
   }
   ord
 }
@@ -389,17 +683,31 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
 #' @param group_bar Draw a coloured strip above the bars keyed by `group`.
 #' @param group_colours Named `level -> colour` vector for the group strip (see
 #'   [meta_colors()]); pass the same mapping you use for the UMAP to match colours.
-#' @param border Outline each sample's bar (default `TRUE`) so neighbours with nearly
-#'   identical ancestry stay distinct; set `FALSE` for borderless bars.
+#' @param border Outline each sample's bar (default `TRUE`, matching
+#'   [plot_structure_figure()]) so neighbours with nearly identical ancestry stay distinct;
+#'   `FALSE` for borderless bars. With very many samples in a narrow render the outlines
+#'   can swamp the fills -- either render wider ([save_plot()] uses the attached width) or
+#'   set `border = FALSE` / a thinner `border_linewidth`.
 #' @param border_colour,border_linewidth Colour and width of the per-sample outline.
+#' @param legend_position Where the legends go: `"right"` (default), `"bottom"`, `"top"`,
+#'   `"left"`, or `"none"`. A large K makes for a tall legend stack, so `"bottom"` often
+#'   fits better on a wide, short admixture panel.
+#' @param legend_rows Keys per legend column (or per row when the legend is horizontal)
+#'   before wrapping into another column/row. `NULL` (default) wraps a side legend every
+#'   `r plasgenomicsutilsR:::.LEGEND_MAX_KEYS` keys and splits a horizontal one over two
+#'   rows, which keeps `K` = 15 plus a group strip on the page. The suggested output height
+#'   accounts for whatever this works out to.
 #' @return A ggplot object.
 #' @export
 plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
                            order_within = TRUE, sample_order = NULL, colours = NULL,
                            group_bar = FALSE, group_colours = NULL,
                            border = TRUE, border_colour = "black",
-                           border_linewidth = 0.15) {
+                           border_linewidth = 0.15,
+                           legend_position = c("right", "bottom", "top", "left", "none"),
+                           legend_rows = NULL) {
   .need_package("ggplot2", "plot_admixture()")
+  legend_position <- match.arg(legend_position)
   q <- as.matrix(q)
   if (is.null(colnames(q))) colnames(q) <- paste0("K", seq_len(ncol(q)))
   if (is.null(samples)) samples <- rownames(q)
@@ -418,12 +726,18 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
     direction = "long", varying = colnames(q), v.names = "q",
     times = colnames(q), timevar = "cluster", idvar = "sample")
   long$sample <- factor(long$sample, levels = sample_order)
+  # reshape() leaves `cluster` a character, so K10 would sort before K2. Keep the Q
+  # matrix's own column order, which is K1..K<K>.
+  long$cluster <- factor(long$cluster, levels = colnames(q))
 
+  cl_cols <- if (is.null(colours)) .pick_palette(ncol(q)) else colours
   p <- ggplot2::ggplot(long, ggplot2::aes(.data$sample, .data$q, fill = .data$cluster)) +
     ggplot2::geom_col(width = 1, position = "stack",
                       colour = if (border) border_colour else NA,
                       linewidth = border_linewidth) +
-    ggplot2::scale_fill_manual(values = if (is.null(colours)) .pick_palette(ncol(q)) else colours) +
+    ggplot2::scale_fill_manual(values = cl_cols, drop = FALSE,
+                               guide = .legend_wrap(ncol(q), legend_rows, legend_position,
+                                                    order = 1)) +
     ggplot2::labs(x = NULL, y = "ancestry", fill = "cluster") +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(axis.text.x = ggplot2::element_blank(),
@@ -432,19 +746,46 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
 
   if (group_bar && !is.null(group) && group %in% names(df)) {
     .need_package("ggnewscale", "the group colour bar")
+    # the strip's facet column has to stay the same factor as the bars': a character copy
+    # here makes ggplot combine the two layers' facet values alphabetically
     gdf <- data.frame(sample = factor(df$sample, levels = sample_order),
-                      grp = as.character(df[[group]]), stringsAsFactors = FALSE)
+                      grp = .as_group_factor(df[[group]]), stringsAsFactors = FALSE)
+    gdf[[group]] <- gdf$grp   # carry the facet variable so facet_grid subsets the strip
     if (is.null(group_colours)) group_colours <- meta_colors(df, cols = group)[[group]]
     p <- p + ggnewscale::new_scale_fill() +
       ggplot2::geom_tile(data = gdf, ggplot2::aes(.data$sample, y = 1.06, fill = .data$grp),
                          height = 0.05, inherit.aes = FALSE) +
-      ggplot2::scale_fill_manual(values = group_colours, name = group) +
+      ggplot2::scale_fill_manual(values = group_colours, name = group,
+                                 guide = .legend_wrap(length(group_colours), legend_rows,
+                                                      legend_position, order = 2)) +
       ggplot2::coord_cartesian(clip = "off")
   }
+  p <- p + ggplot2::theme(legend.position = legend_position,
+                          legend.box = if (legend_position %in% c("bottom", "top"))
+                            "horizontal" else "vertical")
+  n_groups <- if (!is.null(group) && group %in% names(df)) length(unique(df[[group]])) else 1L
   if (!is.null(group) && group %in% names(df)) {
     p <- p + ggplot2::facet_grid(stats::as.formula(paste("~", group)),
                                  scales = "free_x", space = "free")
   }
+  # Width scales with the number of bars so save_plot() makes it wide enough to read.
+  # Height has to clear a side legend as well, or a large K clips its own keys -- measure
+  # the built legend rather than estimating from the key count, since key size, text size
+  # and how many columns the guide wrapped into all contribute.
+  gt <- try(ggplot2::ggplotGrob(p), silent = TRUE)
+  panel_h <- 4
+  height <- if (inherits(gt, "try-error")) panel_h
+    else if (legend_position %in% c("right", "left")) {
+      # a side legend spans the canvas, so the canvas has to be at least that tall
+      max(panel_h, .guide_box_height(gt, c("guide-box-right", "guide-box-left")) + 0.25)
+    } else {
+      # a legend along the bottom/top is a layout row: it adds to the height instead of
+      # competing with it, so give the panel its space on top of the legend's
+      panel_h + .guide_box_height(gt, c("guide-box-bottom", "guide-box-top"))
+    }
+  attr(p, "plasgenomics_dims") <- c(
+    width = round(max(6, min(24, nrow(q) * 0.06 + n_groups * 0.3)), 1),
+    height = round(height, 1))
   p
 }
 
@@ -565,6 +906,33 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param stat Combine replicates by `"mean"` or `"min"`.
     best_k = function(stat = c("mean", "min")) snmf_best_k(private$snmf_fit, stat = match.arg(stat)),
 
+    #' @description Per-K cross-entropy summary of the sNMF replicates
+    #'   (see [snmf_cross_entropy()]).
+    #' @param ... Passed to [snmf_cross_entropy()].
+    cross_entropy = function(...) {
+      private$require_snmf()
+      snmf_cross_entropy(private$snmf_fit, ...)
+    },
+
+    #' @description Cross-entropy elbow plot for choosing K
+    #'   (see [plot_snmf_cross_entropy()]).
+    #' @param ... Passed to [plot_snmf_cross_entropy()].
+    plot_cross_entropy = function(...) {
+      private$require_snmf()
+      plot_snmf_cross_entropy(private$snmf_fit, ...)
+    },
+
+    #' @description The fitted sNMF result (`NULL` before `run_snmf()`).
+    get_snmf_fit = function() private$snmf_fit,
+
+    #' @description One admixture plot per K as pages, for a multi-page PDF
+    #'   (see [plot_admixture_multi_k()]).
+    #' @param ... Passed to [plot_admixture_multi_k()].
+    plot_admixture_multi_k = function(...) {
+      private$require_snmf()
+      plot_admixture_multi_k(self, ...)
+    },
+
     #' @description Q (ancestry) matrix at K, restricted to the active samples.
     #' @param K Number of ancestral populations (default the best K).
     #' @param run Replicate (default the lowest cross-entropy run).
@@ -667,9 +1035,10 @@ PopStructure <- R6::R6Class("PopStructure",
     plot_figure = function(group = NULL, ...) plot_structure_figure(self, group = group, ...),
 
     #' @description Per-SNP population differentiation between the levels of a metadata
-    #'   column (see [pop_diff()]); uses the full genotype matrix for the active samples.
+    #'   column (see [pop_diff()]); uses the object's genotype matrix (pass
+    #'   `genotype = run_ld_prune(vcf, prune = FALSE)` to run on the full unpruned set).
     #' @param group Metadata column defining the groups.
-    #' @param ... Passed to [pop_diff()] (e.g. `statistic = "fst"`).
+    #' @param ... Passed to [pop_diff()] (e.g. `statistic = "fst"`, `genotype = `).
     pop_diff = function(group = NULL, ...) pop_diff(self, group = group, ...),
 
     #' @description Per-SNP Jost's D between the levels of a metadata column ([jost_d()]).
@@ -688,13 +1057,15 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   metadata automatically.
     #' @param group Metadata column defining the groups.
     #' @param ... Passed to [plot_diff_heatmap()], plus `statistic` (`"jost_d"` default,
-    #'   `"gst"`, `"gst_hedrick"`, `"fst"`) selecting the measure.
+    #'   `"gst_hedrick"`, `"fst"`) selecting the measure, and `genotype` (a full/unpruned
+    #'   override, see [pop_diff()]).
     plot_diff_heatmap = function(group = NULL, ...) {
       dots <- list(...)
       statistic <- if (is.null(dots$statistic)) "jost_d" else dots$statistic
-      dots$statistic <- NULL
+      genotype  <- dots$genotype
+      dots$statistic <- NULL; dots$genotype <- NULL
       do.call(plot_diff_heatmap,
-              c(list(pop_diff(self, group = group, statistic = statistic),
+              c(list(pop_diff(self, group = group, statistic = statistic, genotype = genotype),
                      meta = private$meta_df), dots))
     },
 
@@ -703,6 +1074,53 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param ... Passed to [plot_diff_heatmap()].
     plot_jost_d_heatmap = function(group = NULL, ...)
       plot_diff_heatmap(jost_d(self, group = group), meta = private$meta_df, ...),
+
+    #' @description Per-SNP differentiation in long form (see [pop_diff_snps()]).
+    #' @param group Metadata column defining the groups.
+    #' @param ... Passed to [pop_diff()] (e.g. `statistic = `, `genotype = `).
+    pop_diff_snps = function(group = NULL, ...) pop_diff_snps(pop_diff(self, group = group, ...)),
+
+    #' @description Genome-wide differentiation Manhattan (see [plot_diff_manhattan()]).
+    #' @param group Metadata column defining the groups.
+    #' @param ... Passed to [plot_diff_manhattan()]; `statistic` / `genotype` go to [pop_diff()].
+    plot_diff_manhattan = function(group = NULL, ...) {
+      dots <- list(...)
+      statistic <- if (is.null(dots$statistic)) "jost_d" else dots$statistic
+      genotype  <- dots$genotype
+      dots$statistic <- NULL; dots$genotype <- NULL
+      do.call(plot_diff_manhattan,
+              c(list(pop_diff(self, group = group, statistic = statistic, genotype = genotype)),
+                dots))
+    },
+
+    #' @description Within-group diversity (see [pop_diversity()]).
+    #' @param group Metadata column defining the groups.
+    #' @param ... Passed to [pop_diversity()] (e.g. `by = `, `accessible = `).
+    diversity = function(group = NULL, ...) pop_diversity(self, group = group, ...),
+
+    #' @description Multilocus index of association (see [ld_index()]).
+    #' @param group Metadata column defining the groups.
+    #' @param ... Passed to [ld_index()].
+    ld_index = function(group = NULL, ...) ld_index(self, group = group, ...),
+
+    #' @description Beta scores for balancing selection (see [beta_score()]).
+    #' @param group Metadata column defining the groups.
+    #' @param ... Passed to [beta_score()].
+    beta_score = function(group = NULL, ...) beta_score(self, group = group, ...),
+
+    #' @description Phased haplotypes for a haplotype-homozygosity scan
+    #'   (see [parasite_haplotypes()]).
+    #' @param ... Passed to [parasite_haplotypes()] (e.g. `fws = `, `maf = `).
+    haplotypes = function(...) parasite_haplotypes(self, ...),
+
+    #' @description Integrated haplotype score (see [run_ihs()]); builds the haplotypes
+    #'   first unless one is supplied.
+    #' @param group Metadata column defining the groups.
+    #' @param hap Optional [parasite_haplotypes()] object to reuse.
+    #' @param ... Passed to [run_ihs()].
+    ihs = function(group = NULL, hap = NULL, ...) {
+      run_ihs(if (is.null(hap)) parasite_haplotypes(self) else hap, group = group, ...)
+    },
 
     #' @description Save the whole workspace (genotype, PCA, UMAP, metadata, colours,
     #'   and sNMF fit) to an `.rds` file so it can be reloaded without recomputing.
@@ -732,13 +1150,35 @@ PopStructure <- R6::R6Class("PopStructure",
   private = list(
     geno_mat = NULL, sample_ids = NULL, active_ids = NULL, meta_df = NULL,
     colors = NULL, ps = NULL, snmf_fit = NULL, n_pcs = NULL,
-    idx = function() match(private$active_ids, private$sample_ids)
+    idx = function() match(private$active_ids, private$sample_ids),
+    require_snmf = function() {
+      if (is.null(private$snmf_fit)) stop("run_snmf() first", call. = FALSE)
+      invisible(NULL)
+    }
   )
 )
 
+# An R6 object carries its own copy of the methods it was built with, so one saved by an
+# earlier version of the package comes back without anything added since. Move the saved state
+# into an instance built by the class as it stands now; a field the saved object never had
+# keeps the current default.
+.refresh_pop_structure <- function(obj) {
+  old <- obj$.__enclos_env__$private
+  fresh <- PopStructure$new(matrix(c(0L, 1L, 1L, 0L), nrow = 2,
+                                   dimnames = list(c("a", "b"), NULL)))
+  new <- fresh$.__enclos_env__$private
+  for (nm in names(PopStructure$private_fields)) {
+    v <- old[[nm]]
+    if (!is.null(v)) new[[nm]] <- v
+  }
+  fresh
+}
+
 #' Load a saved PopStructure workspace
 #'
-#' Reads an `.rds` written by `PopStructure$save()` (or plain [saveRDS()]).
+#' Reads an `.rds` written by `PopStructure$save()` (or plain [saveRDS()]). The workspace is
+#' re-bound to the installed version of the class, so a file written by an older version of
+#' the package gains the methods added since.
 #'
 #' @param file Path to the `.rds` file.
 #' @return The [PopStructure] object.
@@ -747,7 +1187,7 @@ load_pop_structure <- function(file) {
   obj <- readRDS(file)
   if (!inherits(obj, "PopStructure"))
     stop("`file` does not contain a PopStructure object", call. = FALSE)
-  obj
+  .refresh_pop_structure(obj)
 }
 
 # ---- example ---------------------------------------------------------------

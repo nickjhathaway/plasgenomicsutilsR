@@ -12,6 +12,7 @@ plot_diff_heatmap(
   cluster = TRUE,
   dendrogram = TRUE,
   triangle = TRUE,
+  legend_inside = triangle,
   annotate = NULL,
   meta = NULL,
   annotate_colours = NULL,
@@ -30,11 +31,22 @@ plot_jost_d_heatmap(pd, stat = "mean", ...)
 \item{stat, top}{Summary passed to \code{\link[=pop_diff_matrix]{pop_diff_matrix()}} (\code{"mean"}, \code{"median"},
 \code{"top_mean"}, \code{"max"}; \code{top} for the top-percentile mean).}
 
-\item{cluster}{Order groups by hierarchical clustering of the matrix.}
+\item{cluster}{Order groups by hierarchical clustering of the matrix (default \code{TRUE}),
+which is what puts similar groups side by side. With \code{cluster = FALSE} the axes follow
+the grouping column's levels instead -- its factor order if it has one (e.g. from
+\code{PopStructure$set_levels()}), otherwise a natural sort. Annotation strips and the
+dendrogram tips take their colours in level order either way, so a group keeps the
+same colour whichever ordering is drawn.}
 
 \item{dendrogram}{Draw the clustering dendrogram across the top (needs \code{cluster}).}
 
 \item{triangle}{Show only the lower triangle (with the legend in the empty corner).}
+
+\item{legend_inside}{Put the legends in the empty half of the matrix rather than in a
+margin column (default: on whenever \code{triangle} is \code{TRUE}, since that is what leaves
+the space). The annotation strips' legends move onto the matrix too, so there is one
+legend area. Turn it off when there are few groups: the empty corner is then small
+and the legends would sit over the cells.}
 
 \item{annotate}{One or more annotations drawn as colour strips above the columns:
 a metadata column name (looked up in \code{meta}), a vector of several column names, a

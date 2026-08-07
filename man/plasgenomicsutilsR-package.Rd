@@ -6,7 +6,7 @@
 \alias{plasgenomicsutilsR-package}
 \title{plasgenomicsutilsR: Utilities for Visualizing Plasmodium Genomics Data}
 \description{
-A collection of utilities for visualizing and analyzing the outputs of Plasmodium genomics post processing (IBD analysis, Fws within-host diversity, and related summaries produced by the companion Python package plasgenomicsutils). Reference-genome facts are namespaced by species so the tools generalize beyond Plasmodium falciparum.
+A collection of utilities for visualizing and analyzing the outputs of Plasmodium genomics post processing (IBD analysis, Fws within-host diversity, population structure and differentiation, and related summaries produced by the companion Python package plasgenomicsutils). Provides R6 workspaces for IBD results and population structure, genome-wide and group-by-group figures, sample-level IBD networks, per-gene IBD sharing tables, and admixture model selection. Genomic coordinates follow a single convention throughout (0-based, half-open intervals), and reference-genome facts are namespaced by species so the tools generalize beyond Plasmodium falciparum.
 }
 \seealso{
 Useful links:
