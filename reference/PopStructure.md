@@ -27,6 +27,14 @@ set of samples (or a metadata match) for output.
 
 - [`PopStructure$best_k()`](#method-PopStructure-best_k)
 
+- [`PopStructure$cross_entropy()`](#method-PopStructure-cross_entropy)
+
+- [`PopStructure$plot_cross_entropy()`](#method-PopStructure-plot_cross_entropy)
+
+- [`PopStructure$get_snmf_fit()`](#method-PopStructure-get_snmf_fit)
+
+- [`PopStructure$plot_admixture_multi_k()`](#method-PopStructure-plot_admixture_multi_k)
+
 - [`PopStructure$q()`](#method-PopStructure-q)
 
 - [`PopStructure$restrict()`](#method-PopStructure-restrict)
@@ -68,6 +76,20 @@ set of samples (or a metadata match) for output.
 - [`PopStructure$plot_diff_heatmap()`](#method-PopStructure-plot_diff_heatmap)
 
 - [`PopStructure$plot_jost_d_heatmap()`](#method-PopStructure-plot_jost_d_heatmap)
+
+- [`PopStructure$pop_diff_snps()`](#method-PopStructure-pop_diff_snps)
+
+- [`PopStructure$plot_diff_manhattan()`](#method-PopStructure-plot_diff_manhattan)
+
+- [`PopStructure$diversity()`](#method-PopStructure-diversity)
+
+- [`PopStructure$ld_index()`](#method-PopStructure-ld_index)
+
+- [`PopStructure$beta_score()`](#method-PopStructure-beta_score)
+
+- [`PopStructure$haplotypes()`](#method-PopStructure-haplotypes)
+
+- [`PopStructure$ihs()`](#method-PopStructure-ihs)
 
 - [`PopStructure$save()`](#method-PopStructure-save)
 
@@ -245,6 +267,71 @@ Best K (cross-entropy) from the fitted sNMF.
 - `stat`:
 
   Combine replicates by `"mean"` or `"min"`.
+
+------------------------------------------------------------------------
+
+### `PopStructure$cross_entropy()`
+
+Per-K cross-entropy summary of the sNMF replicates (see
+[`snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_cross_entropy.md)).
+
+#### Usage
+
+    PopStructure$cross_entropy(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_cross_entropy.md).
+
+------------------------------------------------------------------------
+
+### `PopStructure$plot_cross_entropy()`
+
+Cross-entropy elbow plot for choosing K (see
+[`plot_snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.md)).
+
+#### Usage
+
+    PopStructure$plot_cross_entropy(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`plot_snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.md).
+
+------------------------------------------------------------------------
+
+### `PopStructure$get_snmf_fit()`
+
+The fitted sNMF result (`NULL` before
+[`run_snmf()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_snmf.md)).
+
+#### Usage
+
+    PopStructure$get_snmf_fit()
+
+------------------------------------------------------------------------
+
+### `PopStructure$plot_admixture_multi_k()`
+
+One admixture plot per K as pages, for a multi-page PDF (see
+[`plot_admixture_multi_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture_multi_k.md)).
+
+#### Usage
+
+    PopStructure$plot_admixture_multi_k(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`plot_admixture_multi_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture_multi_k.md).
 
 ------------------------------------------------------------------------
 
@@ -517,7 +604,9 @@ Combined UMAP + admixture figure (see
 Per-SNP population differentiation between the levels of a metadata
 column (see
 [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md));
-uses the full genotype matrix for the active samples.
+uses the object's genotype matrix (pass
+`genotype = run_ld_prune(vcf, prune = FALSE)` to run on the full
+unpruned set).
 
 #### Usage
 
@@ -533,7 +622,7 @@ uses the full genotype matrix for the active samples.
 
   Passed to
   [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)
-  (e.g. `statistic = "fst"`).
+  (e.g. `statistic = "fst"`, `genotype = `).
 
 ------------------------------------------------------------------------
 
@@ -602,8 +691,9 @@ automatically.
 
   Passed to
   [`plot_diff_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md),
-  plus `statistic` (`"jost_d"` default, `"gst"`, `"gst_hedrick"`,
-  `"fst"`) selecting the measure.
+  plus `statistic` (`"jost_d"` default, `"gst_hedrick"`, `"fst"`)
+  selecting the measure, and `genotype` (a full/unpruned override, see
+  [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)).
 
 ------------------------------------------------------------------------
 
@@ -627,6 +717,168 @@ for Jost's D.
 
   Passed to
   [`plot_diff_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md).
+
+------------------------------------------------------------------------
+
+### `PopStructure$pop_diff_snps()`
+
+Per-SNP differentiation in long form (see
+[`pop_diff_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_snps.md)).
+
+#### Usage
+
+    PopStructure$pop_diff_snps(group = NULL, ...)
+
+#### Arguments
+
+- `group`:
+
+  Metadata column defining the groups.
+
+- `...`:
+
+  Passed to
+  [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)
+  (e.g. `statistic = `, `genotype = `).
+
+------------------------------------------------------------------------
+
+### `PopStructure$plot_diff_manhattan()`
+
+Genome-wide differentiation Manhattan (see
+[`plot_diff_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_manhattan.md)).
+
+#### Usage
+
+    PopStructure$plot_diff_manhattan(group = NULL, ...)
+
+#### Arguments
+
+- `group`:
+
+  Metadata column defining the groups.
+
+- `...`:
+
+  Passed to
+  [`plot_diff_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_manhattan.md);
+  `statistic` / `genotype` go to
+  [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md).
+
+------------------------------------------------------------------------
+
+### `PopStructure$diversity()`
+
+Within-group diversity (see
+[`pop_diversity()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diversity.md)).
+
+#### Usage
+
+    PopStructure$diversity(group = NULL, ...)
+
+#### Arguments
+
+- `group`:
+
+  Metadata column defining the groups.
+
+- `...`:
+
+  Passed to
+  [`pop_diversity()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diversity.md)
+  (e.g. `by = `, `accessible = `).
+
+------------------------------------------------------------------------
+
+### `PopStructure$ld_index()`
+
+Multilocus index of association (see
+[`ld_index()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ld_index.md)).
+
+#### Usage
+
+    PopStructure$ld_index(group = NULL, ...)
+
+#### Arguments
+
+- `group`:
+
+  Metadata column defining the groups.
+
+- `...`:
+
+  Passed to
+  [`ld_index()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ld_index.md).
+
+------------------------------------------------------------------------
+
+### `PopStructure$beta_score()`
+
+Beta scores for balancing selection (see
+[`beta_score()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.md)).
+
+#### Usage
+
+    PopStructure$beta_score(group = NULL, ...)
+
+#### Arguments
+
+- `group`:
+
+  Metadata column defining the groups.
+
+- `...`:
+
+  Passed to
+  [`beta_score()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.md).
+
+------------------------------------------------------------------------
+
+### `PopStructure$haplotypes()`
+
+Phased haplotypes for a haplotype-homozygosity scan (see
+[`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)).
+
+#### Usage
+
+    PopStructure$haplotypes(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
+  (e.g. `fws = `, `maf = `).
+
+------------------------------------------------------------------------
+
+### `PopStructure$ihs()`
+
+Integrated haplotype score (see
+[`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md));
+builds the haplotypes first unless one is supplied.
+
+#### Usage
+
+    PopStructure$ihs(group = NULL, hap = NULL, ...)
+
+#### Arguments
+
+- `group`:
+
+  Metadata column defining the groups.
+
+- `hap`:
+
+  Optional
+  [`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
+  object to reuse.
+
+- `...`:
+
+  Passed to
+  [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md).
 
 ------------------------------------------------------------------------
 

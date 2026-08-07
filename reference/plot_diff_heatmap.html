@@ -13,7 +13,7 @@ each site by its country)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,7 @@ each site by its country)."></head><body>
     <li><a class="dropdown-item" href="../articles/ibd.html">IBD analysis</a></li>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -43,7 +44,7 @@ each site by its country)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Triangle heatmap of group x group differentiation</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.1.1/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
       <div class="d-none name"><code>plot_diff_heatmap.Rd</code></div>
     </div>
 
@@ -63,6 +64,7 @@ each site by its country).</p>
 <span>  cluster <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dendrogram <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  triangle <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  legend_inside <span class="op">=</span> <span class="va">triangle</span>,</span>
 <span>  annotate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  meta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  annotate_colours <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -90,7 +92,12 @@ each site by its country).</p>
 
 
 <dt id="arg-cluster">cluster<a class="anchor" aria-label="anchor" href="#arg-cluster"></a></dt>
-<dd><p>Order groups by hierarchical clustering of the matrix.</p></dd>
+<dd><p>Order groups by hierarchical clustering of the matrix (default <code>TRUE</code>),
+which is what puts similar groups side by side. With <code>cluster = FALSE</code> the axes follow
+the grouping column's levels instead – its factor order if it has one (e.g. from
+<code>PopStructure$set_levels()</code>), otherwise a natural sort. Annotation strips and the
+dendrogram tips take their colours in level order either way, so a group keeps the
+same colour whichever ordering is drawn.</p></dd>
 
 
 <dt id="arg-dendrogram">dendrogram<a class="anchor" aria-label="anchor" href="#arg-dendrogram"></a></dt>
@@ -99,6 +106,14 @@ each site by its country).</p>
 
 <dt id="arg-triangle">triangle<a class="anchor" aria-label="anchor" href="#arg-triangle"></a></dt>
 <dd><p>Show only the lower triangle (with the legend in the empty corner).</p></dd>
+
+
+<dt id="arg-legend-inside">legend_inside<a class="anchor" aria-label="anchor" href="#arg-legend-inside"></a></dt>
+<dd><p>Put the legends in the empty half of the matrix rather than in a
+margin column (default: on whenever <code>triangle</code> is <code>TRUE</code>, since that is what leaves
+the space). The annotation strips' legends move onto the matrix too, so there is one
+legend area. Turn it off when there are few groups: the empty corner is then small
+and the legends would sit over the cells.</p></dd>
 
 
 <dt id="arg-annotate">annotate<a class="anchor" aria-label="anchor" href="#arg-annotate"></a></dt>

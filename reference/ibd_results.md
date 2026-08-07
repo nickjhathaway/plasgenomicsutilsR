@@ -14,7 +14,7 @@ ibd_results(...)
 
   Passed to
   [IbdResults](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/IbdResults.md)'s
-  constructor.
+  constructor; see there for the arguments.
 
 ## Value
 

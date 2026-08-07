@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,7 @@
     <li><a class="dropdown-item" href="../articles/ibd.html">IBD analysis</a></li>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
   </ul>
 </li>
       </ul>
@@ -63,18 +64,20 @@
       <h1>Population differentiation</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.1.1/vignettes/differentiation.Rmd" class="external-link"><code>vignettes/differentiation.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/vignettes/differentiation.Rmd" class="external-link"><code>vignettes/differentiation.Rmd</code></a></small>
       <div class="d-none name"><code>differentiation.Rmd</code></div>
     </div>
 
     
     
 <p><code><a href="../reference/pop_diff.html">pop_diff()</a></code> computes a per-SNP differentiation statistic
-for every pair of metadata groups, from the <strong>full,
+for every pair of metadata groups: <strong>Jost’s D</strong>
+(<code><a href="../reference/jost_d.html">jost_d()</a></code>), <strong>Hedrick’s standardized G′st</strong>,
+and <strong>Hudson’s Fst</strong>. It wants the <strong>full,
 unpruned</strong> genotypes (LD-pruning throws away the differentiating
-SNPs you want here): <strong>Jost’s D</strong> (<code><a href="../reference/jost_d.html">jost_d()</a></code>),
-<strong>Nei’s Gst</strong>, <strong>Hedrick’s standardized
-G′st</strong>, and <strong>Hudson’s Fst</strong>.</p>
+SNPs); a <code>PopStructure</code> holds a <em>pruned</em> matrix for
+PCA/UMAP, so pass a full set through the <code>genotype</code> override,
+<code>genotype = run_ld_prune(vcf, prune = FALSE)</code>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span><span class="st">"africa"</span><span class="op">)</span></span>
 <span><span class="va">pd</span> <span class="op">&lt;-</span> <span class="va">ps</span><span class="op">$</span><span class="fu">pop_diff</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"site"</span>, statistic <span class="op">=</span> <span class="st">"jost_d"</span><span class="op">)</span>   <span class="co"># per-SNP D for all site pairs</span></span>
@@ -93,11 +96,13 @@ of SNPs per pair) or <code>"max"</code> rather than
 <code>"mean"</code>;</li>
 <li>apply a <code>trans = "sqrt"</code> fill to the heatmap;</li>
 <li>remember the differentiation lives in the <strong>loci</strong> —
-<code><a href="../reference/top_differentiating_snps.html">top_differentiating_snps()</a></code> and a per-SNP genome scan are
-the right lens, not the genome-wide average.</li>
+<code><a href="../reference/top_differentiating_snps.html">top_differentiating_snps()</a></code>, <code><a href="../reference/pop_diff_snps.html">pop_diff_snps()</a></code>,
+and <code><a href="../reference/plot_diff_manhattan.html">plot_diff_manhattan()</a></code> are the right lens, not the
+genome-wide average.</li>
 </ul>
-<p>Nei’s Gst is the most deflated when within-group diversity is high;
-Jost’s D and Hedrick’s G′st are less so.</p>
+<p>Only Hedrick’s standardized G′st is offered: plain Nei’s Gst is the
+most deflated when within-group diversity is high (typical genome-wide
+in <em>P. falciparum</em>). Jost’s D and G′st are both in [0, 1].</p>
 </div>
 <div class="section level2">
 <h2 id="everything-in-one-table">Everything in one table<a class="anchor" aria-label="anchor" href="#everything-in-one-table"></a>
@@ -106,24 +111,56 @@ Jost’s D and Hedrick’s G′st are less so.</p>
 group pair, side by side:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">pop_diff_table</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"site"</span><span class="op">)</span></span>
-<span><span class="co">#&gt;          a         b n_snps jost_d_mean jost_d_top_mean jost_d_max gst_mean ...</span></span>
-<span><span class="co">#&gt; 1      DRC  Uganda_N   2000       0.040           0.268      0.628    0.029 ...</span></span>
+<span><span class="co">#&gt;          a         b n_snps jost_d_mean jost_d_top_mean jost_d_max gst_hedrick_mean ...</span></span>
+<span><span class="co">#&gt; 1      DRC  Uganda_N   2000       0.040           0.268      0.628            0.031 ...</span></span>
 <span><span class="co">#&gt; ...</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="per-snp-along-the-genome">Per-SNP, along the genome<a class="anchor" aria-label="anchor" href="#per-snp-along-the-genome"></a>
+</h2>
+<p><code><a href="../reference/pop_diff_snps.html">pop_diff_snps()</a></code> unpacks the result to one row per SNP ×
+pair (the <code>chr:pos</code> ids parsed to coordinates), and
+<code><a href="../reference/plot_diff_manhattan.html">plot_diff_manhattan()</a></code> plots it along the genome — by
+default the strongest pairwise value at each SNP:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_diff_manhattan</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"site"</span><span class="op">)</span>                  <span class="co"># max across all pairs</span></span>
+<span><span class="fu"><a href="../reference/plot_diff_manhattan.html">plot_diff_manhattan</a></span><span class="op">(</span><span class="va">pd</span>, pair <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DRC"</span>, <span class="st">"Uganda_N"</span><span class="op">)</span><span class="op">)</span>    <span class="co"># a single group pair</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="triangle-heatmap">Triangle heatmap<a class="anchor" aria-label="anchor" href="#triangle-heatmap"></a>
 </h2>
 <p><code><a href="../reference/plot_diff_heatmap.html">plot_diff_heatmap()</a></code> draws a lower-triangle heatmap with
-the fill legend tucked in the empty corner, an optional clustering
-<strong>dendrogram</strong>, and one or more metadata
-<strong>annotation</strong> strips with custom colours:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+an optional clustering <strong>dendrogram</strong> and one or more
+metadata <strong>annotation</strong> strips with custom colours. Every
+legend — the fill scale and each annotation — sits in the matrix’s empty
+half, so no margin column is spent on them:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_diff_heatmap</span><span class="op">(</span></span>
 <span>  group <span class="op">=</span> <span class="st">"site"</span>, statistic <span class="op">=</span> <span class="st">"jost_d"</span>, stat <span class="op">=</span> <span class="st">"top_mean"</span>,</span>
 <span>  annotate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"country"</span>, <span class="st">"region"</span><span class="op">)</span>,                         <span class="co"># two annotation strips</span></span>
 <span>  annotate_colours <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>country <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>DRC <span class="op">=</span> <span class="st">"#4C72B0"</span>, Kenya <span class="op">=</span> <span class="st">"#DD8452"</span>,</span>
 <span>                                      Tanzania <span class="op">=</span> <span class="st">"#55A868"</span>, Uganda <span class="op">=</span> <span class="st">"#C44E52"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="figures/diff-heatmap.png" class="r-plt" alt="Jost's D triangle heatmap" width="80%"></p>
+<p>Two controls worth knowing:</p>
+<ul>
+<li>
+<strong><code>cluster</code></strong> decides the axis order.
+Clustered (the default) puts similar groups side by side, which is the
+point of clustering. <code>cluster = FALSE</code> follows the grouping
+column’s own order instead — its factor levels if it has them (see
+<code>set_levels()</code> in the population-structure article),
+otherwise a natural sort — and drops the dendrogram. Annotation colours
+always follow the annotation’s own levels, so a value keeps its colour
+whichever ordering is drawn.</li>
+<li>
+<strong><code>legend_inside</code></strong> places the legends in
+the empty half; it is on whenever <code>triangle</code> is
+<code>TRUE</code>. Turn it off with very few groups, where the empty
+corner is small and the legends would sit over the cells.</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_diff_heatmap</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"site"</span>, cluster <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>        <span class="co"># axes follow the levels</span></span>
+<span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_diff_heatmap</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"country"</span>, legend_inside <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>  <span class="co"># legends to the margin</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="selecting-markers">Selecting markers<a class="anchor" aria-label="anchor" href="#selecting-markers"></a>
@@ -132,7 +169,7 @@ the fill legend tucked in the empty corner, an optional clustering
 differentiating SNPs, walking the pairwise comparisons round-robin so
 each pair contributes its top loci. (This is exactly how the
 <code>"africa"</code> example fixture is built.)</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/top_differentiating_snps.html">top_differentiating_snps</a></span><span class="op">(</span><span class="va">pd</span>, <span class="fl">2000</span><span class="op">)</span></span></code></pre></div>
 <p>Estimators follow Jost (2008), Nei &amp; Chesser (1983), Hedrick
 (2005), and Hudson et al. (1992) / Bhatia et al. (2013); see

@@ -2,10 +2,13 @@
 
 [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)
 computes a per-SNP differentiation statistic for every pair of metadata
-groups, from the **full, unpruned** genotypes (LD-pruning throws away
-the differentiating SNPs you want here): **Jost’s D**
+groups: **Jost’s D**
 ([`jost_d()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/jost_d.md)),
-**Nei’s Gst**, **Hedrick’s standardized G′st**, and **Hudson’s Fst**.
+**Hedrick’s standardized G′st**, and **Hudson’s Fst**. It wants the
+**full, unpruned** genotypes (LD-pruning throws away the differentiating
+SNPs); a `PopStructure` holds a *pruned* matrix for PCA/UMAP, so pass a
+full set through the `genotype` override,
+`genotype = run_ld_prune(vcf, prune = FALSE)`.
 
 ``` r
 
@@ -25,12 +28,15 @@ Options that surface it:
   pair) or `"max"` rather than `"mean"`;
 - apply a `trans = "sqrt"` fill to the heatmap;
 - remember the differentiation lives in the **loci** —
-  [`top_differentiating_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.md)
-  and a per-SNP genome scan are the right lens, not the genome-wide
-  average.
+  [`top_differentiating_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.md),
+  [`pop_diff_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_snps.md),
+  and
+  [`plot_diff_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_manhattan.md)
+  are the right lens, not the genome-wide average.
 
-Nei’s Gst is the most deflated when within-group diversity is high;
-Jost’s D and Hedrick’s G′st are less so.
+Only Hedrick’s standardized G′st is offered: plain Nei’s Gst is the most
+deflated when within-group diversity is high (typical genome-wide in *P.
+falciparum*). Jost’s D and G′st are both in \[0, 1\].
 
 ## Everything in one table
 
@@ -40,17 +46,33 @@ gathers every statistic and summary per group pair, side by side:
 ``` r
 
 ps$pop_diff_table(group = "site")
-#>          a         b n_snps jost_d_mean jost_d_top_mean jost_d_max gst_mean ...
-#> 1      DRC  Uganda_N   2000       0.040           0.268      0.628    0.029 ...
+#>          a         b n_snps jost_d_mean jost_d_top_mean jost_d_max gst_hedrick_mean ...
+#> 1      DRC  Uganda_N   2000       0.040           0.268      0.628            0.031 ...
 #> ...
+```
+
+## Per-SNP, along the genome
+
+[`pop_diff_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_snps.md)
+unpacks the result to one row per SNP × pair (the `chr:pos` ids parsed
+to coordinates), and
+[`plot_diff_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_manhattan.md)
+plots it along the genome — by default the strongest pairwise value at
+each SNP:
+
+``` r
+
+ps$plot_diff_manhattan(group = "site")                  # max across all pairs
+plot_diff_manhattan(pd, pair = c("DRC", "Uganda_N"))    # a single group pair
 ```
 
 ## Triangle heatmap
 
 [`plot_diff_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md)
-draws a lower-triangle heatmap with the fill legend tucked in the empty
-corner, an optional clustering **dendrogram**, and one or more metadata
-**annotation** strips with custom colours:
+draws a lower-triangle heatmap with an optional clustering
+**dendrogram** and one or more metadata **annotation** strips with
+custom colours. Every legend — the fill scale and each annotation — sits
+in the matrix’s empty half, so no margin column is spent on them:
 
 ``` r
 
@@ -62,6 +84,25 @@ ps$plot_diff_heatmap(
 ```
 
 ![Jost's D triangle heatmap](figures/diff-heatmap.png)
+
+Two controls worth knowing:
+
+- **`cluster`** decides the axis order. Clustered (the default) puts
+  similar groups side by side, which is the point of clustering.
+  `cluster = FALSE` follows the grouping column’s own order instead —
+  its factor levels if it has them (see `set_levels()` in the
+  population-structure article), otherwise a natural sort — and drops
+  the dendrogram. Annotation colours always follow the annotation’s own
+  levels, so a value keeps its colour whichever ordering is drawn.
+- **`legend_inside`** places the legends in the empty half; it is on
+  whenever `triangle` is `TRUE`. Turn it off with very few groups, where
+  the empty corner is small and the legends would sit over the cells.
+
+``` r
+
+ps$plot_diff_heatmap(group = "site", cluster = FALSE)        # axes follow the levels
+ps$plot_diff_heatmap(group = "country", legend_inside = FALSE)  # legends to the margin
+```
 
 ## Selecting markers
 

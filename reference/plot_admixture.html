@@ -11,7 +11,7 @@ column, with an optional group colour strip whose colours can match another plot
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,6 +28,7 @@ column, with an optional group colour strip whose colours can match another plot
     <li><a class="dropdown-item" href="../articles/ibd.html">IBD analysis</a></li>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -41,7 +42,7 @@ column, with an optional group colour strip whose colours can match another plot
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Admixture (STRUCTURE) bar plot from a Q matrix</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.1.1/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>plot_admixture.Rd</code></div>
     </div>
 
@@ -65,7 +66,9 @@ column, with an optional group colour strip whose colours can match another plot
 <span>  group_colours <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  border <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  border_colour <span class="op">=</span> <span class="st">"black"</span>,</span>
-<span>  border_linewidth <span class="op">=</span> <span class="fl">0.15</span></span>
+<span>  border_linewidth <span class="op">=</span> <span class="fl">0.15</span>,</span>
+<span>  legend_position <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"right"</span>, <span class="st">"bottom"</span>, <span class="st">"top"</span>, <span class="st">"left"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
+<span>  legend_rows <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -113,12 +116,29 @@ bars in the same place across different K.</p></dd>
 
 
 <dt id="arg-border">border<a class="anchor" aria-label="anchor" href="#arg-border"></a></dt>
-<dd><p>Outline each sample's bar (default <code>TRUE</code>) so neighbours with nearly
-identical ancestry stay distinct; set <code>FALSE</code> for borderless bars.</p></dd>
+<dd><p>Outline each sample's bar (default <code>TRUE</code>, matching
+<code><a href="plot_structure_figure.html">plot_structure_figure()</a></code>) so neighbours with nearly identical ancestry stay distinct;
+<code>FALSE</code> for borderless bars. With very many samples in a narrow render the outlines
+can swamp the fills – either render wider (<code><a href="save_plot.html">save_plot()</a></code> uses the attached width) or
+set <code>border = FALSE</code> / a thinner <code>border_linewidth</code>.</p></dd>
 
 
 <dt id="arg-border-colour-border-linewidth">border_colour, border_linewidth<a class="anchor" aria-label="anchor" href="#arg-border-colour-border-linewidth"></a></dt>
 <dd><p>Colour and width of the per-sample outline.</p></dd>
+
+
+<dt id="arg-legend-position">legend_position<a class="anchor" aria-label="anchor" href="#arg-legend-position"></a></dt>
+<dd><p>Where the legends go: <code>"right"</code> (default), <code>"bottom"</code>, <code>"top"</code>,
+<code>"left"</code>, or <code>"none"</code>. A large K makes for a tall legend stack, so <code>"bottom"</code> often
+fits better on a wide, short admixture panel.</p></dd>
+
+
+<dt id="arg-legend-rows">legend_rows<a class="anchor" aria-label="anchor" href="#arg-legend-rows"></a></dt>
+<dd><p>Keys per legend column (or per row when the legend is horizontal)
+before wrapping into another column/row. <code>NULL</code> (default) wraps a side legend every
+10 keys and splits a horizontal one over two
+rows, which keeps <code>K</code> = 15 plus a group strip on the page. The suggested output height
+accounts for whatever this works out to.</p></dd>
 
 </dl></div>
     <div class="section level2">

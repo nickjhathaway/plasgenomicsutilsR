@@ -13,7 +13,7 @@ plot_diff_heatmap() for a group summary, or top_differentiating_snps() for marke
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,7 @@ plot_diff_heatmap() for a group summary, or top_differentiating_snps() for marke
     <li><a class="dropdown-item" href="../articles/ibd.html">IBD analysis</a></li>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -43,7 +44,7 @@ plot_diff_heatmap() for a group summary, or top_differentiating_snps() for marke
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Population differentiation between metadata groups, per SNP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.1.1/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
       <div class="d-none name"><code>pop_diff.Rd</code></div>
     </div>
 
@@ -59,9 +60,10 @@ the differentiating SNPs you want here. Feed the result to <code><a href="pop_di
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">pop_diff</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
 <span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  statistic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"jost_d"</span>, <span class="st">"gst"</span>, <span class="st">"gst_hedrick"</span>, <span class="st">"fst"</span><span class="op">)</span>,</span>
+<span>  statistic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"jost_d"</span>, <span class="st">"gst_hedrick"</span>, <span class="st">"fst"</span><span class="op">)</span>,</span>
 <span>  meta <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  clamp <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  clamp <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  genotype <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -80,10 +82,10 @@ genotype matrix (samples x SNPs, 0/1/2, <code>NA</code>).</p></dd>
 
 
 <dt id="arg-statistic">statistic<a class="anchor" aria-label="anchor" href="#arg-statistic"></a></dt>
-<dd><p><code>"jost_d"</code> (Jost's D, default), <code>"gst"</code> (Nei's Gst), <code>"gst_hedrick"</code>
-(Hedrick's standardized G'st), or <code>"fst"</code> (Hudson's Fst). Gst is strongly deflated
-when within-group diversity is high (typical genome-wide in <em>P. falciparum</em>); G'st, D
-and a top-percentile summary counter that – see <code><a href="pop_diff_matrix.html">pop_diff_matrix()</a></code>.</p></dd>
+<dd><p><code>"jost_d"</code> (Jost's D, default), <code>"gst_hedrick"</code> (Hedrick's
+standardized G'st), or <code>"fst"</code> (Hudson's Fst); all in [0, 1]. Plain Nei's Gst is not
+offered – it is strongly deflated when within-group diversity is high (typical
+genome-wide in <em>P. falciparum</em>); its standardized form G'st is provided instead.</p></dd>
 
 
 <dt id="arg-meta">meta<a class="anchor" aria-label="anchor" href="#arg-meta"></a></dt>
@@ -93,6 +95,13 @@ and a top-percentile summary counter that – see <code><a href="pop_diff_matrix
 
 <dt id="arg-clamp">clamp<a class="anchor" aria-label="anchor" href="#arg-clamp"></a></dt>
 <dd><p>Clamp small negative estimates to 0 (default <code>TRUE</code>).</p></dd>
+
+
+<dt id="arg-genotype">genotype<a class="anchor" aria-label="anchor" href="#arg-genotype"></a></dt>
+<dd><p>Optional genotype matrix (samples x SNPs) or <code><a href="run_ld_prune.html">run_ld_prune()</a></code> list to
+use <strong>instead</strong> of a <code>PopStructure</code>'s stored matrix – pass the <strong>full, unpruned</strong>
+set here (e.g. <code>run_ld_prune(vcf, prune = FALSE)</code>) so differentiation is measured on
+every SNP while PCA/UMAP keep using the pruned matrix. Ignored when <code>x</code> is a matrix.</p></dd>
 
 </dl></div>
     <div class="section level2">

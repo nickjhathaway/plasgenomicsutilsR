@@ -16,6 +16,7 @@ plot_diff_heatmap(
   cluster = TRUE,
   dendrogram = TRUE,
   triangle = TRUE,
+  legend_inside = triangle,
   annotate = NULL,
   meta = NULL,
   annotate_colours = NULL,
@@ -48,7 +49,14 @@ plot_jost_d_heatmap(pd, stat = "mean", ...)
 
 - cluster:
 
-  Order groups by hierarchical clustering of the matrix.
+  Order groups by hierarchical clustering of the matrix (default
+  `TRUE`), which is what puts similar groups side by side. With
+  `cluster = FALSE` the axes follow the grouping column's levels instead
+  – its factor order if it has one (e.g. from
+  `PopStructure$set_levels()`), otherwise a natural sort. Annotation
+  strips and the dendrogram tips take their colours in level order
+  either way, so a group keeps the same colour whichever ordering is
+  drawn.
 
 - dendrogram:
 
@@ -57,6 +65,15 @@ plot_jost_d_heatmap(pd, stat = "mean", ...)
 - triangle:
 
   Show only the lower triangle (with the legend in the empty corner).
+
+- legend_inside:
+
+  Put the legends in the empty half of the matrix rather than in a
+  margin column (default: on whenever `triangle` is `TRUE`, since that
+  is what leaves the space). The annotation strips' legends move onto
+  the matrix too, so there is one legend area. Turn it off when there
+  are few groups: the empty corner is then small and the legends would
+  sit over the cells.
 
 - annotate:
 

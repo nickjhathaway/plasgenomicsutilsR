@@ -2,7 +2,7 @@
 
 Returns a `c(width, height)` (inches) that scales with how much a plot
 will draw: the genome fraction shown across (chromosomes kept), and the
-number of region panels / triangle features down. The `plot_*()`
+number of group panels / triangle features down. The `plot_*()`
 functions already attach this to the plot they return, so
 [`save_plot()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/save_plot.md)
 uses it automatically; call `plot_dims()` yourself only to inspect or
@@ -14,7 +14,7 @@ override the numbers.
 plot_dims(
   x,
   type = c("manhattan", "selection", "tugofwar", "heatmap", "triangles"),
-  regions = NULL,
+  groups = NULL,
   chroms = NULL,
   skip_chr = NULL,
   genes = NULL,
@@ -37,7 +37,7 @@ plot_dims(
   One of `"manhattan"`, `"selection"`, `"tugofwar"`, `"heatmap"`,
   `"triangles"`.
 
-- regions, chroms, skip_chr, genes, snps, ncol, label_genes:
+- groups, chroms, skip_chr, genes, snps, ncol, label_genes:
 
   The same selection arguments you pass to the plot, so the counts match
   what will be drawn.

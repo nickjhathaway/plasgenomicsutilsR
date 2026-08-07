@@ -11,18 +11,38 @@ Ingest the Python IBD tool outputs into one container.
 
 ## Plots
 
-Genome-wide and region-by-region IBD figures.
+Genome-wide and group-by-group IBD figures.
 
-- [`plot_ibd_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_manhattan.md)
+- [`plot_ibd_sharing_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_sharing_manhattan.md)
   : IBD Manhattan plot
 - [`plot_selection_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_selection_manhattan.md)
   : IBD selection-statistic Manhattan plot
 - [`plot_ibd_tugofwar()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_tugofwar.md)
   : IBD / selection "tug-of-war" mirror plot
-- [`plot_ibd_region_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_region_heatmap.md)
-  : Region-by-region IBD heatmap along the genome
-- [`plot_drug_gene_triangles()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_drug_gene_triangles.md)
+- [`plot_ibd_pairwise_group_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pairwise_group_heatmap.md)
+  : Group-by-group IBD heatmap along the genome
+- [`plot_pairwise_ibd_for_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pairwise_ibd_for_genes.md)
   : IBD "triangle" panels for genes or specific SNPs
+- [`plot_ibd_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_network.md)
+  : IBD network at a gene or locus
+
+## Gene IBD-block overlap
+
+Which pairs share a gene by IBD: the fraction per group pair
+(block-based, not SNP-in-gene), and the underlying pair-by-pair
+adjacency list with gene coverage.
+
+- [`gene_ibd_overlap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_overlap.md)
+  : Per-gene IBD-block overlap between groups
+- [`gene_ibd_pairs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_pairs.md)
+  : Sample pairs sharing IBD over each gene
+
+## Selection genes
+
+Genes hit by an above-threshold IBD selection signal.
+
+- [`pos_selection_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pos_selection_genes.md)
+  : Genes under positive selection
 
 ## Population structure
 
@@ -47,10 +67,16 @@ workspace.
   : Pick the best K from an sNMF fit by cross-entropy
 - [`snmf_q()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_q.md)
   : Best-run Q (ancestry proportion) matrix for a given K
+- [`snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_cross_entropy.md)
+  : Cross-entropy of every sNMF replicate, summarised per K
+- [`plot_snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.md)
+  : Cross-entropy elbow plot for choosing K
 - [`admixture_order()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/admixture_order.md)
   : Sample order for admixture bars
 - [`plot_admixture()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.md)
   : Admixture (STRUCTURE) bar plot from a Q matrix
+- [`plot_admixture_multi_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture_multi_k.md)
+  : Admixture bar plots across every K, as pages
 - [`plot_structure_figure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_structure_figure.md)
   : Combined UMAP + admixture figure
 - [`load_pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_pop_structure.md)
@@ -60,14 +86,16 @@ workspace.
 
 ## Population differentiation
 
-Per-SNP allele differentiation between metadata groups (Jost’s D, Nei’s
-Gst, Hedrick’s G’st, Hudson’s Fst), a group summary + triangle heatmap,
-and marker selection.
+Per-SNP allele differentiation between metadata groups (Jost’s D,
+Hedrick’s G’st, Hudson’s Fst), a group summary + triangle heatmap, a
+genome-wide track, and marker selection.
 
 - [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)
   : Population differentiation between metadata groups, per SNP
 - [`jost_d()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/jost_d.md)
   : Per-SNP Jost's D between metadata groups
+- [`pop_diff_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_snps.md)
+  : Per-SNP differentiation in long form
 - [`pop_diff_matrix()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_matrix.md)
   [`jost_d_matrix()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_matrix.md)
   : Group x group differentiation summary matrix
@@ -76,8 +104,84 @@ and marker selection.
 - [`plot_diff_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md)
   [`plot_jost_d_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_heatmap.md)
   : Triangle heatmap of group x group differentiation
+- [`plot_diff_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_manhattan.md)
+  : Genome-wide differentiation Manhattan plot
 - [`top_differentiating_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.md)
   : The SNPs that most differentiate groups
+
+## Within-population diversity
+
+Nucleotide diversity (per accessible base pair), expected
+heterozygosity, Watterson’s theta, Tajima’s D and
+haplotype/multilocus-genotype diversity, genome-wide, per gene or in
+windows, for each metadata group.
+
+- [`pop_diversity()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diversity.md)
+  : Within-population genetic diversity
+- [`tajima_d()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d.md)
+  : Tajima's D from segregating sites and per-site heterozygosity
+- [`tajima_d_pvalue()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d_pvalue.md)
+  : p-value for a Tajima's D
+- [`plot_diversity()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diversity.md)
+  : Windowed diversity along the genome
+
+## Linkage disequilibrium
+
+The multilocus index of association as a genome-wide measure of
+clonality, and the reader/plot for the r-squared decay curve computed by
+`plasgenomicsutils ld_decay`.
+
+- [`ld_index()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ld_index.md)
+  : Multilocus linkage disequilibrium: the index of association
+- [`read_ld_decay()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_ld_decay.md)
+  : Read an LD-decay table
+- [`plot_ld_decay()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ld_decay.md)
+  : Linkage-disequilibrium decay curve
+
+## Selection scans
+
+Recent directional selection from extended haplotype homozygosity (iHS
+within a population, Rsb and XP-EHH between two), and long-term
+balancing selection from clustered allele frequencies (beta).
+
+- [`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
+  : Build phased haplotypes for a haplotype-homozygosity scan
+- [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
+  : Integrated haplotype score (iHS)
+- [`run_rsb()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_rsb.md)
+  : Cross-population extended haplotype homozygosity (Rsb)
+- [`run_xpehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_xpehh.md)
+  : Cross-population extended haplotype homozygosity (XP-EHH)
+- [`ihs_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_genes.md)
+  : Summarise a haplotype scan per gene
+- [`plot_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ihs.md)
+  : Manhattan plot of a haplotype-homozygosity scan
+- [`beta_score()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.md)
+  : Beta: balancing selection from clustered allele frequencies
+- [`beta_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_genes.md)
+  : Summarise beta scores per gene
+- [`plot_beta()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_beta.md)
+  : Manhattan plot of beta scores
+- [`selection_peaks()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/selection_peaks.md)
+  : Merge a selection scan's significant SNPs into peaks
+
+## Sequencing coverage QC
+
+Read the depth tables written by
+`plasgenomicsutils coverage_depth_stats` / `coverage_dropout_regions`,
+apply per-sample QC floors, and plot depth per sample, per chromosome,
+and the regions almost no sample amplifies.
+
+- [`read_coverage()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_coverage.md)
+  : Read a coverage table
+- [`coverage_qc()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/coverage_qc.md)
+  : Per-sample coverage QC verdict
+- [`plot_coverage_summary()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_summary.md)
+  : Per-sample coverage overview
+- [`plot_coverage_by_chrom()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_by_chrom.md)
+  : Coverage per chromosome, per sample
+- [`plot_coverage_dropout()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_dropout.md)
+  : Coverage dropouts along the genome
 
 ## Colours
 
@@ -85,10 +189,8 @@ Colour-blind-friendly palettes and a shared level-to-colour map.
 
 - [`meta_colors()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.md)
   : Assign colours to the levels of metadata columns
-- [`colorPalette_08`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palettes.md)
-  [`colorPalette_12`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palettes.md)
-  [`colorPalette_15`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palettes.md)
-  : Colour-blind-friendly categorical palettes
+- [`color_palette()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palette.md)
+  : A colour-blind-friendly categorical palette
 
 ## Saving and sizing
 
@@ -99,12 +201,28 @@ Colour-blind-friendly palettes and a shared level-to-colour map.
 - [`plot_dims()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_dims.md)
   : Suggested output dimensions for an IBD plot
 
-## Example data
+## Genomic intervals
+
+Overlap two BED-style interval tables (genes vs. core / paralog regions,
+…). All coordinates in the package follow one convention.
+
+- [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md)
+  : Intersect two sets of genomic intervals
+- [`plasgenomicsutilsR-coordinates`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)
+  : Genomic coordinate conventions
+
+## Example & reference data
 
 - [`example_ibd_results()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_ibd_results.md)
   : Load the bundled example IBD results
-- [`EXAMPLE_DRUG_GENES`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/EXAMPLE_DRUG_GENES.md)
-  : Pf3D7 drug-resistance gene coordinates
+- [`PF3D7_GENES`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_GENES.md)
+  : Pf3D7 gene coordinates
+- [`PF_EXAMPLE_DRUG_GENES`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF_EXAMPLE_DRUG_GENES.md)
+  : Pf3D7 drug-resistance / selection example genes
+- [`PF3D7_CORE_REGIONS`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_CORE_REGIONS.md)
+  : Pf3D7 core genome regions
+- [`PF3D7_PARALOG_GENES`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_PARALOG_GENES.md)
+  : Pf3D7 paralogous / hypervariable gene families
 
 ## Reference genome
 

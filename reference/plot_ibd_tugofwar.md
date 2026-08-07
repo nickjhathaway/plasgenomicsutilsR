@@ -11,13 +11,13 @@ the bottom).
 ``` r
 plot_ibd_tugofwar(
   x,
-  region = NULL,
+  group = NULL,
   metric = "neg_log10_p",
   scale = c("common", "free"),
   chroms = NULL,
   skip_chr = NULL,
   highlight_genes = NULL,
-  label_genes = FALSE,
+  label_genes = NULL,
   draw_threshold = TRUE,
   selection_colour = "#fd8d3c",
   ibd_colour = "#2166ac"
@@ -30,13 +30,12 @@ plot_ibd_tugofwar(
 
   An
   [IbdResults](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/IbdResults.md)
-  object (needs both selection and per_snp_region tables).
+  object (needs both selection and per_snp_group tables).
 
-- region:
+- group:
 
-  Region(s) to plot. `NULL` (default) plots every region, faceted one
-  per row; a single region gives one panel; a vector facets those
-  regions.
+  Group(s) to plot. `NULL` (default) plots every group, faceted one per
+  row; a single group gives one panel; a vector facets those groups.
 
 - metric:
 
@@ -45,9 +44,9 @@ plot_ibd_tugofwar(
 - scale:
 
   `"common"` (default) scales every panel to a shared maximum so they
-  are directly comparable; `"free"` scales each region to its own
-  maximum for more per-region detail (the axis then reads as
-  within-region percentages).
+  are directly comparable; `"free"` scales each group to its own maximum
+  for more per-group detail (the axis then reads as within-group
+  percentages).
 
 - chroms:
 
@@ -60,16 +59,24 @@ plot_ibd_tugofwar(
 
 - highlight_genes:
 
-  Optional gene names from the `genes` track to mark with lines.
+  Optional gene names from the `genes` track to mark with lines;
+  requesting a name not in the track is an error.
 
 - label_genes:
 
-  Label the highlighted genes (top panel only, outside the plot).
+  Label the genes. `NULL` (default) labels them only when
+  `highlight_genes` is given; `TRUE`/`FALSE` forces it.
 
 - draw_threshold:
 
-  Draw the per-region significance threshold (only for `neg_log10_p`
-  with `scale = "common"`, when thresholds are available).
+  Which significance line(s) to draw (only for `neg_log10_p`, and only
+  when not `normalized`): `TRUE` / `"bonferroni"`, `"fdr"`,
+  `"permutation"`, `"empirical"`, `"both"`, `"all"` or `FALSE` – the
+  same set
+  [`plot_selection_manhattan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_selection_manhattan.md)
+  takes, in the same colours, resolved by the same helper. Each line is
+  mapped through the same transform as the mirrored selection half, so
+  it lands where the data does.
 
 - selection_colour, ibd_colour:
 

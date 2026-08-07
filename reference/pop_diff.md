@@ -17,9 +17,10 @@ for markers.
 pop_diff(
   x,
   group = NULL,
-  statistic = c("jost_d", "gst", "gst_hedrick", "fst"),
+  statistic = c("jost_d", "gst_hedrick", "fst"),
   meta = NULL,
-  clamp = TRUE
+  clamp = TRUE,
+  genotype = NULL
 )
 ```
 
@@ -39,12 +40,11 @@ pop_diff(
 
 - statistic:
 
-  `"jost_d"` (Jost's D, default), `"gst"` (Nei's Gst), `"gst_hedrick"`
-  (Hedrick's standardized G'st), or `"fst"` (Hudson's Fst). Gst is
-  strongly deflated when within-group diversity is high (typical
-  genome-wide in *P. falciparum*); G'st, D and a top-percentile summary
-  counter that – see
-  [`pop_diff_matrix()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_matrix.md).
+  `"jost_d"` (Jost's D, default), `"gst_hedrick"` (Hedrick's
+  standardized G'st), or `"fst"` (Hudson's Fst); all in \[0, 1\]. Plain
+  Nei's Gst is not offered – it is strongly deflated when within-group
+  diversity is high (typical genome-wide in *P. falciparum*); its
+  standardized form G'st is provided instead.
 
 - meta:
 
@@ -55,6 +55,15 @@ pop_diff(
 - clamp:
 
   Clamp small negative estimates to 0 (default `TRUE`).
+
+- genotype:
+
+  Optional genotype matrix (samples x SNPs) or
+  [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
+  list to use **instead** of a `PopStructure`'s stored matrix – pass the
+  **full, unpruned** set here (e.g. `run_ld_prune(vcf, prune = FALSE)`)
+  so differentiation is measured on every SNP while PCA/UMAP keep using
+  the pruned matrix. Ignored when `x` is a matrix.
 
 ## Value
 

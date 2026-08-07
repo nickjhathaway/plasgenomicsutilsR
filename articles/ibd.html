@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,7 @@
     <li><a class="dropdown-item" href="../articles/ibd.html">IBD analysis</a></li>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
   </ul>
 </li>
       </ul>
@@ -63,7 +64,7 @@
       <h1>IBD analysis</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.1.1/vignettes/ibd.Rmd" class="external-link"><code>vignettes/ibd.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/vignettes/ibd.Rmd" class="external-link"><code>vignettes/ibd.Rmd</code></a></small>
       <div class="d-none name"><code>ibd.Rmd</code></div>
     </div>
 
@@ -71,36 +72,40 @@
     
 <p><code>plasgenomicsutilsR</code> plots identity-by-descent (IBD)
 results produced by the companion Python package. You hand it the
-per-SNP, pairwise-region, and selection-statistic tables; it draws
-genome-wide tracks, region heatmaps, tug-of-war mirrors, and drug-gene
+per-SNP, pairwise-group, and selection-statistic tables; it draws
+genome-wide tracks, group heatmaps, tug-of-war mirrors, and drug-gene
 triangles.</p>
 <div class="section level2">
 <h2 id="generating-the-input-tables-plasgenomicsutils">Generating the input tables (<code>plasgenomicsutils</code>)<a class="anchor" aria-label="anchor" href="#generating-the-input-tables-plasgenomicsutils"></a>
 </h2>
 <p>The tables come from the Python IBD tools, run on your
 <code>hmmibd-rs</code> output, a SNP panel, a clean BCF, and a sample →
-region map. The pipeline is:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># 1. Binary (pairs x SNPs) IBD matrix from hmmibd-rs blocks + a SNP panel</span></span>
+group map. The pipeline is:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># 1. Binary (pairs x SNPs) IBD matrix from hmmibd-rs blocks + a SNP panel (writes ibd_matrix.npz)</span></span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="ex">plasgenomicsutils</span> build_ibd_matrix <span class="dt">\</span></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="at">--blocks</span> hmmibd_rs.hmm.tsv.gz <span class="at">--snps</span> panel.vcf.gz <span class="at">--snp-format</span> vcf <span class="dt">\</span></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  <span class="at">--output</span> ibd_matrix.npz</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  <span class="at">--output</span> ibd_matrix</span>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># 2. Per-SNP-per-region and pairwise-region IBD summaries (needs the region map)</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># 2. Per-pair / per-SNP / per-group summaries (--pairwise-group-snp adds the group-pair table)</span></span>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="ex">plasgenomicsutils</span> analyze_ibd_matrix <span class="dt">\</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  <span class="at">--matrix</span> ibd_matrix.npz <span class="at">--meta</span> sample_regions.tsv <span class="at">--region-col</span> region <span class="dt">\</span></span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>  <span class="at">--output</span> ibd_analysis</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  <span class="at">--matrix</span> ibd_matrix <span class="at">--meta</span> sample_groups.tsv <span class="at">--group-col</span> group <span class="dt">\</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>  <span class="at">--pairwise-group-snp</span> <span class="at">--output</span> ibd_analysis</span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="co"># 3. Global + per-region allele frequencies, single pass over the BCF</span></span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="ex">plasgenomicsutils</span> compute_allele_freqs <span class="dt">\</span></span>
-<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>  <span class="at">--bcf</span> clean.snps.bcf <span class="at">--meta</span> sample_regions.tsv <span class="at">--region-col</span> region <span class="dt">\</span></span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  <span class="at">--output</span> allele_freqs</span>
-<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="co"># 4. IBD selection statistic (XiR,s), genome-wide and per region</span></span>
-<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="ex">plasgenomicsutils</span> ibd_selection_statistic <span class="dt">\</span></span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>  <span class="at">--matrix</span> ibd_matrix.npz <span class="dt">\</span></span>
-<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>  <span class="at">--af</span> allele_freqs.global.tsv.gz <span class="at">--af-region</span> allele_freqs.per_region.tsv.gz <span class="dt">\</span></span>
-<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>  <span class="at">--meta</span> sample_regions.tsv <span class="at">--region-col</span> region <span class="dt">\</span></span>
-<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>  <span class="at">--output</span> ibd_selection</span></code></pre></div>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="co"># 3. Global + per-group allele frequencies, single pass over the BCF</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="co">#    (writes allele_freqs.tsv.gz and group_allele_freqs.tsv.gz into the output dir)</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="ex">plasgenomicsutils</span> compute_allele_freqs <span class="dt">\</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  <span class="at">--bcf</span> clean.snps.bcf <span class="at">--meta</span> sample_groups.tsv <span class="at">--group-col</span> group <span class="dt">\</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>  <span class="at">--output</span> freqs/</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="co"># 4. IBD selection statistic (XiR,s), genome-wide and per group.</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="co">#    --permute 200 adds a threshold and per-SNP p-values drawn from the data instead of</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a><span class="co">#    from a chi-square(1); see "Choosing a significance criterion" below.</span></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="ex">plasgenomicsutils</span> ibd_selection_statistic <span class="dt">\</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>  <span class="at">--matrix</span> ibd_matrix <span class="dt">\</span></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>  <span class="at">--af</span> freqs/allele_freqs.tsv.gz <span class="at">--af-group</span> freqs/group_allele_freqs.tsv.gz <span class="dt">\</span></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>  <span class="at">--meta</span> sample_groups.tsv <span class="at">--group-col</span> group <span class="dt">\</span></span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>  <span class="at">--permute</span> 200 <span class="dt">\</span></span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>  <span class="at">--output</span> ibd_selection</span></code></pre></div>
 <p>Each command’s options are listed by
 <code>plasgenomicsutils &lt;command&gt; --help</code>.</p>
 </div>
@@ -115,36 +120,112 @@ countries) ships with the package:</p>
 <code class="sourceCode R"><span><span class="va">ibd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/example_ibd_results.html">example_ibd_results</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">ibd</span></span>
 <span><span class="co">#&gt; &lt;IbdResults&gt;  reference: pf3d7 </span></span>
-<span><span class="co">#&gt;   per_snp_region : 6785 rows </span></span>
-<span><span class="co">#&gt;   pairwise_region: 20355 rows </span></span>
+<span><span class="co">#&gt;   per_snp_group : 6785 rows </span></span>
+<span><span class="co">#&gt;   pairwise_group: 20355 rows </span></span>
 <span><span class="co">#&gt;   selection      : 6785 rows </span></span>
 <span><span class="co">#&gt;   thresholds     : 5 </span></span>
-<span><span class="co">#&gt;   genes          : 5</span></span></code></pre></div>
+<span><span class="co">#&gt;   genes          : 8</span></span></code></pre></div>
 <p>On your own data, point it at the tool outputs:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ibd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ibd_results.html">ibd_results</a></span><span class="op">(</span></span>
-<span>  per_snp_region  <span class="op">=</span> <span class="st">"ibd_analysis.per_snp_per_region.tsv.gz"</span>,</span>
-<span>  pairwise_region <span class="op">=</span> <span class="st">"ibd_analysis.per_snp_pairwise_region.tsv.gz"</span>,</span>
-<span>  selection       <span class="op">=</span> <span class="st">"ibd_selection.per_region.selection_stats.tsv.gz"</span>,</span>
-<span>  threshold       <span class="op">=</span> <span class="st">"ibd_selection.per_region.threshold.txt"</span>,</span>
-<span>  genes           <span class="op">=</span> <span class="va">EXAMPLE_DRUG_GENES</span>,</span>
+<span>  per_snp_group  <span class="op">=</span> <span class="st">"ibd_analysis.per_snp_per_group.tsv.gz"</span>,</span>
+<span>  pairwise_group <span class="op">=</span> <span class="st">"ibd_analysis.per_snp_pairwise_group.tsv.gz"</span>,</span>
+<span>  selection       <span class="op">=</span> <span class="st">"ibd_selection.per_group.selection_stats.tsv.gz"</span>,</span>
+<span>  threshold       <span class="op">=</span> <span class="st">"ibd_selection.per_group.threshold.txt"</span>,</span>
+<span>  genes           <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>,</span>
+<span>  blocks          <span class="op">=</span> <span class="st">"10_maf_filter_hmm.hmm.txt"</span>,     <span class="co"># enables the block-based tools</span></span>
+<span>  meta            <span class="op">=</span> <span class="va">meta</span>,                            <span class="co"># sample -&gt; group</span></span>
+<span>  group_col_in_meta <span class="op">=</span> <span class="st">"region"</span>,                      <span class="co"># names the grouping, and orders it</span></span>
 <span>  reference       <span class="op">=</span> <span class="st">"pf3d7"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="short-ibd-segments-are-dropped">Short IBD segments are dropped<a class="anchor" aria-label="anchor" href="#short-ibd-segments-are-dropped"></a>
+</h3>
+<p>Small IBD blocks are commonly spurious, so segments with fewer than
+<strong>15 SNPs</strong> or shorter than <strong>15 kb</strong> are
+discarded by default when <code>blocks</code> are read — the filter is
+built in rather than something you must apply beforehand. It is applied
+to the IBD <strong>evidence</strong> only: the analyzed-sample set
+behind every denominator still comes from every row of the blocks file,
+so a pair whose only segment was short still counts as compared, it
+simply contributes no sharing.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ibd_results.html">ibd_results</a></span><span class="op">(</span><span class="va">...</span>, blocks <span class="op">=</span> <span class="st">"hmm.txt"</span><span class="op">)</span>                                <span class="co"># &gt;= 15 SNPs, &gt;= 15 kb</span></span>
+<span><span class="fu"><a href="../reference/ibd_results.html">ibd_results</a></span><span class="op">(</span><span class="va">...</span>, blocks <span class="op">=</span> <span class="st">"hmm.txt"</span>, min_block_snp <span class="op">=</span> <span class="fl">20</span>, min_block_kb <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/ibd_results.html">ibd_results</a></span><span class="op">(</span><span class="va">...</span>, blocks <span class="op">=</span> <span class="st">"hmm.txt"</span>, min_block_snp <span class="op">=</span> <span class="fl">0</span>, min_block_kb <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>   <span class="co"># keep everything</span></span></code></pre></div>
+<p>Printing the object reports how many segments went, since the filter
+moves every downstream fraction. The Python tools take the same
+<code>--min-block-snp</code> / <code>--min-block-kb</code> flags with
+the same defaults, so the two sides agree.</p>
+</div>
+<div class="section level3">
+<h3 id="ordering-the-groups">Ordering the groups<a class="anchor" aria-label="anchor" href="#ordering-the-groups"></a>
+</h3>
+<p>Groups read in a sensible order by default (a natural sort, so
+<code>site2</code> precedes <code>site10</code>). To impose your own —
+geographic rather than alphabetical, say — make the metadata column a
+factor and name it with <code>group_col_in_meta</code>; its levels then
+order <strong>every</strong> loaded table, so facets, legends and
+triangle axes all agree:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">meta</span><span class="op">$</span><span class="va">region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">meta</span><span class="op">$</span><span class="va">region</span>,</span>
+<span>                      levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Northwest"</span>, <span class="st">"North"</span>, <span class="st">"Northeast"</span>,</span>
+<span>                                 <span class="st">"East"</span>, <span class="st">"West"</span>, <span class="st">"Southwest"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ibd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ibd_results.html">ibd_results</a></span><span class="op">(</span><span class="va">...</span>, meta <span class="op">=</span> <span class="va">meta</span>, group_col_in_meta <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span>
+<span><span class="va">ibd</span><span class="op">$</span><span class="fu">get_group_order</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><code>ibd$set_group_order(...)</code> changes it afterwards. Leaving
+out a group that the results actually contain is an error rather than a
+silent <code>NA</code>; naming a group nothing uses is only a
+warning.</p>
+</div>
+<div class="section level3">
+<h3 id="dropping-groups">Dropping groups<a class="anchor" aria-label="anchor" href="#dropping-groups"></a>
+</h3>
+<p>Everything an <code>IbdResults</code> holds is summarised either per
+group or per group pair, so groups are the unit to cut on.
+<code>$subset_groups()</code> returns a copy;
+<code>$restrict_groups()</code> does it in place. <code>drop</code> is
+the usual form — “everything except these” — and <code>keep</code> names
+the survivors instead:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">groups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">$</span><span class="fu">get_selection</span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">group</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ibd</span><span class="op">$</span><span class="fu">subset_groups</span><span class="op">(</span>drop <span class="op">=</span> <span class="va">groups</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;IbdResults&gt;  reference: pf3d7 </span></span>
+<span><span class="co">#&gt;   per_snp_group : 5428 rows </span></span>
+<span><span class="co">#&gt;   pairwise_group: 13570 rows </span></span>
+<span><span class="co">#&gt;   selection      : 5428 rows </span></span>
+<span><span class="co">#&gt;   thresholds     : 4 </span></span>
+<span><span class="co">#&gt;   genes          : 8</span></span></code></pre></div>
+<p>The per-SNP, group-pair, selection and threshold tables are all
+filtered, and a group-pair row survives only when <strong>both</strong>
+of its groups do — a cell against a dropped group means nothing. With
+<code>meta</code> loaded, <code>blocks</code> and the analysed-sample
+set narrow to the surviving groups’ samples too, so
+<code><a href="../reference/gene_ibd_overlap.html">gene_ibd_overlap()</a></code>, <code><a href="../reference/gene_ibd_pairs.html">gene_ibd_pairs()</a></code> and
+<code><a href="../reference/plot_ibd_network.html">plot_ibd_network()</a></code> follow. The group order is trimmed to
+whatever is left.</p>
+<p>Narrowing groups cannot recompute a summary, so every number kept is
+still the one computed over that group’s full sample set — groups are
+dropped, never re-derived.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="highlighting-genes">Highlighting genes<a class="anchor" aria-label="anchor" href="#highlighting-genes"></a>
 </h2>
 <p>The <code>genes</code> track supplies gene positions
-<strong>and</strong> display names. <code>EXAMPLE_DRUG_GENES</code> is a
-small bundled track of drug-resistance loci:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">EXAMPLE_DRUG_GENES</span></span>
-<span><span class="co">#&gt;      name chr   start     end</span></span>
-<span><span class="co">#&gt; 1     crt   7  403222  406317</span></span>
-<span><span class="co">#&gt; 2    dhfr   4  748088  749914</span></span>
-<span><span class="co">#&gt; 3    mdr1   5  957890  962149</span></span>
-<span><span class="co">#&gt; 4    dhps   8  548200  550616</span></span>
-<span><span class="co">#&gt; 5 kelch13  13 1724817 1726997</span></span></code></pre></div>
+<strong>and</strong> display names. <code>PF_EXAMPLE_DRUG_GENES</code>
+is a small bundled track of drug-resistance loci:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">PF_EXAMPLE_DRUG_GENES</span></span>
+<span><span class="co">#&gt;   Pf3D7_chrom   start     end chrom       gene_id      name</span></span>
+<span><span class="co">#&gt; 1 Pf3D7_07_v3  403221  406317     7 PF3D7_0709000     pfcrt</span></span>
+<span><span class="co">#&gt; 2 Pf3D7_04_v3  748087  749914     4 PF3D7_0417200    pfdhfr</span></span>
+<span><span class="co">#&gt; 3 Pf3D7_05_v3  957889  962149     5 PF3D7_0523000    pfmdr1</span></span>
+<span><span class="co">#&gt; 4 Pf3D7_08_v3  548199  550616     8 PF3D7_0810800    pfdhps</span></span>
+<span><span class="co">#&gt; 5 Pf3D7_13_v3 1724816 1726997    13 PF3D7_1343700 pfkelch13</span></span>
+<span><span class="co">#&gt; 6 Pf3D7_06_v3 1213947 1216005     6 PF3D7_0629500    pfaat1</span></span>
+<span><span class="co">#&gt; 7 Pf3D7_12_v3  974371  975541    12 PF3D7_1224000    pfgch1</span></span>
+<span><span class="co">#&gt; 8 Pf3D7_07_v3  891682  899051     7 PF3D7_0720700     pfpx1</span></span></code></pre></div>
 <p>Pass <code>highlight_genes</code> to pick which to mark and
 <code>label_genes = TRUE</code> to name them (top panel only, at each
 gene’s true position — labels are never nudged off-position).</p>
@@ -152,59 +233,246 @@ gene’s true position — labels are never nudged off-position).</p>
 <div class="section level2">
 <h2 id="genome-wide-tracks">Genome-wide tracks<a class="anchor" aria-label="anchor" href="#genome-wide-tracks"></a>
 </h2>
-<p>Per-SNP IBD along the genome, faceted by region, with two drug genes
+<p>Per-SNP IBD along the genome, faceted by group, with two drug genes
 labelled:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_manhattan.html">plot_ibd_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"crt"</span>, <span class="st">"kelch13"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_sharing_manhattan.html">plot_ibd_sharing_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfkelch13"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/manhattan-1.png" class="r-plt" alt="" width="768"></p>
-<p>The IBD selection statistic with the per-region Bonferroni
+<p>The IBD selection statistic with the per-group Bonferroni
 threshold:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_selection_manhattan.html">plot_selection_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, metric <span class="op">=</span> <span class="st">"neg_log10_p"</span>,</span>
-<span>                         highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"crt"</span>, <span class="st">"kelch13"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span>                         highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfkelch13"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/selection-1.png" class="r-plt" alt="" width="768"></p>
 <p>Every genome-wide plot can drop chromosomes (<code>chroms</code> /
 <code>skip_chr</code>, the rest re-laid out contiguously):</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_selection_manhattan.html">plot_selection_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, chroms <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"7"</span>, <span class="st">"13"</span><span class="op">)</span>,</span>
-<span>                         highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"crt"</span>, <span class="st">"kelch13"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span>                         highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfkelch13"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/zoom-1.png" class="r-plt" alt="" width="768"></p>
+</div>
+<div class="section level2">
+<h2 id="which-genes-are-under-selection">Which genes are under selection?<a class="anchor" aria-label="anchor" href="#which-genes-are-under-selection"></a>
+</h2>
+<p><code><a href="../reference/pos_selection_genes.html">pos_selection_genes()</a></code> intersects the significant SNPs
+(at or above each group’s threshold) with the object’s
+<code>genes</code> track. Because filtering can leave the peak SNP just
+outside a gene, a SNP counts when it falls within <code>within</code> bp
+of the gene (default 2 kb):</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/pos_selection_genes.html">pos_selection_genes</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span>                       <span class="co"># object's drug-gene track, 2 kb window</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 0 × 14</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 14 variables: group &lt;chr&gt;, gene_id &lt;chr&gt;, name &lt;chr&gt;, chr &lt;chr&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   gene_start &lt;int&gt;, gene_end &lt;int&gt;, n_snps &lt;int&gt;, min_distance &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   peak_pos &lt;int&gt;, peak_maf &lt;dbl&gt;, peak_z_score &lt;dbl&gt;, peak_chi2_stat &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   peak_neg_log10_p &lt;dbl&gt;, peak_significant &lt;dbl&gt;</span></span></span></code></pre></div>
+<p>Every metric in the selection table is reported at each gene’s peak
+SNP (<code>peak_*</code>). Pass <code>genes = PF3D7_GENES</code> to scan
+<strong>every</strong> gene without attaching the 5,000-gene track to
+the object (which would make the Manhattan plots draw a line per
+gene):</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/pos_selection_genes.html">pos_selection_genes</a></span><span class="op">(</span><span class="va">ibd</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, within <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 56 × 14</span></span></span>
+<span><span class="co">#&gt;    group gene_id    name  chr   gene_start gene_end n_snps min_distance peak_pos</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> DRC   PF3D7_070… pfhs… 7         <span style="text-decoration: underline;">381</span>591   <span style="text-decoration: underline;">384</span>614      1         <span style="text-decoration: underline;">1</span>677   <span style="text-decoration: underline;">386</span>290</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> DRC   PF3D7_070… PF3D… 7         <span style="text-decoration: underline;">385</span>582   <span style="text-decoration: underline;">388</span>321      1            0   <span style="text-decoration: underline;">386</span>290</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> DRC   PF3D7_081… pfab… 8         <span style="text-decoration: underline;">521</span>186   <span style="text-decoration: underline;">524</span>009      1          898   <span style="text-decoration: underline;">524</span>906</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> DRC   PF3D7_081… pfpp… 8         <span style="text-decoration: underline;">525</span>057   <span style="text-decoration: underline;">527</span>604      1          151   <span style="text-decoration: underline;">524</span>906</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> DRC   PF3D7_070… pfme… 7         <span style="text-decoration: underline;">413</span>559   <span style="text-decoration: underline;">421</span>749      1            0   <span style="text-decoration: underline;">417</span>012</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> DRC   PF3D7_081… PF3D… 8         <span style="text-decoration: underline;">593</span>648   <span style="text-decoration: underline;">595</span>412      1          573   <span style="text-decoration: underline;">595</span>984</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> DRC   PF3D7_081… PF3D… 8         <span style="text-decoration: underline;">596</span>189   <span style="text-decoration: underline;">600</span>328      1          205   <span style="text-decoration: underline;">595</span>984</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> DRC   PF3D7_081… pfca… 8         <span style="text-decoration: underline;">567</span>823   <span style="text-decoration: underline;">573</span>148      1            0   <span style="text-decoration: underline;">568</span>929</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> DRC   PF3D7_062… PF3D… 6        1<span style="text-decoration: underline;">183</span>895  1<span style="text-decoration: underline;">185</span>617      1          493  1<span style="text-decoration: underline;">186</span>109</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> DRC   PF3D7_062… pfga… 6        1<span style="text-decoration: underline;">185</span>995  1<span style="text-decoration: underline;">188</span>644      1            0  1<span style="text-decoration: underline;">186</span>109</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 46 more rows</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: peak_maf &lt;dbl&gt;, peak_z_score &lt;dbl&gt;, peak_chi2_stat &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   peak_neg_log10_p &lt;dbl&gt;, peak_significant &lt;lgl&gt;</span></span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="choosing-a-significance-criterion">Choosing a significance criterion<a class="anchor" aria-label="anchor" href="#choosing-a-significance-criterion"></a>
+</h2>
+<p><code>ibd_selection_statistic</code> reports up to four cutoffs, and
+<code>get_thresholds()</code> shows them beside the diagnostic that says
+which to use:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ibd</span><span class="op">$</span><span class="fu">get_thresholds</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 2</span></span></span>
+<span><span class="co">#&gt;   group    threshold</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> DRC           4.41</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Ethiopia      4.41</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Kenya         4.41</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Sudan         4.41</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> Tanzania      4.41</span></span></code></pre></div>
+<p>Two read their p-values off a chi-square(1):
+<strong>Bonferroni</strong> (family-wise) and
+<strong>Benjamini-Hochberg</strong> (a stated share of the calls may be
+false, so it calls more). Two come from <code>--permute</code>, which
+rebuilds the null by sliding each pair’s IBD segments to a random
+circular offset — preserving that pair’s total sharing, segment count,
+segment lengths and along-genome autocorrelation, and destroying only
+the alignment of segments <em>between</em> pairs:
+<strong><code>permutation</code></strong> (family-wise, from the
+per-replicate genome-wide maxima) and
+<strong><code>empirical</code></strong> (Benjamini-Hochberg over the
+permutation’s own per-SNP p-values).</p>
+<p><code>lambda_gc</code> decides between them. It is 1 when the
+chi-square(1) reference fits, and on real <em>P. falciparum</em> data it
+comes out near 0.1: the within-MAF-bin standardisation fixes the
+z-scores’ mean and variance and nothing about their shape. Where it is
+far from 1, prefer the permutation lines — <code>pval</code> and
+<code>q_value</code> are still fine for <em>ranking</em> SNPs, since
+every step from <code>z_score</code> to <code>neg_log10_p</code> is
+monotone, but they are not probabilities.</p>
+<p>Draw any one of them, or <code>"all"</code> for every kind the run
+wrote (chi-square lines warm, permutation lines cool). The shipped
+example comes from a run without <code>--permute</code>, so only the
+Bonferroni line is available here:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_selection_manhattan.html">plot_selection_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, draw_threshold <span class="op">=</span> <span class="st">"all"</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p><img src="ibd_files/figure-html/sel-thresholds-plot-1.png" class="r-plt" alt="" width="768"></p>
+<p>Then merge whichever criterion you settle on into loci, rather than
+reporting SNP counts — a sweep spans many SNPs, so a SNP count largely
+measures panel density:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/selection_peaks.html">selection_peaks</a></span><span class="op">(</span><span class="va">ibd</span>, criterion <span class="op">=</span> <span class="st">"bonferroni"</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, min_snps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 13</span></span></span>
+<span><span class="co">#&gt;   group chr    start    end width n_snps peak_pos peak_value mean_value</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> DRC   7     <span style="text-decoration: underline;">417</span>012 <span style="text-decoration: underline;">435</span>119 <span style="text-decoration: underline;">18</span>107      2   <span style="text-decoration: underline;">417</span>012       9.45       7.88</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Sudan 4     <span style="text-decoration: underline;">631</span>781 <span style="text-decoration: underline;">655</span>067 <span style="text-decoration: underline;">23</span>286      3   <span style="text-decoration: underline;">631</span>781       7.47       6.34</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 4 more variables: peak_genes &lt;chr&gt;, nearest_gene &lt;chr&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   distance_to_gene &lt;dbl&gt;, n_genes &lt;int&gt;</span></span></span></code></pre></div>
+<p>With a <code>--permute</code> run the same call takes
+<code>criterion = "permutation"</code> or <code>"empirical"</code>, and
+<code>draw_threshold</code> the matching names:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/selection_peaks.html">selection_peaks</a></span><span class="op">(</span><span class="va">ibd</span>, criterion <span class="op">=</span> <span class="st">"permutation"</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, min_snps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/selection_peaks.html">selection_peaks</a></span><span class="op">(</span><span class="va">ibd</span>, criterion <span class="op">=</span> <span class="st">"empirical"</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, min_snps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="tug-of-war">Tug-of-war<a class="anchor" aria-label="anchor" href="#tug-of-war"></a>
 </h2>
 <p>Selection hangs from the top, IBD rises from the bottom, sharing one
 colour-coded axis. <code>scale = "common"</code> keeps panels
-comparable; <code>scale = "free"</code> lets each region use its own
+comparable; <code>scale = "free"</code> lets each group use its own
 maximum:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span>, highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"crt"</span>, <span class="st">"dhps"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span>, highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfdhps"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/tugofwar-1.png" class="r-plt" alt="" width="768"></p>
 </div>
 <div class="section level2">
-<h2 id="region-by-region-sharing">Region-by-region sharing<a class="anchor" aria-label="anchor" href="#region-by-region-sharing"></a>
+<h2 id="region-by-group-sharing">Region-by-group sharing<a class="anchor" aria-label="anchor" href="#region-by-group-sharing"></a>
 </h2>
-<p>IBD between region pairs along the genome;
-<code>trans = "log2"</code> and a single-hue ramp keep it readable when
-most values are near zero:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_region_heatmap.html">plot_ibd_region_heatmap</a></span><span class="op">(</span><span class="va">ibd</span>, trans <span class="op">=</span> <span class="st">"log2"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning in ggplot2::scale_fill_gradientn(colours = colors, trans = trans, :</span></span>
-<span><span class="co">#&gt; <span style="color: #00BB00;">log-2</span> transformation introduced infinite values.</span></span></code></pre></div>
+<p>IBD between group pairs along the genome; <code>trans = "log2"</code>
+and a single-hue ramp keep it readable when most values are near
+zero:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_pairwise_group_heatmap.html">plot_ibd_pairwise_group_heatmap</a></span><span class="op">(</span><span class="va">ibd</span>, trans <span class="op">=</span> <span class="st">"log2"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/heatmap-1.png" class="r-plt" alt="" width="768"></p>
-<p>Triangles ask whether a gene (or a specific locus) is itself shared.
-A gene’s cell aggregates <strong>all</strong> SNPs strictly inside it
-(<code>agg = "mean"</code>/<code>"median"</code>/<code>"max"</code>):</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_drug_gene_triangles.html">plot_drug_gene_triangles</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span>                              <span class="co"># one facet per gene</span></span>
-<span><span class="fu"><a href="../reference/plot_drug_gene_triangles.html">plot_drug_gene_triangles</a></span><span class="op">(</span><span class="va">ibd</span>, snps <span class="op">=</span> <span class="st">"Pf3D7_07_v3:403222"</span><span class="op">)</span> <span class="co"># a single locus</span></span>
-<span><span class="fu"><a href="../reference/plot_drug_gene_triangles.html">plot_drug_gene_triangles</a></span><span class="op">(</span><span class="va">ibd</span>, individual <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>           <span class="co"># a list, one plot per feature</span></span></code></pre></div>
+<p>Triangles ask whether a gene (or a specific locus) is itself
+shared:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span>                              <span class="co"># one facet per gene</span></span>
+<span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, snps <span class="op">=</span> <span class="st">"Pf3D7_07_v3:403222"</span><span class="op">)</span> <span class="co"># a single locus</span></span>
+<span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, individual <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>           <span class="co"># a list, one plot per feature</span></span>
+<span></span>
+<span><span class="co"># pages from `individual = TRUE` are colour-comparable only on a shared scale</span></span>
+<span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"triangles.pdf"</span>,</span>
+<span>          <span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, individual <span class="op">=</span> <span class="cn">TRUE</span>, limits <span class="op">=</span> <span class="st">"shared"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>With IBD <code>blocks</code> loaded, a gene’s cell is the fraction of
+pairs whose IBD <strong>segment overlaps the gene</strong> — so a
+segment spanning the gene counts even where no SNP was genotyped inside
+it. Without blocks it falls back to aggregating the SNPs inside the gene
+(<code>agg = "mean"</code>/<code>"median"</code>/<code>"max"</code>).
+Gene spans are CDS, which can be short relative to a sparse panel, so
+<code>within</code> widens the window on either path:</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, within <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span>   <span class="co"># count SNPs / blocks within 10 kb</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="which-pairs-share-a-gene">Which pairs share a gene<a class="anchor" aria-label="anchor" href="#which-pairs-share-a-gene"></a>
+</h2>
+<p><code><a href="../reference/gene_ibd_overlap.html">gene_ibd_overlap()</a></code> gives the fraction per group pair;
+<code><a href="../reference/gene_ibd_pairs.html">gene_ibd_pairs()</a></code> gives the adjacency list underneath it —
+one row per sample pair × IBD block × gene, with how much of the gene
+that block covers. Pairs with no IBD over a gene are simply absent.</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ov</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gene_ibd_overlap.html">gene_ibd_overlap</a></span><span class="op">(</span><span class="va">ibd</span>, genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfdhps"</span><span class="op">)</span><span class="op">)</span>   <span class="co"># fractions per group pair</span></span>
+<span></span>
+<span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gene_ibd_pairs.html">gene_ibd_pairs</a></span><span class="op">(</span><span class="va">ibd</span>, genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfdhps"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">pairs</span>, <span class="va">coverage</span> <span class="op">==</span> <span class="st">"complete"</span><span class="op">)</span>     <span class="co"># pairs sharing the whole gene</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">gene</span>, <span class="va">pairs</span><span class="op">$</span><span class="va">coverage</span><span class="op">)</span>         <span class="co"># complete vs partial, per gene</span></span></code></pre></div>
+<p>Columns: <code>sample1</code>/<code>sample2</code>
+(order-normalised), <code>chr</code>,
+<code>block_start</code>/<code>block_end</code>, <code>gene</code>,
+<code>gene_id</code>, <code>gene_start</code>/<code>gene_end</code>,
+<code>coverage</code> (<code>complete</code>/<code>partial</code>),
+<code>covered_start</code>/<code>covered_end</code> (the gene’s own
+bounds when complete), <code>covered_bp</code> and
+<code>percent_covered</code>. The Python
+<code>plasgenomicsutils ibd_gene_pairs</code> writes the same table as a
+TSV.</p>
+</div>
+<div class="section level2">
+<h2 id="sample-level-networks">Sample-level networks<a class="anchor" aria-label="anchor" href="#sample-level-networks"></a>
+</h2>
+<p>Each node is a sample, each edge a pair sharing an IBD block over the
+gene or locus. Colour and shape are independent metadata columns, so two
+variables can be read off one plot:</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfcrt"</span>, color_group <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfcrt"</span>, color_group <span class="op">=</span> <span class="st">"region"</span>, shape_group <span class="op">=</span> <span class="st">"collection_year"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># `colors` / `shapes` take a NAMED vector (mapped by name, may be partial) or an unnamed</span></span>
+<span><span class="co"># one (positional, in the column's level order)</span></span>
+<span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfcrt"</span>, color_group <span class="op">=</span> <span class="st">"region"</span>,</span>
+<span>                 colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>North <span class="op">=</span> <span class="st">"#1f78b4"</span>, East <span class="op">=</span> <span class="st">"#33a02c"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>An edge means “this pair is IBD here”, and <code>sharing</code> sets
+how strictly: <code>"overlap"</code> (default) accepts a segment
+touching the interval anywhere, <code>"complete"</code> demands one
+spanning the whole gene/locus. Which you want depends on the question —
+<em>any</em> shared ancestry at the locus, or the whole locus inherited
+together:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfdhps"</span>, color_group <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span>                       <span class="co"># overlap</span></span>
+<span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfdhps"</span>, color_group <span class="op">=</span> <span class="st">"region"</span>, sharing <span class="op">=</span> <span class="st">"complete"</span><span class="op">)</span></span></code></pre></div>
+<p>The two can differ a lot: on one real cohort 90% of the pairs sharing
+<code>pfcrt</code> share all of it, but only 45% for
+<code>pfdhps</code>, whose IBD segments are more fragmented. The
+subtitle records which criterion drew the graph, and
+<code><a href="../reference/gene_ibd_pairs.html">gene_ibd_pairs()</a></code> shows per pair which segments are
+<code>"complete"</code> versus <code>"partial"</code>.</p>
+<p>Densely inter-connected groups collapse into an unreadable blob under
+a plain force layout, so edge attraction is weighted by
+<code>(1 - J)^spread</code>, <code>J</code> being the Jaccard overlap of
+two samples’ IBD neighbourhoods: redundant edges inside a near-clique
+pull only weakly and the group opens into a disc, while edges bridging
+distinct groups keep full pull. <code>spread = 1.5</code> by default;
+raise it to loosen the densest groups further, or use
+<code>spread = 0</code> for plain <code>fr</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="saving">Saving<a class="anchor" aria-label="anchor" href="#saving"></a>
 </h2>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"ibd_tugofwar.pdf"</span>, <span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span><span class="op">)</span>   <span class="co"># auto-sized; cairo PDF by default</span></span></code></pre></div>
+<p><code><a href="../reference/save_plot.html">save_plot()</a></code> sizes the canvas to the drawing. Plots with
+a locked panel shape — the networks and the gene triangles both use
+<code>coord_fixed()</code> — only fill a canvas of one particular
+aspect, and on any other shape the remainder shows up as blank margin.
+Give one dimension and the other is computed from the built plot’s panel
+ratio and the space its titles, legends and margins actually need; give
+neither and both are worked out; give both and they are used as-is.
+<code>fit = FALSE</code> opts out.</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span><span class="op">)</span>                 <span class="co"># both worked out, no leftover margin</span></span>
+<span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, width <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>     <span class="co"># height follows from the contents</span></span>
+<span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, height <span class="op">=</span> <span class="fl">6</span><span class="op">)</span>     <span class="co"># width follows instead</span></span>
+<span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, width <span class="op">=</span> <span class="fl">9</span>, height <span class="op">=</span> <span class="fl">9</span><span class="op">)</span>   <span class="co"># exactly as asked</span></span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"ibd_tugofwar.pdf"</span>, <span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span><span class="op">)</span>   <span class="co"># auto-sized; cairo PDF by default</span></span>
+<span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"triangles.pdf"</span>, <span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, individual <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>  <span class="co"># multi-page</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

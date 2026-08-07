@@ -13,3 +13,5 @@
   structure](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/population-structure.md):
 - [Population
   differentiation](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/differentiation.md):
+- [Diversity, linkage and
+  selection](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/diversity-and-selection.md):

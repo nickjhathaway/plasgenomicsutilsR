@@ -13,7 +13,7 @@ tinted to their track (selection on top, IBD on the bottom)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,7 @@ tinted to their track (selection on top, IBD on the bottom)."></head><body>
     <li><a class="dropdown-item" href="../articles/ibd.html">IBD analysis</a></li>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -43,7 +44,7 @@ tinted to their track (selection on top, IBD on the bottom)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>IBD / selection "tug-of-war" mirror plot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.1.1/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
       <div class="d-none name"><code>plot_ibd_tugofwar.Rd</code></div>
     </div>
 
@@ -58,13 +59,13 @@ tinted to their track (selection on top, IBD on the bottom).</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_ibd_tugofwar</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
-<span>  region <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  metric <span class="op">=</span> <span class="st">"neg_log10_p"</span>,</span>
 <span>  scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"common"</span>, <span class="st">"free"</span><span class="op">)</span>,</span>
 <span>  chroms <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  skip_chr <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  highlight_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  label_genes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  label_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  draw_threshold <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  selection_colour <span class="op">=</span> <span class="st">"#fd8d3c"</span>,</span>
 <span>  ibd_colour <span class="op">=</span> <span class="st">"#2166ac"</span></span>
@@ -76,12 +77,12 @@ tinted to their track (selection on top, IBD on the bottom).</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>An <a href="IbdResults.html">IbdResults</a> object (needs both selection and per_snp_region tables).</p></dd>
+<dd><p>An <a href="IbdResults.html">IbdResults</a> object (needs both selection and per_snp_group tables).</p></dd>
 
 
-<dt id="arg-region">region<a class="anchor" aria-label="anchor" href="#arg-region"></a></dt>
-<dd><p>Region(s) to plot. <code>NULL</code> (default) plots every region, faceted one
-per row; a single region gives one panel; a vector facets those regions.</p></dd>
+<dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
+<dd><p>Group(s) to plot. <code>NULL</code> (default) plots every group, faceted one
+per row; a single group gives one panel; a vector facets those groups.</p></dd>
 
 
 <dt id="arg-metric">metric<a class="anchor" aria-label="anchor" href="#arg-metric"></a></dt>
@@ -90,8 +91,8 @@ per row; a single region gives one panel; a vector facets those regions.</p></dd
 
 <dt id="arg-scale">scale<a class="anchor" aria-label="anchor" href="#arg-scale"></a></dt>
 <dd><p><code>"common"</code> (default) scales every panel to a shared maximum so they
-are directly comparable; <code>"free"</code> scales each region to its own maximum for more
-per-region detail (the axis then reads as within-region percentages).</p></dd>
+are directly comparable; <code>"free"</code> scales each group to its own maximum for more
+per-group detail (the axis then reads as within-group percentages).</p></dd>
 
 
 <dt id="arg-chroms">chroms<a class="anchor" aria-label="anchor" href="#arg-chroms"></a></dt>
@@ -104,16 +105,22 @@ the rest re-laid-out contiguously.</p></dd>
 
 
 <dt id="arg-highlight-genes">highlight_genes<a class="anchor" aria-label="anchor" href="#arg-highlight-genes"></a></dt>
-<dd><p>Optional gene names from the <code>genes</code> track to mark with lines.</p></dd>
+<dd><p>Optional gene names from the <code>genes</code> track to mark with lines;
+requesting a name not in the track is an error.</p></dd>
 
 
 <dt id="arg-label-genes">label_genes<a class="anchor" aria-label="anchor" href="#arg-label-genes"></a></dt>
-<dd><p>Label the highlighted genes (top panel only, outside the plot).</p></dd>
+<dd><p>Label the genes. <code>NULL</code> (default) labels them only when
+<code>highlight_genes</code> is given; <code>TRUE</code>/<code>FALSE</code> forces it.</p></dd>
 
 
 <dt id="arg-draw-threshold">draw_threshold<a class="anchor" aria-label="anchor" href="#arg-draw-threshold"></a></dt>
-<dd><p>Draw the per-region significance threshold (only for
-<code>neg_log10_p</code> with <code>scale = "common"</code>, when thresholds are available).</p></dd>
+<dd><p>Which significance line(s) to draw (only for <code>neg_log10_p</code>, and
+only when not <code>normalized</code>): <code>TRUE</code> / <code>"bonferroni"</code>, <code>"fdr"</code>, <code>"permutation"</code>,
+<code>"empirical"</code>, <code>"both"</code>, <code>"all"</code> or <code>FALSE</code> – the same set
+<code><a href="plot_selection_manhattan.html">plot_selection_manhattan()</a></code> takes, in the same colours, resolved by the same helper.
+Each line is mapped through the same transform as the mirrored selection half, so it
+lands where the data does.</p></dd>
 
 
 <dt id="arg-selection-colour-ibd-colour">selection_colour, ibd_colour<a class="anchor" aria-label="anchor" href="#arg-selection-colour-ibd-colour"></a></dt>

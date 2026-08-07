@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,7 @@
     <li><a class="dropdown-item" href="../articles/ibd.html">IBD analysis</a></li>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
+    <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
   </ul>
 </li>
       </ul>
@@ -63,7 +64,7 @@
       <h1>Population structure</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.1.1/vignettes/population-structure.Rmd" class="external-link"><code>vignettes/population-structure.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/vignettes/population-structure.Rmd" class="external-link"><code>vignettes/population-structure.Rmd</code></a></small>
       <div class="d-none name"><code>population-structure.Rmd</code></div>
     </div>
 
@@ -111,6 +112,50 @@ K:</p>
 <code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">run_snmf</span><span class="op">(</span>K <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span>                        <span class="co"># re-runs are instant; no console spam</span></span>
 <span><span class="va">ord</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/admixture_order.html">admixture_order</a></span><span class="op">(</span><span class="va">ps</span><span class="op">$</span><span class="fu">q</span><span class="op">(</span><span class="va">ps</span><span class="op">$</span><span class="fu">best_k</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>, meta <span class="op">=</span> <span class="va">ps</span><span class="op">$</span><span class="fu">get_meta</span><span class="op">(</span><span class="op">)</span>, group <span class="op">=</span> <span class="st">"site"</span><span class="op">)</span></span>
 <span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_admixture</span><span class="op">(</span>K <span class="op">=</span> <span class="va">ps</span><span class="op">$</span><span class="fu">best_k</span><span class="op">(</span><span class="op">)</span>, group <span class="op">=</span> <span class="st">"site"</span>, sample_order <span class="op">=</span> <span class="va">ord</span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="choosing-k">Choosing K<a class="anchor" aria-label="anchor" href="#choosing-k"></a>
+</h3>
+<p>sNMF fits several replicates per K and scores each by cross-entropy.
+<code><a href="https://rdrr.io/r/base/quit.html" class="external-link">q()</a></code> and <code><a href="../reference/plot_admixture.html">plot_admixture()</a></code> use the
+<strong>minimum</strong>-cross-entropy replicate, so <code>min</code> is
+the column describing the ancestry you actually see;
+<code>mean</code>/<code>max</code> show how far the replicates
+disagreed. Picking K is a separate judgement — read the elbow, and treat
+a flat stretch or a wide min–max band as “the data don’t pin K down”,
+whatever <code>best_k()</code> returns:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">cross_entropy</span><span class="op">(</span><span class="op">)</span>        <span class="co"># K, n_runs, min, mean, max, best_run</span></span>
+<span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_cross_entropy</span><span class="op">(</span><span class="op">)</span>   <span class="co"># the elbow; best K in red, grey band = replicate spread</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="every-k-on-its-own-page">Every K on its own page<a class="anchor" aria-label="anchor" href="#every-k-on-its-own-page"></a>
+</h3>
+<p><code><a href="../reference/plot_admixture_multi_k.html">plot_admixture_multi_k()</a></code> returns a list of plots — the
+elbow first, then one page per K — which <code><a href="../reference/save_plot.html">save_plot()</a></code> writes
+as a multi-page PDF. All pages share one sample order taken from the
+best K, so a sample sits at the same x on every page and you can follow
+it as K changes. The best K’s page says so in its title:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pages</span> <span class="op">&lt;-</span> <span class="va">ps</span><span class="op">$</span><span class="fu">plot_admixture_multi_k</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"site"</span>, group_bar <span class="op">=</span> <span class="cn">TRUE</span>, border <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"admixture_all_k.pdf"</span>, <span class="va">pages</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># cross_entropy_first = FALSE   drop the elbow page</span></span>
+<span><span class="co"># sample_order_best_k = FALSE   let each K cluster its own samples</span></span>
+<span><span class="co"># sample_order = my_order       impose an order of your own</span></span>
+<span><span class="co"># K = 2:10, best_k = 6          narrow the pages / override which K is "best"</span></span></code></pre></div>
+<p>Clusters read <code>K1</code>, <code>K2</code>, … <code>K15</code> in
+numeric order, and the cluster legend always sits above the group
+legend. At a large K that cluster legend is long, so
+<code><a href="../reference/plot_admixture.html">plot_admixture()</a></code> wraps it and reports a canvas tall enough
+to hold the whole thing (<code>...</code> carries these through the
+pages above). Down the side the keys wrap into extra columns; along the
+bottom they become a shallow two-row block that adds to the height
+rather than squeezing the bars:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_admixture_multi_k</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"site"</span>, legend_position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span></span>
+<span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_admixture</span><span class="op">(</span>K <span class="op">=</span> <span class="fl">15</span>, legend_rows <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>       <span class="co"># 5 keys per column -&gt; 3 columns</span></span>
+<span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_admixture</span><span class="op">(</span>K <span class="op">=</span> <span class="fl">15</span>, legend_position <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="one-combined-figure">One combined figure<a class="anchor" aria-label="anchor" href="#one-combined-figure"></a>
@@ -121,7 +166,7 @@ one region colour map (UMAP points match the admixture colour strips),
 collected legends, region-faceted bars (a colour strip, no text) over
 <code>rows</code> you specify, and the UMAP above
 (<code>"vertical"</code>) or beside (<code>"horizontal"</code>) it:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rows</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DRC"</span>, <span class="st">"Uganda_North"</span>, <span class="st">"Uganda_Northeast"</span>, <span class="st">"Uganda_East"</span><span class="op">)</span>,</span>
 <span>             <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Kenya_East"</span>, <span class="st">"Kenya_West"</span>, <span class="st">"Tanzania_East"</span>, <span class="st">"Tanzania_West"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/plot_structure_figure.html">plot_structure_figure</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"site"</span>, K <span class="op">=</span> <span class="st">"best_k"</span>, rows <span class="op">=</span> <span class="va">rows</span>,</span>
@@ -140,11 +185,30 @@ identical ancestry distinct; <code>legend_point_size</code>,
 <p>Build from a genotype matrix, or LD-prune a VCF first with
 <code><a href="../reference/run_ld_prune.html">run_ld_prune()</a></code> (SNPRelate), then attach metadata — colours
 are auto-assigned per column and reused across every plot:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">geno</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_ld_prune.html">run_ld_prune</a></span><span class="op">(</span><span class="st">"clean.snps.vcf.gz"</span><span class="op">)</span>             <span class="co"># SNPRelate LD-pruned genotypes</span></span>
 <span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/PopStructure.html">PopStructure</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">geno</span>, meta <span class="op">=</span> <span class="va">sample_meta</span><span class="op">)</span>      <span class="co"># sample, region, country, ...</span></span>
 <span><span class="va">ps</span><span class="op">$</span><span class="fu">run_umap</span><span class="op">(</span>pca_components <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="va">ps</span><span class="op">$</span><span class="fu">run_snmf</span><span class="op">(</span>K <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">8</span>, cache_dir <span class="op">=</span> <span class="st">"snmf_cache"</span><span class="op">)</span>        <span class="co"># persistent cache survives sessions</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="ordering-the-groups">Ordering the groups<a class="anchor" aria-label="anchor" href="#ordering-the-groups"></a>
+</h2>
+<p>Groups read in a natural sort by default (so <code>site2</code>
+precedes <code>site10</code>). <code>set_levels()</code> imposes your
+own order, and it applies to <strong>every</strong> output — PCA and
+UMAP legends, the admixture facets and sample sweep, the differentiation
+matrix, and the composite figure:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">set_levels</span><span class="op">(</span><span class="st">"site"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Uganda_North"</span>, <span class="st">"Uganda_East"</span>, <span class="st">"Kenya_West"</span>, <span class="st">"Kenya_East"</span>,</span>
+<span>                        <span class="st">"Tanzania_West"</span>, <span class="st">"Tanzania_East"</span>, <span class="st">"DRC"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Two things to know. Levels you leave out are dropped, so those
+samples vanish from the plots — <code><a href="../reference/admixture_order.html">admixture_order()</a></code> warns
+when that happens rather than shrinking the figure silently. And in a
+<em>clustered</em> heatmap the clustering decides the axis order, since
+that grouping is the point of clustering; see
+<code>plot_diff_heatmap(cluster = FALSE)</code> in the differentiation
+article for an axis that follows the levels exactly.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

@@ -10,11 +10,12 @@ Fst can be read together.
 pop_diff_table(
   x,
   group = NULL,
-  statistics = c("jost_d", "gst", "gst_hedrick", "fst"),
+  statistics = c("jost_d", "gst_hedrick", "fst"),
   stats = c("mean", "top_mean", "max"),
   top = 0.05,
   meta = NULL,
-  clamp = TRUE
+  clamp = TRUE,
+  genotype = NULL
 )
 ```
 
@@ -34,8 +35,9 @@ pop_diff_table(
 
 - statistics:
 
-  Measures to include (any of `"jost_d"`, `"gst"`, `"gst_hedrick"`,
-  `"fst"`; default all four).
+  Measures to include (any of `"jost_d"`, `"gst_hedrick"`, `"fst"`;
+  default all three). Nei's Gst is not offered – see
+  [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md).
 
 - stats:
 
@@ -55,6 +57,11 @@ pop_diff_table(
 - clamp:
 
   Clamp small negative estimates to 0 (default `TRUE`).
+
+- genotype:
+
+  Optional full/unpruned genotype override (see
+  [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)).
 
 ## Value
 

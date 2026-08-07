@@ -19,7 +19,9 @@ plot_admixture(
   group_colours = NULL,
   border = TRUE,
   border_colour = "black",
-  border_linewidth = 0.15
+  border_linewidth = 0.15,
+  legend_position = c("right", "bottom", "top", "left", "none"),
+  legend_rows = NULL
 )
 ```
 
@@ -69,12 +71,32 @@ plot_admixture(
 
 - border:
 
-  Outline each sample's bar (default `TRUE`) so neighbours with nearly
-  identical ancestry stay distinct; set `FALSE` for borderless bars.
+  Outline each sample's bar (default `TRUE`, matching
+  [`plot_structure_figure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_structure_figure.md))
+  so neighbours with nearly identical ancestry stay distinct; `FALSE`
+  for borderless bars. With very many samples in a narrow render the
+  outlines can swamp the fills – either render wider
+  ([`save_plot()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/save_plot.md)
+  uses the attached width) or set `border = FALSE` / a thinner
+  `border_linewidth`.
 
 - border_colour, border_linewidth:
 
   Colour and width of the per-sample outline.
+
+- legend_position:
+
+  Where the legends go: `"right"` (default), `"bottom"`, `"top"`,
+  `"left"`, or `"none"`. A large K makes for a tall legend stack, so
+  `"bottom"` often fits better on a wide, short admixture panel.
+
+- legend_rows:
+
+  Keys per legend column (or per row when the legend is horizontal)
+  before wrapping into another column/row. `NULL` (default) wraps a side
+  legend every 10 keys and splits a horizontal one over two rows, which
+  keeps `K` = 15 plus a group strip on the page. The suggested output
+  height accounts for whatever this works out to.
 
 ## Value
 

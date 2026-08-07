@@ -2,9 +2,12 @@
 
 Returns
 [`grDevices::cairo_pdf()`](https://rdrr.io/r/grDevices/cairo.html) when
-cairo is available and the platform is not Windows (cairo embeds fonts
-more reliably, but its PDF output can be unreliable on Windows),
-otherwise the string `"pdf"`. Use it with
+a cairo device can actually be opened and the platform is not Windows
+(cairo embeds fonts more reliably, but its PDF output can be unreliable
+on Windows), otherwise the string `"pdf"`. Availability is settled by
+opening a throwaway device rather than by `capabilities("cairo")`, which
+reports what R was built with and so can claim a cairo that fails to
+load. Use it with
 [`ggplot2::ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html):
 `ggsave(file, plot, device = pdf_device())`.
 
@@ -41,6 +44,6 @@ pdf_device()
 #>         72 * height, pointsize, bg, NA_integer_, antialias, onefile, 
 #>         family, fallback_resolution, checkSymbolFont(symbolfamily)))
 #> }
-#> <bytecode: 0x5608d60e6460>
+#> <bytecode: 0x560dcfea60c0>
 #> <environment: namespace:grDevices>
 ```
