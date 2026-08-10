@@ -156,14 +156,12 @@ gene to exist where the signal is.
 ps <- example_pop_structure(umap = FALSE)
 b <- beta_score(ps, group = "country", window = 300000, min_window_snps = 1)
 selection_peaks(b, criterion = "top", top = 0.2, genes = PF_EXAMPLE_DRUG_GENES)
-#> # A tibble: 5 × 14
+#> # A tibble: 3 × 14
 #>   group    chr          start    end width n_snps peak_pos peak_value mean_value
 #>   <chr>    <chr>        <dbl>  <dbl> <dbl>  <int>    <dbl>      <dbl>      <dbl>
-#> 1 Cambodia Pf3D7_01_v3 5.31e5 5.31e5     1      1   531105      0.536      0.536
-#> 2 Cambodia Pf3D7_01_v3 5.77e5 5.77e5     1      1   577066      0.484      0.484
-#> 3 Ghana    Pf3D7_07_v3 5.99e5 5.99e5     1      1   598578      0.275      0.275
-#> 4 Ghana    Pf3D7_09_v3 1.48e6 1.48e6     1      1  1475529      0.169      0.169
-#> 5 Ghana    Pf3D7_07_v3 5.37e5 5.37e5     1      1   536889      0.142      0.142
+#> 1 Ghana    Pf3D7_07_v3 373796 435151 61355    106   378668      23.8       19.5 
+#> 2 Cambodia Pf3D7_08_v3 521913 579284 57371     18   542476       8.67       7.67
+#> 3 Cambodia Pf3D7_07_v3 379066 419989 40923     11   395442       4.82       4.50
 #> # ℹ 5 more variables: peak_interval_genes <list>, gene_at_peak <chr>,
 #> #   nearest_gene <chr>, distance_to_gene <dbl>, n_genes <int>
 ```

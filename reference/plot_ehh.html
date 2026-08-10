@@ -13,7 +13,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,6 +31,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
+    <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -44,7 +45,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>EHH decay around one SNP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
       <div class="d-none name"><code>plot_ehh.Rd</code></div>
     </div>
 
@@ -166,8 +167,8 @@ population structure and a group with few carriers gives a ragged curve.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span>umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="parasite_haplotypes.html">parasite_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, maf <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># the example panel is sparse, so measure from a SNP it actually has</span></span></span>
-<span class="r-in"><span><span class="fu">plot_ehh</span><span class="op">(</span><span class="va">hap</span>, <span class="va">hap</span><span class="op">$</span><span class="va">map</span><span class="op">$</span><span class="va">snp_id</span><span class="op">[</span><span class="fl">10</span><span class="op">]</span>, span <span class="op">=</span> <span class="fl">5e5</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">plot_ehh</span><span class="op">(</span><span class="va">hap</span>, <span class="st">"pfcrt"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, span <span class="op">=</span> <span class="fl">30000</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another</span>
 <span class="r-plt img"><img src="plot_ehh-1.png" alt="" width="700" height="433"></span>
 </code></pre></div>
     </div>

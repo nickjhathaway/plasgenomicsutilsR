@@ -9,7 +9,7 @@ reported: one row per gene rather than per SNP."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,7 @@ reported: one row per gene rather than per SNP."></head><body>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
+    <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -40,7 +41,7 @@ reported: one row per gene rather than per SNP."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Summarise a haplotype scan per gene</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>ihs_genes.Rd</code></div>
     </div>
 
@@ -90,7 +91,15 @@ gene or was pulled in from the flank, and <code>n_snps</code> counts the widened
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span>umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="parasite_haplotypes.html">parasite_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, maf <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">ihs_genes</span><span class="op">(</span><span class="fu"><a href="run_ihs.html">run_ihs</a></span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, min_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 0 × 0</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 5 × 10</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   group  gene  chr    start    end n_snps max_neg_log10_p max_abs_value peak_pos</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Cambo… pfcrt 7     4.03<span style="color: #949494;">e</span>5 4.06<span style="color: #949494;">e</span>5      5          0.781          1.39    <span style="text-decoration: underline;">405</span>361</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Cambo… pfdh… 8     5.48<span style="color: #949494;">e</span>5 5.51<span style="color: #949494;">e</span>5      4          0.210          0.500   <span style="text-decoration: underline;">549</span>680</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Ghana  pfcrt 7     4.03<span style="color: #949494;">e</span>5 4.06<span style="color: #949494;">e</span>5      2          0.560          1.09    <span style="text-decoration: underline;">406</span>230</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> Ghana  pfdh… 8     5.48<span style="color: #949494;">e</span>5 5.51<span style="color: #949494;">e</span>5      4          0.145          0.364   <span style="text-decoration: underline;">548</span>504</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Ghana  pfke… 13    1.72<span style="color: #949494;">e</span>6 1.73<span style="color: #949494;">e</span>6      1          0.069<span style="text-decoration: underline;">3</span>         0.186  1<span style="text-decoration: underline;">726</span>431</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1 more variable: peak_in_gene &lt;lgl&gt;</span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

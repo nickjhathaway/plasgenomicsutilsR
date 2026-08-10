@@ -13,7 +13,7 @@ in a result.'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,6 +31,7 @@ in a result.'></head><body>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
+    <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -44,7 +45,7 @@ in a result.'></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Merge a selection scan's significant SNPs into peaks</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/selection_peaks.R" class="external-link"><code>R/selection_peaks.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/selection_peaks.R" class="external-link"><code>R/selection_peaks.R</code></a></small>
       <div class="d-none name"><code>selection_peaks.Rd</code></div>
     </div>
 
@@ -173,14 +174,12 @@ one, which does not need a gene to exist where the signal is.</p></div>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span>umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="beta_score.html">beta_score</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, window <span class="op">=</span> <span class="fl">300000</span>, min_window_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">selection_peaks</span><span class="op">(</span><span class="va">b</span>, criterion <span class="op">=</span> <span class="st">"top"</span>, top <span class="op">=</span> <span class="fl">0.2</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 5 × 14</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 14</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   group    chr          start    end width n_snps peak_pos peak_value mean_value</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Cambodia Pf3D7_01_v3 5.31<span style="color: #949494;">e</span>5 5.31<span style="color: #949494;">e</span>5     1      1   <span style="text-decoration: underline;">531</span>105      0.536      0.536</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Cambodia Pf3D7_01_v3 5.77<span style="color: #949494;">e</span>5 5.77<span style="color: #949494;">e</span>5     1      1   <span style="text-decoration: underline;">577</span>066      0.484      0.484</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Ghana    Pf3D7_07_v3 5.99<span style="color: #949494;">e</span>5 5.99<span style="color: #949494;">e</span>5     1      1   <span style="text-decoration: underline;">598</span>578      0.275      0.275</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> Ghana    Pf3D7_09_v3 1.48<span style="color: #949494;">e</span>6 1.48<span style="color: #949494;">e</span>6     1      1  1<span style="text-decoration: underline;">475</span>529      0.169      0.169</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Ghana    Pf3D7_07_v3 5.37<span style="color: #949494;">e</span>5 5.37<span style="color: #949494;">e</span>5     1      1   <span style="text-decoration: underline;">536</span>889      0.142      0.142</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Ghana    Pf3D7_07_v3 <span style="text-decoration: underline;">373</span>796 <span style="text-decoration: underline;">435</span>151 <span style="text-decoration: underline;">61</span>355    106   <span style="text-decoration: underline;">378</span>668      23.8       19.5 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Cambodia Pf3D7_08_v3 <span style="text-decoration: underline;">521</span>913 <span style="text-decoration: underline;">579</span>284 <span style="text-decoration: underline;">57</span>371     18   <span style="text-decoration: underline;">542</span>476       8.67       7.67</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Cambodia Pf3D7_07_v3 <span style="text-decoration: underline;">379</span>066 <span style="text-decoration: underline;">419</span>989 <span style="text-decoration: underline;">40</span>923     11   <span style="text-decoration: underline;">395</span>442       4.82       4.50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 5 more variables: peak_interval_genes &lt;list&gt;, gene_at_peak &lt;chr&gt;,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   nearest_gene &lt;chr&gt;, distance_to_gene &lt;dbl&gt;, n_genes &lt;int&gt;</span></span>
 </code></pre></div>

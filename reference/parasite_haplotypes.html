@@ -9,7 +9,7 @@ run_ihs() and its cross-population relatives need."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,7 @@ run_ihs() and its cross-population relatives need."></head><body>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
+    <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -40,7 +41,7 @@ run_ihs() and its cross-population relatives need."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Build phased haplotypes for a haplotype-homozygosity scan</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>parasite_haplotypes.Rd</code></div>
     </div>
 
@@ -145,12 +146,12 @@ repeating the whole thing under a different seed.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span>umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">parasite_haplotypes</span><span class="op">(</span><span class="va">ps</span>, maf <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;parasite_haplotypes&gt; 60 haplotypes x 27 SNPs</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   from            : 60 samples x 49 SNPs</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   mixed calls     : 79 resolved by allele draw </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   SNPs dropped    : 12 missing, 10 MAF</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;parasite_haplotypes&gt; 60 haplotypes x 351 SNPs</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   from            : 60 samples x 719 SNPs</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   mixed calls     : 814 resolved by allele draw </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   SNPs dropped    : 221 missing, 147 MAF</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   samples dropped : 0 missing</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   imputed calls   : 16  seed: 42 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   imputed calls   : 178  seed: 42 </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

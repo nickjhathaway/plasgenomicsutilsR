@@ -132,6 +132,6 @@ curve.
 ``` r
 ps <- example_pop_structure(umap = FALSE)
 hap <- parasite_haplotypes(ps, maf = 0.05)
-# the example panel is sparse, so measure from a SNP it actually has
-plot_ehh(hap, hap$map$snp_id[10], span = 5e5)
+plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
+#> `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another
 ```

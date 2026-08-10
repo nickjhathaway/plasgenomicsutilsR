@@ -24,11 +24,11 @@ summaries.
 
 pop_diversity(ps, group = "country", accessible = PF3D7_CORE_REGIONS)
 #> # A tibble: 2 × 24
-#>   group chr   start   end unit  n_samples n_snps n_sites seg_sites    he      pi
-#>   <fct> <chr> <dbl> <dbl> <chr>     <int>  <int>   <dbl>     <int> <dbl>   <dbl>
-#> 1 Camb… NA       NA    NA geno…        30     49  2.09e7        24 0.159 3.74e-7
-#> 2 Ghana NA       NA    NA geno…        30     49  2.09e7        36 0.194 4.56e-7
-#> # ℹ 13 more variables: theta_w <dbl>, tajima_d <dbl>, tajima_p <dbl>,
+#>   group    chr   start   end unit   n_samples n_snps  n_sites seg_sites     he
+#>   <fct>    <chr> <dbl> <dbl> <chr>      <int>  <int>    <dbl>     <int>  <dbl>
+#> 1 Cambodia NA       NA    NA genome        30    719 20857252       158 0.0538
+#> 2 Ghana    NA       NA    NA genome        30    719 20857252       546 0.205 
+#> # ℹ 14 more variables: pi <dbl>, theta_w <dbl>, tajima_d <dbl>, tajima_p <dbl>,
 #> #   n_taj_snps <int>, n_taj_samples <dbl>, n_hap_snps <int>,
 #> #   n_hap_samples <int>, n_hap <int>, hap_div <dbl>, shannon_h <dbl>,
 #> #   simpson_lambda <dbl>, evenness <dbl>, tajima_percentile <dbl>
@@ -47,10 +47,10 @@ and only one of them is comparable between windows:
 d <- pop_diversity(ps, group = "country", accessible = PF3D7_CORE_REGIONS)
 d[c("group", "n_snps", "n_sites", "he", "pi")]
 #> # A tibble: 2 × 5
-#>   group    n_snps  n_sites    he          pi
-#>   <fct>     <int>    <dbl> <dbl>       <dbl>
-#> 1 Cambodia     49 20857252 0.159 0.000000374
-#> 2 Ghana        49 20857252 0.194 0.000000456
+#>   group    n_snps  n_sites     he         pi
+#>   <fct>     <int>    <dbl>  <dbl>      <dbl>
+#> 1 Cambodia    719 20857252 0.0538 0.00000185
+#> 2 Ghana       719 20857252 0.205  0.00000707
 ```
 
 Dividing by the SNP count instead of the base count is the usual
@@ -69,12 +69,12 @@ at least three of them, no MAF filter:
 pop_diversity(ps, group = "country", by = "gene",
               genes = PF_EXAMPLE_DRUG_GENES)[1:4, c("group", "unit", "n_snps", "he")]
 #> # A tibble: 4 × 4
-#>   group    unit   n_snps    he
-#>   <fct>    <chr>   <int> <dbl>
-#> 1 Cambodia pfcrt       0    NA
-#> 2 Cambodia pfdhfr      0    NA
-#> 3 Cambodia pfmdr1      0    NA
-#> 4 Cambodia pfdhps      0    NA
+#>   group    unit   n_snps      he
+#>   <fct>    <chr>   <int>   <dbl>
+#> 1 Cambodia pfcrt      27  0.0701
+#> 2 Cambodia pfdhfr      0 NA     
+#> 3 Cambodia pfmdr1      0 NA     
+#> 4 Cambodia pfdhps      7  0.231
 ```
 
 Windows give a genome-wide track. `step` slides the window rather than
@@ -157,10 +157,10 @@ since `Ia` grows with the number of loci.
 
 ld_index(ps, group = "country")
 #> # A tibble: 2 × 5
-#>   group    n_samples n_loci      ia   rbar_d
-#>   <fct>        <int>  <int>   <dbl>    <dbl>
-#> 1 Cambodia        30     14  0.887   0.0704 
-#> 2 Ghana           30     25 -0.0422 -0.00184
+#>   group    n_samples n_loci    ia  rbar_d
+#>   <fct>        <int>  <int> <dbl>   <dbl>
+#> 1 Cambodia        30     92 11.8  0.141  
+#> 2 Ghana           30    425  2.74 0.00672
 ```
 
 Both are **upward-biased in small samples**, so read them next to
@@ -185,12 +185,12 @@ haplotypes were made determines what the scan can honestly claim.
 
 hap <- parasite_haplotypes(ps, maf = 0.05)
 hap
-#> <parasite_haplotypes> 60 haplotypes x 27 SNPs
-#>   from            : 60 samples x 49 SNPs
-#>   mixed calls     : 79 resolved by allele draw 
-#>   SNPs dropped    : 12 missing, 10 MAF
+#> <parasite_haplotypes> 60 haplotypes x 351 SNPs
+#>   from            : 60 samples x 719 SNPs
+#>   mixed calls     : 814 resolved by allele draw 
+#>   SNPs dropped    : 221 missing, 147 MAF
 #>   samples dropped : 0 missing
-#>   imputed calls   : 16  seed: 42
+#>   imputed calls   : 178  seed: 42
 ```
 
 With per-sample Fws to hand (from `plasgenomicsutils calculate_fws`),
@@ -215,11 +215,11 @@ different seed.
 ihs <- run_ihs(hap, group = "country")
 head(ihs, 3)
 #> # A tibble: 3 × 7
-#>   group    chr            pos snp_id             freq_minor     ihs neg_log10_p
-#>   <fct>    <chr>        <dbl> <chr>                   <dbl>   <dbl>       <dbl>
-#> 1 Cambodia Pf3D7_04_v3  92597 Pf3D7_04_v3:92597      0.1    -1.50        0.878 
-#> 2 Cambodia Pf3D7_04_v3 544673 Pf3D7_04_v3:544673     0.467  -0.0946      0.0340
-#> 3 Cambodia Pf3D7_04_v3 898668 Pf3D7_04_v3:898668     0.0667 -1.38        0.775
+#>   group    chr            pos snp_id             freq_minor    ihs neg_log10_p
+#>   <fct>    <chr>        <dbl> <chr>                   <dbl>  <dbl>       <dbl>
+#> 1 Cambodia Pf3D7_02_v3 273786 Pf3D7_02_v3:273786      0.467 -0.215      0.0811
+#> 2 Cambodia Pf3D7_04_v3  92596 Pf3D7_04_v3:92596       0.1   -0.499      0.209 
+#> 3 Cambodia Pf3D7_04_v3 544672 Pf3D7_04_v3:544672      0.467 -0.186      0.0695
 ```
 
 **How to read it.** At each SNP, iHS contrasts how far haplotype
@@ -279,12 +279,34 @@ other has decayed:
 
 ``` r
 
-plot_ehh(hap, hap$map$snp_id[which.max(abs(ihs$ihs))], span = 3e5)
-#> `geom_line()`: Each group consists of only one observation.
-#> ℹ Do you need to adjust the group aesthetic?
+plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
+#> `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another
 ```
 
 ![](diversity-and-selection_files/figure-html/unnamed-chunk-13-1.png)
+
+A marker that only segregates in one part of the cohort is buried by
+pooling, so restrict the haplotypes to where it varies.
+[`subset_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_haplotypes.md)
+matches metadata the way `PopStructure$subset()` does,
+`column = values`, and takes several values:
+
+``` r
+
+gh <- subset_haplotypes(hap, country = "Ghana")
+plot_ehh(gh, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
+#> `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403336 (minor allele 0.333) -- name a `chr:pos` to pick another
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png)
+
+The SNP panel is left exactly as
+[`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
+built it, so two subsets remain comparable to each other and to the
+whole; a SNP that is monomorphic within the subset is dropped when the
+curve is computed anyway. [`print()`](https://rdrr.io/r/base/print.html)
+reports the restriction, since it changes what every scan off that
+object means.
 
 `focal` also takes a bare position or a gene name from `genes`; a gene
 holding several SNPs resolves to the most balanced one and says which,
@@ -305,10 +327,10 @@ underneath:
 
 ``` r
 
-plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfcrt", pad = 20000, genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png)
 
 `split` blocks the rows by a metadata column and clusters *within* each
 block, so a haplotype shared across a group reads as a solid band
@@ -318,12 +340,11 @@ SNPs worth pointing at:
 
 ``` r
 
-plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES,
-                       mark_snps = "pfcrt")
-#> no genotyped SNP inside pfcrt, so nothing is marked there
+plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
+                       genes = PF_EXAMPLE_DRUG_GENES, annotations = "country")
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png)
 
 `annotations` adds coloured strips down the right, one column per
 metadata variable, each with its own legend and taking its colours from
@@ -332,11 +353,11 @@ UMAP or the admixture bars:
 
 ``` r
 
-plot_region_haplotypes(ps, "7", split = "country", annotations = "country",
-                       genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfdhps", pad = 20000, split = "country",
+                       annotations = "country", genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png)
 
 `spacing` decides what the horizontal axis means, and the two answers
 show different things. `"even"` (the default) gives every SNP the same
@@ -345,13 +366,21 @@ nothing about distance. `"genomic"` keeps every mark the same width and
 moves it to its real coordinate, so the gaps between SNPs are what you
 see:
 
+Either way a SNP is only ever drawn over the genes it really falls in.
+Under `"even"` the axis counts SNPs, so a gene’s box is exactly the
+columns it holds — its width is how many SNPs are in it, *not* how long
+the gene is — and a gene with no genotyped SNP in the window has no
+width at all and is left off the track with a message. Under `"genomic"`
+the boxes are true extents and the marks are clipped at gene edges
+instead.
+
 ``` r
 
-plot_region_haplotypes(ps, "7", split = "country", spacing = "genomic",
-                       genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
+                       spacing = "genomic", genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-18-1.png)
 
 One thing to be sure of before reading the colours: `allele` says
 whether a dosage of 2 means two alternate alleles or two reference ones.
@@ -369,9 +398,9 @@ head(run_rsb(hap, group = "country"), 3)
 #> # A tibble: 3 × 8
 #>   pair              pop1     pop2  chr            pos snp_id   value neg_log10_p
 #>   <chr>             <chr>    <chr> <chr>        <dbl> <chr>    <dbl>       <dbl>
-#> 1 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3  92597 Pf3D7_… -0.577       0.249
-#> 2 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 544673 Pf3D7_…  0.512       0.216
-#> 3 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 898668 Pf3D7_… -0.509       0.214
+#> 1 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3  92596 Pf3D7_0… -2.14        1.49
+#> 2 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 401090 Pf3D7_0… -2.16        1.51
+#> 3 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 544672 Pf3D7_0… -2.04        1.38
 ```
 
 `pairs = list(c("a", "b"))` restricts the comparison; the default is
@@ -383,7 +412,16 @@ reduces any of these to one row per gene – the peak SNP inside it:
 ``` r
 
 ihs_genes(ihs, genes = PF_EXAMPLE_DRUG_GENES, within = 10000, min_snps = 1)
-#> # A tibble: 0 × 0
+#> # A tibble: 6 × 10
+#>   group  gene  chr    start    end n_snps max_neg_log10_p max_abs_value peak_pos
+#>   <fct>  <chr> <chr>  <dbl>  <dbl>  <int>           <dbl>         <dbl>    <dbl>
+#> 1 Cambo… pfcrt 7     4.03e5 4.06e5     11           1.54          2.18    411005
+#> 2 Cambo… pfdh… 8     5.48e5 5.51e5      9           0.448         0.922   546840
+#> 3 Cambo… pfke… 13    1.72e6 1.73e6      1           0.132         0.335  1727144
+#> 4 Ghana  pfke… 13    1.72e6 1.73e6     11           3.06          3.33   1734259
+#> 5 Ghana  pfcrt 7     4.03e5 4.06e5     61           2.01          2.59    414656
+#> 6 Ghana  pfdh… 8     5.48e5 5.51e5     18           0.454         0.932   548163
+#> # ℹ 1 more variable: peak_in_gene <lgl>
 ```
 
 ### Beta
@@ -400,7 +438,7 @@ b <- beta_score(ps, group = "country", window = 300000, min_window_snps = 1)
 plot_beta(b)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-20-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-21-1.png)
 
 Use `window = 1000` (the default) on a real, dense callset; the fixture
 needs a far wider window just to find any neighbours.

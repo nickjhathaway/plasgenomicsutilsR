@@ -61,6 +61,8 @@ set of samples (or a metadata match) for output.
 
 - [`PopStructure$allele()`](#method-PopStructure-allele)
 
+- [`PopStructure$positions()`](#method-PopStructure-positions)
+
 - [`PopStructure$pruned()`](#method-PopStructure-pruned)
 
 - [`PopStructure$get_samples()`](#method-PopStructure-get_samples)
@@ -125,7 +127,8 @@ list).
       colors = NULL,
       allele = NULL,
       pruned = NULL,
-      full = NULL
+      full = NULL,
+      one_based = FALSE
     )
 
 #### Arguments
@@ -168,6 +171,14 @@ list).
   list when it says so. Pruning is right for PCA / admixture and wrong
   for looking at haplotypes, since it drops SNPs precisely for being
   correlated with a neighbour.
+
+- `one_based`:
+
+  The genotype column names carry 1-based VCF positions (a matrix built
+  by an older
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md),
+  or read straight off a VCF); shift them to the 0-based convention on
+  the way in.
 
 ------------------------------------------------------------------------
 
@@ -567,6 +578,18 @@ older version).
 - `panel`:
 
   Which panel to report on; the primary one when `NULL`.
+
+------------------------------------------------------------------------
+
+### `PopStructure$positions()`
+
+Which convention the SNP positions follow, or `NULL` when the object
+does not record it (built before this was tracked – rebuild it, or pass
+`one_based`).
+
+#### Usage
+
+    PopStructure$positions()
 
 ------------------------------------------------------------------------
 

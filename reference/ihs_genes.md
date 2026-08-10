@@ -50,5 +50,13 @@ A tibble with the grouping column, `gene`, `chr`, `start`, `end`,
 ps <- example_pop_structure(umap = FALSE)
 hap <- parasite_haplotypes(ps, maf = 0.05)
 ihs_genes(run_ihs(hap, group = "country"), genes = PF_EXAMPLE_DRUG_GENES, min_snps = 1)
-#> # A tibble: 0 × 0
+#> # A tibble: 5 × 10
+#>   group  gene  chr    start    end n_snps max_neg_log10_p max_abs_value peak_pos
+#>   <fct>  <chr> <chr>  <dbl>  <dbl>  <int>           <dbl>         <dbl>    <dbl>
+#> 1 Cambo… pfcrt 7     4.03e5 4.06e5      5          0.781          1.39    405361
+#> 2 Cambo… pfdh… 8     5.48e5 5.51e5      4          0.210          0.500   549680
+#> 3 Ghana  pfcrt 7     4.03e5 4.06e5      2          0.560          1.09    406230
+#> 4 Ghana  pfdh… 8     5.48e5 5.51e5      4          0.145          0.364   548504
+#> 5 Ghana  pfke… 13    1.72e6 1.73e6      1          0.0693         0.186  1726431
+#> # ℹ 1 more variable: peak_in_gene <lgl>
 ```

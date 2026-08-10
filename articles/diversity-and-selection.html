@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
+    <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
   </ul>
 </li>
       </ul>
@@ -64,7 +65,7 @@
       <h1>Diversity, linkage and selection</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
       <div class="d-none name"><code>diversity-and-selection.Rmd</code></div>
     </div>
 
@@ -87,11 +88,11 @@ the haplotype / multilocus-genotype summaries.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pop_diversity.html">pop_diversity</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, accessible <span class="op">=</span> <span class="va">PF3D7_CORE_REGIONS</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 24</span></span></span>
-<span><span class="co">#&gt;   group chr   start   end unit  n_samples n_snps n_sites seg_sites    he      pi</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Camb… <span style="color: #BB0000;">NA</span>       <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> geno…        30     49  2.09<span style="color: #949494;">e</span>7        24 0.159 3.74<span style="color: #949494;">e</span><span style="color: #BB0000;">-7</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Ghana <span style="color: #BB0000;">NA</span>       <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> geno…        30     49  2.09<span style="color: #949494;">e</span>7        36 0.194 4.56<span style="color: #949494;">e</span><span style="color: #BB0000;">-7</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 13 more variables: theta_w &lt;dbl&gt;, tajima_d &lt;dbl&gt;, tajima_p &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt;   group    chr   start   end unit   n_samples n_snps  n_sites seg_sites     he</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia <span style="color: #BB0000;">NA</span>       <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> genome        30    719 20<span style="text-decoration: underline;">857</span>252       158 0.053<span style="text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Ghana    <span style="color: #BB0000;">NA</span>       <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> genome        30    719 20<span style="text-decoration: underline;">857</span>252       546 0.205 </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 14 more variables: pi &lt;dbl&gt;, theta_w &lt;dbl&gt;, tajima_d &lt;dbl&gt;, tajima_p &lt;dbl&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   n_taj_snps &lt;int&gt;, n_taj_samples &lt;dbl&gt;, n_hap_snps &lt;int&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   n_hap_samples &lt;int&gt;, n_hap &lt;int&gt;, hap_div &lt;dbl&gt;, shannon_h &lt;dbl&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   simpson_lambda &lt;dbl&gt;, evenness &lt;dbl&gt;, tajima_percentile &lt;dbl&gt;</span></span></span></code></pre></div>
@@ -108,10 +109,10 @@ thousand and only one of them is comparable between windows:</p>
 <code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pop_diversity.html">pop_diversity</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, accessible <span class="op">=</span> <span class="va">PF3D7_CORE_REGIONS</span><span class="op">)</span></span>
 <span><span class="va">d</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"group"</span>, <span class="st">"n_snps"</span>, <span class="st">"n_sites"</span>, <span class="st">"he"</span>, <span class="st">"pi"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 5</span></span></span>
-<span><span class="co">#&gt;   group    n_snps  n_sites    he          pi</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia     49 20<span style="text-decoration: underline;">857</span>252 0.159 0.000<span style="text-decoration: underline;">000</span>374</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Ghana        49 20<span style="text-decoration: underline;">857</span>252 0.194 0.000<span style="text-decoration: underline;">000</span>456</span></span></code></pre></div>
+<span><span class="co">#&gt;   group    n_snps  n_sites     he         pi</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia    719 20<span style="text-decoration: underline;">857</span>252 0.053<span style="text-decoration: underline;">8</span> 0.000<span style="text-decoration: underline;">001</span>85</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Ghana       719 20<span style="text-decoration: underline;">857</span>252 0.205  0.000<span style="text-decoration: underline;">007</span>07</span></span></code></pre></div>
 <p>Dividing by the SNP count instead of the base count is the usual
 mistake, and it makes windows with different SNP density or missingness
 silently incomparable. <code>accessible</code> sets the denominator;
@@ -127,12 +128,12 @@ coding SNPs, at least three of them, no MAF filter:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pop_diversity.html">pop_diversity</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, by <span class="op">=</span> <span class="st">"gene"</span>,</span>
 <span>              genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"group"</span>, <span class="st">"unit"</span>, <span class="st">"n_snps"</span>, <span class="st">"he"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 4</span></span></span>
-<span><span class="co">#&gt;   group    unit   n_snps    he</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia pfcrt       0    <span style="color: #BB0000;">NA</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia pfdhfr      0    <span style="color: #BB0000;">NA</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia pfmdr1      0    <span style="color: #BB0000;">NA</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Cambodia pfdhps      0    <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
+<span><span class="co">#&gt;   group    unit   n_snps      he</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia pfcrt      27  0.070<span style="text-decoration: underline;">1</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia pfdhfr      0 <span style="color: #BB0000;">NA</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia pfmdr1      0 <span style="color: #BB0000;">NA</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Cambodia pfdhps      7  0.231</span></span></code></pre></div>
 <p>Windows give a genome-wide track. <code>step</code> slides the window
 rather than tiling it, which is the usual way to scan Tajima’s D — a
 fixed grid can split a signal across two windows and dilute it in
@@ -202,10 +203,10 @@ datasets, since <code>Ia</code> grows with the number of loci.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ld_index.html">ld_index</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 5</span></span></span>
-<span><span class="co">#&gt;   group    n_samples n_loci      ia   rbar_d</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia        30     14  0.887   0.070<span style="text-decoration: underline;">4</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Ghana           30     25 -<span style="color: #BB0000;">0.042</span><span style="color: #BB0000; text-decoration: underline;">2</span> -<span style="color: #BB0000;">0.001</span><span style="color: #BB0000; text-decoration: underline;">84</span></span></span></code></pre></div>
+<span><span class="co">#&gt;   group    n_samples n_loci    ia  rbar_d</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia        30     92 11.8  0.141  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Ghana           30    425  2.74 0.006<span style="text-decoration: underline;">72</span></span></span></code></pre></div>
 <p>Both are <strong>upward-biased in small samples</strong>, so read
 them next to <code>n_samples</code> – a group of ten will score above a
 group of a hundred drawn from the same population.</p>
@@ -226,12 +227,12 @@ haplotypes were made determines what the scan can honestly claim.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/parasite_haplotypes.html">parasite_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, maf <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span>
 <span><span class="va">hap</span></span>
-<span><span class="co">#&gt; &lt;parasite_haplotypes&gt; 60 haplotypes x 27 SNPs</span></span>
-<span><span class="co">#&gt;   from            : 60 samples x 49 SNPs</span></span>
-<span><span class="co">#&gt;   mixed calls     : 79 resolved by allele draw </span></span>
-<span><span class="co">#&gt;   SNPs dropped    : 12 missing, 10 MAF</span></span>
+<span><span class="co">#&gt; &lt;parasite_haplotypes&gt; 60 haplotypes x 351 SNPs</span></span>
+<span><span class="co">#&gt;   from            : 60 samples x 719 SNPs</span></span>
+<span><span class="co">#&gt;   mixed calls     : 814 resolved by allele draw </span></span>
+<span><span class="co">#&gt;   SNPs dropped    : 221 missing, 147 MAF</span></span>
 <span><span class="co">#&gt;   samples dropped : 0 missing</span></span>
-<span><span class="co">#&gt;   imputed calls   : 16  seed: 42</span></span></code></pre></div>
+<span><span class="co">#&gt;   imputed calls   : 178  seed: 42</span></span></code></pre></div>
 <p>With per-sample Fws to hand (from
 <code>plasgenomicsutils calculate_fws</code>), gate to monoclonal
 infections first, since a polyclonal infection is a mixture of
@@ -251,11 +252,11 @@ whole thing under a different seed.</p>
 <code class="sourceCode R"><span><span class="va">ihs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_ihs.html">run_ihs</a></span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ihs</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 7</span></span></span>
-<span><span class="co">#&gt;   group    chr            pos snp_id             freq_minor     ihs neg_log10_p</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">92</span>597 Pf3D7_04_v3:92597      0.1    -<span style="color: #BB0000;">1.50</span>        0.878 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia Pf3D7_04_v3 <span style="text-decoration: underline;">544</span>673 Pf3D7_04_v3:544673     0.467  -<span style="color: #BB0000;">0.094</span><span style="color: #BB0000; text-decoration: underline;">6</span>      0.034<span style="text-decoration: underline;">0</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia Pf3D7_04_v3 <span style="text-decoration: underline;">898</span>668 Pf3D7_04_v3:898668     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">1.38</span>        0.775</span></span></code></pre></div>
+<span><span class="co">#&gt;   group    chr            pos snp_id             freq_minor    ihs neg_log10_p</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia Pf3D7_02_v3 <span style="text-decoration: underline;">273</span>786 Pf3D7_02_v3:273786      0.467 -<span style="color: #BB0000;">0.215</span>      0.081<span style="text-decoration: underline;">1</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">92</span>596 Pf3D7_04_v3:92596       0.1   -<span style="color: #BB0000;">0.499</span>      0.209 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia Pf3D7_04_v3 <span style="text-decoration: underline;">544</span>672 Pf3D7_04_v3:544672      0.467 -<span style="color: #BB0000;">0.186</span>      0.069<span style="text-decoration: underline;">5</span></span></span></code></pre></div>
 <p><strong>How to read it.</strong> At each SNP, iHS contrasts how far
 haplotype homozygosity extends from one allele against the other. An
 allele that rose recently and fast still carries the long stretch it
@@ -310,10 +311,24 @@ mutant-versus-reference comparison without needing the SNPs annotated –
 and a sweep shows as one allele holding EHH near 1 far past where the
 other has decayed:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ehh.html">plot_ehh</a></span><span class="op">(</span><span class="va">hap</span>, <span class="va">hap</span><span class="op">$</span><span class="va">map</span><span class="op">$</span><span class="va">snp_id</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">ihs</span><span class="op">$</span><span class="va">ihs</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>, span <span class="op">=</span> <span class="fl">3e5</span><span class="op">)</span></span>
-<span><span class="co">#&gt; `geom_line()`: Each group consists of only one observation.</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Do you need to adjust the <span style="color: #00BB00;">group</span> aesthetic?</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ehh.html">plot_ehh</a></span><span class="op">(</span><span class="va">hap</span>, <span class="st">"pfcrt"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, span <span class="op">=</span> <span class="fl">30000</span><span class="op">)</span></span>
+<span><span class="co">#&gt; `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another</span></span></code></pre></div>
 <p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="672"></p>
+<p>A marker that only segregates in one part of the cohort is buried by
+pooling, so restrict the haplotypes to where it varies.
+<code><a href="../reference/subset_haplotypes.html">subset_haplotypes()</a></code> matches metadata the way
+<code>PopStructure$subset()</code> does, <code>column = values</code>,
+and takes several values:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gh</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/subset_haplotypes.html">subset_haplotypes</a></span><span class="op">(</span><span class="va">hap</span>, country <span class="op">=</span> <span class="st">"Ghana"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/plot_ehh.html">plot_ehh</a></span><span class="op">(</span><span class="va">gh</span>, <span class="st">"pfcrt"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, span <span class="op">=</span> <span class="fl">30000</span><span class="op">)</span></span>
+<span><span class="co">#&gt; `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403336 (minor allele 0.333) -- name a `chr:pos` to pick another</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="672"></p>
+<p>The SNP panel is left exactly as <code><a href="../reference/parasite_haplotypes.html">parasite_haplotypes()</a></code>
+built it, so two subsets remain comparable to each other and to the
+whole; a SNP that is monomorphic within the subset is dropped when the
+curve is computed anyway. <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> reports the restriction,
+since it changes what every scan off that object means.</p>
 <p><code>focal</code> also takes a bare position or a gene name from
 <code>genes</code>; a gene holding several SNPs resolves to the most
 balanced one and says which, since EHH from a near-singleton is a flat
@@ -332,37 +347,43 @@ haplotypes actually are. <code><a href="../reference/plot_region_haplotypes.html
 row per sample and one column per SNP over a window, clusters the
 samples and puts the dendrogram beside them, with the gene track
 underneath:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
-<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="768"></p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"pfcrt"</span>, pad <span class="op">=</span> <span class="fl">20000</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="768"></p>
 <p><code>split</code> blocks the rows by a metadata column and clusters
 <em>within</em> each block, so a haplotype shared across a group reads
 as a solid band instead of being scattered by one global ordering (this
 is what <code>ComplexHeatmap</code>’s <code>row_split</code> does).
 <code>mark_snps</code> puts a line on the SNPs worth pointing at:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, split <span class="op">=</span> <span class="st">"country"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>,</span>
-<span>                       mark_snps <span class="op">=</span> <span class="st">"pfcrt"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; no genotyped SNP inside pfcrt, so nothing is marked there</span></span></code></pre></div>
-<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="768"></p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"pfcrt"</span>, pad <span class="op">=</span> <span class="fl">20000</span>, split <span class="op">=</span> <span class="st">"country"</span>,</span>
+<span>                       genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, annotations <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png" class="r-plt" alt="" width="768"></p>
 <p><code>annotations</code> adds coloured strips down the right, one
 column per metadata variable, each with its own legend and taking its
 colours from the object’s shared maps – so a level keeps the colour it
 has in the UMAP or the admixture bars:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, split <span class="op">=</span> <span class="st">"country"</span>, annotations <span class="op">=</span> <span class="st">"country"</span>,</span>
-<span>                       genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
-<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png" class="r-plt" alt="" width="768"></p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"pfdhps"</span>, pad <span class="op">=</span> <span class="fl">20000</span>, split <span class="op">=</span> <span class="st">"country"</span>,</span>
+<span>                       annotations <span class="op">=</span> <span class="st">"country"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="768"></p>
 <p><code>spacing</code> decides what the horizontal axis means, and the
 two answers show different things. <code>"even"</code> (the default)
 gives every SNP the same width, which is how the haplotype structure is
 easiest to read but says nothing about distance. <code>"genomic"</code>
 keeps every mark the same width and moves it to its real coordinate, so
 the gaps between SNPs are what you see:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, split <span class="op">=</span> <span class="st">"country"</span>, spacing <span class="op">=</span> <span class="st">"genomic"</span>,</span>
-<span>                       genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
-<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="768"></p>
+<p>Either way a SNP is only ever drawn over the genes it really falls
+in. Under <code>"even"</code> the axis counts SNPs, so a gene’s box is
+exactly the columns it holds — its width is how many SNPs are in it,
+<em>not</em> how long the gene is — and a gene with no genotyped SNP in
+the window has no width at all and is left off the track with a message.
+Under <code>"genomic"</code> the boxes are true extents and the marks
+are clipped at gene edges instead.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"pfcrt"</span>, pad <span class="op">=</span> <span class="fl">20000</span>, split <span class="op">=</span> <span class="st">"country"</span>,</span>
+<span>                       spacing <span class="op">=</span> <span class="st">"genomic"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-18-1.png" class="r-plt" alt="" width="768"></p>
 <p>One thing to be sure of before reading the colours:
 <code>allele</code> says whether a dosage of 2 means two alternate
 alleles or two reference ones. The plot asks the object, which knows
@@ -371,21 +392,30 @@ cannot say, and the two codings are indistinguishable afterwards, so it
 assumes alt dosage and tells you it did.</p>
 <p>Rsb and XP-EHH compare two populations rather than two alleles, so
 they see exactly those completed sweeps:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/run_rsb.html">run_rsb</a></span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 8</span></span></span>
 <span><span class="co">#&gt;   pair              pop1     pop2  chr            pos snp_id   value neg_log10_p</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3  <span style="text-decoration: underline;">92</span>597 Pf3D7_… -<span style="color: #BB0000;">0.577</span>       0.249</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 <span style="text-decoration: underline;">544</span>673 Pf3D7_…  0.512       0.216</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 <span style="text-decoration: underline;">898</span>668 Pf3D7_… -<span style="color: #BB0000;">0.509</span>       0.214</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3  <span style="text-decoration: underline;">92</span>596 Pf3D7_0… -<span style="color: #BB0000;">2.14</span>        1.49</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 <span style="text-decoration: underline;">401</span>090 Pf3D7_0… -<span style="color: #BB0000;">2.16</span>        1.51</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 <span style="text-decoration: underline;">544</span>672 Pf3D7_0… -<span style="color: #BB0000;">2.04</span>        1.38</span></span></code></pre></div>
 <p><code>pairs = list(c("a", "b"))</code> restricts the comparison; the
 default is every pair.</p>
 <p><code><a href="../reference/ihs_genes.html">ihs_genes()</a></code> reduces any of these to one row per gene –
 the peak SNP inside it:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ihs_genes.html">ihs_genes</a></span><span class="op">(</span><span class="va">ihs</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, within <span class="op">=</span> <span class="fl">10000</span>, min_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 0 × 0</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 10</span></span></span>
+<span><span class="co">#&gt;   group  gene  chr    start    end n_snps max_neg_log10_p max_abs_value peak_pos</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambo… pfcrt 7     4.03<span style="color: #949494;">e</span>5 4.06<span style="color: #949494;">e</span>5     11           1.54          2.18    <span style="text-decoration: underline;">411</span>005</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambo… pfdh… 8     5.48<span style="color: #949494;">e</span>5 5.51<span style="color: #949494;">e</span>5      9           0.448         0.922   <span style="text-decoration: underline;">546</span>840</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambo… pfke… 13    1.72<span style="color: #949494;">e</span>6 1.73<span style="color: #949494;">e</span>6      1           0.132         0.335  1<span style="text-decoration: underline;">727</span>144</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Ghana  pfke… 13    1.72<span style="color: #949494;">e</span>6 1.73<span style="color: #949494;">e</span>6     11           3.06          3.33   1<span style="text-decoration: underline;">734</span>259</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> Ghana  pfcrt 7     4.03<span style="color: #949494;">e</span>5 4.06<span style="color: #949494;">e</span>5     61           2.01          2.59    <span style="text-decoration: underline;">414</span>656</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> Ghana  pfdh… 8     5.48<span style="color: #949494;">e</span>5 5.51<span style="color: #949494;">e</span>5     18           0.454         0.932   <span style="text-decoration: underline;">548</span>163</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: peak_in_gene &lt;lgl&gt;</span></span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="beta">Beta<a class="anchor" aria-label="anchor" href="#beta"></a>
@@ -394,10 +424,10 @@ the peak SNP inside it:</p>
 frequencies pile up around an intermediate-frequency core – the
 footprint of long-term balancing selection, and in this parasite usually
 an antigen rather than a drug target.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/beta_score.html">beta_score</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, window <span class="op">=</span> <span class="fl">300000</span>, min_window_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/plot_beta.html">plot_beta</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span></span></code></pre></div>
-<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" alt="" width="672"></p>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-21-1.png" class="r-plt" alt="" width="672"></p>
 <p>Use <code>window = 1000</code> (the default) on a real, dense
 callset; the fixture needs a far wider window just to find any
 neighbours. <code><a href="../reference/beta_genes.html">beta_genes()</a></code> summarises per gene, giving the
@@ -413,7 +443,7 @@ the iHS peak and Tajima’s D from
 (<code>plasgenomicsutils coverage_depth_stats</code> and
 <code>coverage_dropout_regions</code>, which read the BAMs); this
 package reads and plots them.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cov</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_coverage.html">read_coverage</a></span><span class="op">(</span><span class="st">"coverage_by_sample.tsv.gz"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/coverage_qc.html">coverage_qc</a></span><span class="op">(</span><span class="va">cov</span>, threshold <span class="op">=</span> <span class="fl">10</span>, min_mean <span class="op">=</span> <span class="fl">5</span>, min_breadth <span class="op">=</span> <span class="fl">80</span><span class="op">)</span>   <span class="co"># one row per sample</span></span>
 <span><span class="fu"><a href="../reference/plot_coverage_summary.html">plot_coverage_summary</a></span><span class="op">(</span><span class="va">cov</span><span class="op">)</span>     <span class="co"># mean vs breadth, failures labelled</span></span>

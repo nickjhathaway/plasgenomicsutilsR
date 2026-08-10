@@ -13,7 +13,7 @@ its frequency."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,6 +31,7 @@ its frequency."></head><body>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
+    <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -44,7 +45,7 @@ its frequency."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Integrated haplotype score (iHS)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>run_ihs.Rd</code></div>
     </div>
 
@@ -146,20 +147,20 @@ package rehh to detect positive selection from haplotype structure.
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span>umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="parasite_haplotypes.html">parasite_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, maf <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">run_ihs</span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 24 × 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 365 × 7</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    group    chr             pos snp_id            freq_minor     ihs neg_log10_p</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Cambodia Pf3D7_04_v3   <span style="text-decoration: underline;">92</span>597 Pf3D7_04_v3:92597     0.1    -<span style="color: #BB0000;">1.50</span>        0.878 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">544</span>673 Pf3D7_04_v3:5446…     0.467  -<span style="color: #BB0000;">0.094</span><span style="color: #BB0000; text-decoration: underline;">6</span>      0.034<span style="text-decoration: underline;">0</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">898</span>668 Pf3D7_04_v3:8986…     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">1.38</span>        0.775 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Cambodia Pf3D7_04_v3 1<span style="text-decoration: underline;">006</span>055 Pf3D7_04_v3:1006…     0.133  -<span style="color: #BB0000;">0.105</span>       0.038<span style="text-decoration: underline;">1</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Cambodia Pf3D7_08_v3 1<span style="text-decoration: underline;">271</span>193 Pf3D7_08_v3:1271…     0.233   0.279       0.108 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Cambodia Pf3D7_08_v3 1<span style="text-decoration: underline;">356</span>248 Pf3D7_08_v3:1356…     0.167   0.355       0.141 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Cambodia Pf3D7_13_v3  <span style="text-decoration: underline;">173</span>108 Pf3D7_13_v3:1731…     0.167   0.916       0.444 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Cambodia Pf3D7_13_v3 1<span style="text-decoration: underline;">523</span>439 Pf3D7_13_v3:1523…     0.1     0.711       0.321 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Cambodia Pf3D7_13_v3 1<span style="text-decoration: underline;">872</span>427 Pf3D7_13_v3:1872…     0.1     1.91        1.25  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Cambodia Pf3D7_14_v3  <span style="text-decoration: underline;">524</span>416 Pf3D7_14_v3:5244…     0.233  -<span style="color: #BB0000;">0.420</span>       0.171 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 14 more rows</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Cambodia Pf3D7_02_v3  <span style="text-decoration: underline;">273</span>786 Pf3D7_02_v3:2737…     0.467  -<span style="color: #BB0000;">0.215</span>       0.081<span style="text-decoration: underline;">1</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Cambodia Pf3D7_04_v3   <span style="text-decoration: underline;">92</span>596 Pf3D7_04_v3:92596     0.1    -<span style="color: #BB0000;">0.499</span>       0.209 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">544</span>672 Pf3D7_04_v3:5446…     0.467  -<span style="color: #BB0000;">0.186</span>       0.069<span style="text-decoration: underline;">5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">898</span>667 Pf3D7_04_v3:8986…     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.533</span>       0.226 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Cambodia Pf3D7_04_v3 1<span style="text-decoration: underline;">006</span>054 Pf3D7_04_v3:1006…     0.133  -<span style="color: #BB0000;">0.182</span>       0.067<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Cambodia Pf3D7_07_v3   <span style="text-decoration: underline;">80</span>465 Pf3D7_07_v3:80465     0.367  -<span style="color: #BB0000;">0.033</span><span style="color: #BB0000; text-decoration: underline;">2</span>      0.011<span style="text-decoration: underline;">7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>090 Pf3D7_07_v3:3750…     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.314</span>       0.123 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>470 Pf3D7_07_v3:3754…     0.066<span style="text-decoration: underline;">7</span>  3.09        2.71  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>817 Pf3D7_07_v3:3758…     0.066<span style="text-decoration: underline;">7</span>  3.09        2.71  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">376</span>527 Pf3D7_07_v3:3765…     0.333   0.327       0.128 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 355 more rows</span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -161,11 +161,11 @@ for selection.
 ps <- example_pop_structure(umap = FALSE)
 pop_diversity(ps, group = "country")
 #> # A tibble: 2 × 24
-#>   group chr   start   end unit  n_samples n_snps n_sites seg_sites    he      pi
-#>   <fct> <chr> <dbl> <dbl> <chr>     <int>  <int>   <dbl>     <int> <dbl>   <dbl>
-#> 1 Camb… NA       NA    NA geno…        30     49  2.33e7        24 0.159 3.35e-7
-#> 2 Ghana NA       NA    NA geno…        30     49  2.33e7        36 0.194 4.08e-7
-#> # ℹ 13 more variables: theta_w <dbl>, tajima_d <dbl>, tajima_p <dbl>,
+#>   group    chr   start   end unit   n_samples n_snps  n_sites seg_sites     he
+#>   <fct>    <chr> <dbl> <dbl> <chr>      <int>  <int>    <dbl>     <int>  <dbl>
+#> 1 Cambodia NA       NA    NA genome        30    719 23292622       158 0.0538
+#> 2 Ghana    NA       NA    NA genome        30    719 23292622       546 0.205 
+#> # ℹ 14 more variables: pi <dbl>, theta_w <dbl>, tajima_d <dbl>, tajima_p <dbl>,
 #> #   n_taj_snps <int>, n_taj_samples <dbl>, n_hap_snps <int>,
 #> #   n_hap_samples <int>, n_hap <int>, hap_div <dbl>, shannon_h <dbl>,
 #> #   simpson_lambda <dbl>, evenness <dbl>, tajima_percentile <dbl>

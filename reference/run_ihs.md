@@ -105,18 +105,18 @@ haplotype structure. *Molecular Ecology Resources* 17, 78-90.
 ps <- example_pop_structure(umap = FALSE)
 hap <- parasite_haplotypes(ps, maf = 0.05)
 run_ihs(hap, group = "country")
-#> # A tibble: 24 × 7
+#> # A tibble: 365 × 7
 #>    group    chr             pos snp_id            freq_minor     ihs neg_log10_p
 #>    <fct>    <chr>         <dbl> <chr>                  <dbl>   <dbl>       <dbl>
-#>  1 Cambodia Pf3D7_04_v3   92597 Pf3D7_04_v3:92597     0.1    -1.50        0.878 
-#>  2 Cambodia Pf3D7_04_v3  544673 Pf3D7_04_v3:5446…     0.467  -0.0946      0.0340
-#>  3 Cambodia Pf3D7_04_v3  898668 Pf3D7_04_v3:8986…     0.0667 -1.38        0.775 
-#>  4 Cambodia Pf3D7_04_v3 1006055 Pf3D7_04_v3:1006…     0.133  -0.105       0.0381
-#>  5 Cambodia Pf3D7_08_v3 1271193 Pf3D7_08_v3:1271…     0.233   0.279       0.108 
-#>  6 Cambodia Pf3D7_08_v3 1356248 Pf3D7_08_v3:1356…     0.167   0.355       0.141 
-#>  7 Cambodia Pf3D7_13_v3  173108 Pf3D7_13_v3:1731…     0.167   0.916       0.444 
-#>  8 Cambodia Pf3D7_13_v3 1523439 Pf3D7_13_v3:1523…     0.1     0.711       0.321 
-#>  9 Cambodia Pf3D7_13_v3 1872427 Pf3D7_13_v3:1872…     0.1     1.91        1.25  
-#> 10 Cambodia Pf3D7_14_v3  524416 Pf3D7_14_v3:5244…     0.233  -0.420       0.171 
-#> # ℹ 14 more rows
+#>  1 Cambodia Pf3D7_02_v3  273786 Pf3D7_02_v3:2737…     0.467  -0.215       0.0811
+#>  2 Cambodia Pf3D7_04_v3   92596 Pf3D7_04_v3:92596     0.1    -0.499       0.209 
+#>  3 Cambodia Pf3D7_04_v3  544672 Pf3D7_04_v3:5446…     0.467  -0.186       0.0695
+#>  4 Cambodia Pf3D7_04_v3  898667 Pf3D7_04_v3:8986…     0.0667 -0.533       0.226 
+#>  5 Cambodia Pf3D7_04_v3 1006054 Pf3D7_04_v3:1006…     0.133  -0.182       0.0676
+#>  6 Cambodia Pf3D7_07_v3   80465 Pf3D7_07_v3:80465     0.367  -0.0332      0.0117
+#>  7 Cambodia Pf3D7_07_v3  375090 Pf3D7_07_v3:3750…     0.0667 -0.314       0.123 
+#>  8 Cambodia Pf3D7_07_v3  375470 Pf3D7_07_v3:3754…     0.0667  3.09        2.71  
+#>  9 Cambodia Pf3D7_07_v3  375817 Pf3D7_07_v3:3758…     0.0667  3.09        2.71  
+#> 10 Cambodia Pf3D7_07_v3  376527 Pf3D7_07_v3:3765…     0.333   0.327       0.128 
+#> # ℹ 355 more rows
 ```

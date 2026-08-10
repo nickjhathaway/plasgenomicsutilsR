@@ -124,23 +124,18 @@ for directional selection.
 ``` r
 ps <- example_pop_structure(umap = FALSE)
 beta_score(ps, group = "country", window = 200000, min_window_snps = 1)
-#> # A tibble: 16 × 8
-#>    group    chr             pos snp_id       freq n_called n_window_snps    beta
-#>    <fct>    <chr>         <dbl> <chr>       <dbl>    <dbl>         <int>   <dbl>
-#>  1 Cambodia Pf3D7_01_v3  531105 Pf3D7_01_… 0.6          25             1  0.536 
-#>  2 Cambodia Pf3D7_01_v3  577066 Pf3D7_01_… 0.36         25             1  0.484 
-#>  3 Cambodia Pf3D7_07_v3  536889 Pf3D7_07_… 0.0476       21             1 -0.277 
-#>  4 Cambodia Pf3D7_07_v3  598578 Pf3D7_07_… 0.524        21             1 -0.266 
-#>  5 Cambodia Pf3D7_08_v3 1271193 Pf3D7_08_… 0.767        30             1  0.228 
-#>  6 Cambodia Pf3D7_08_v3 1356248 Pf3D7_08_… 0.833        30             1  0.0928
-#>  7 Ghana    Pf3D7_04_v3 1006055 Pf3D7_04_… 0.467        30             1 -0.158 
-#>  8 Ghana    Pf3D7_04_v3 1071662 Pf3D7_04_… 0.133        30             1 -0.249 
-#>  9 Ghana    Pf3D7_07_v3   80466 Pf3D7_07_… 0.0333       30             1 -0.0749
-#> 10 Ghana    Pf3D7_07_v3  161320 Pf3D7_07_… 0.2          30             1 -0.123 
-#> 11 Ghana    Pf3D7_07_v3  536889 Pf3D7_07_… 0.2          20             1  0.142 
-#> 12 Ghana    Pf3D7_07_v3  598578 Pf3D7_07_… 0.737        19             1  0.275 
-#> 13 Ghana    Pf3D7_08_v3 1356248 Pf3D7_08_… 0.533        30             1 -0.242 
-#> 14 Ghana    Pf3D7_08_v3 1388102 Pf3D7_08_… 0.0435       23             1 -0.268 
-#> 15 Ghana    Pf3D7_09_v3 1416040 Pf3D7_09_… 0.0333       30             1  0.137 
-#> 16 Ghana    Pf3D7_09_v3 1475529 Pf3D7_09_… 0.0556       18             1  0.169 
+#> # A tibble: 661 × 8
+#>    group    chr            pos snp_id        freq n_called n_window_snps    beta
+#>    <fct>    <chr>        <dbl> <chr>        <dbl>    <dbl>         <int>   <dbl>
+#>  1 Cambodia Pf3D7_01_v3 531104 Pf3D7_01_v… 0.6          25             1   0.536
+#>  2 Cambodia Pf3D7_01_v3 577065 Pf3D7_01_v… 0.36         25             1   0.484
+#>  3 Cambodia Pf3D7_07_v3 375090 Pf3D7_07_v… 0.0714       28            95   2.05 
+#>  4 Cambodia Pf3D7_07_v3 375130 Pf3D7_07_v… 0.615        13            95 -12.7  
+#>  5 Cambodia Pf3D7_07_v3 375470 Pf3D7_07_v… 0.933        30            95   2.18 
+#>  6 Cambodia Pf3D7_07_v3 375817 Pf3D7_07_v… 0.933        30            95   2.18 
+#>  7 Cambodia Pf3D7_07_v3 376527 Pf3D7_07_v… 0.857        14            95  -3.38 
+#>  8 Cambodia Pf3D7_07_v3 377476 Pf3D7_07_v… 0.967        30            95   3.53 
+#>  9 Cambodia Pf3D7_07_v3 378903 Pf3D7_07_v… 0.0333       30            95   3.53 
+#> 10 Cambodia Pf3D7_07_v3 379066 Pf3D7_07_v… 0.05         20            95   4.47 
+#> # ℹ 651 more rows
 ```

@@ -37,5 +37,12 @@ A tibble with `group`, `gene`, `chr`, `start`, `end`, `n_snps`,
 ps <- example_pop_structure(umap = FALSE)
 b <- beta_score(ps, group = "country", window = 200000, min_window_snps = 1)
 beta_genes(b, genes = PF_EXAMPLE_DRUG_GENES, min_snps = 1)
-#> # A tibble: 0 × 0
+#> # A tibble: 5 × 8
+#>   group    gene      chr     start     end n_snps beta_mean beta_max
+#>   <fct>    <chr>     <chr>   <dbl>   <dbl>  <int>     <dbl>    <dbl>
+#> 1 Cambodia pfdhps    8      548199  550616      4     8.67      8.67
+#> 2 Cambodia pfcrt     7      403221  406317      9    -0.732     3.73
+#> 3 Ghana    pfcrt     7      403221  406317      5    -0.520    16.8 
+#> 4 Ghana    pfdhps    8      548199  550616      4    -3.08      4.49
+#> 5 Ghana    pfkelch13 13    1724816 1726997      1    -3.94     -3.94
 ```

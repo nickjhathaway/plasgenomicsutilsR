@@ -1,6 +1,6 @@
 # plasgenomicsutilsR
 
-> **Version 0.3.0** — early development; APIs, defaults, and outputs may
+> **Version 0.3.1** — early development; APIs, defaults, and outputs may
 > change between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** —
@@ -186,6 +186,31 @@ paths, not just the CRAN ones.)
   falls in — genes, core regions, anything BED-shaped — with `within =`
   for a flanking window.
 
+- **[`aa_intervals()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/aa_intervals.md)**
+  turns “codon 76 of *pfcrt*” into a genomic interval, walking the
+  protein back through the transcript’s coding exons from a GFF
+  ([`read_gff_cds()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_cds.md)
+  parses it once). Resistance markers are named by amino acid while
+  every plot here works in genomic coordinates, and the conversion
+  depends on the exon structure, the strand and the CDS phase — so it is
+  not something to do by eye. The result is shaped like the package’s
+  other interval tables (`chr`, `start`, `end`,
+  `name = <transcript>-AA<pos>`), so it drops straight into `genes =`,
+  `mark_snps =`,
+  [`annotate_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.md)
+  or
+  [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md).
+  A codon straddling an intron is flagged (`spans_intron`) since its
+  interval then spans the intron too.
+
+- **[`snp_aa_positions()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snp_aa_positions.md)**
+  is the other direction: given SNP positions, which codon of which
+  transcript each one sits in — `aa_position` 1-based as the literature
+  numbers residues, `codon_base` 1/2/3 in transcript orientation (so on
+  a minus-strand gene base 1 is the highest coordinate), `NA` for
+  anything non-coding. Take the genotyped SNPs in a gene and get the
+  residues they cover, without leaving R.
+
 - **Population structure** — `PopStructure` is an R6 workspace bundling
   a genotype matrix, its PCA (full `prcomp`), an optional UMAP,
   per-sample metadata, a **shared colour map**, and an sNMF admixture
@@ -347,6 +372,11 @@ paths, not just the CRAN ones.)
   and
   [`plot_beta()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_beta.md)
   — the antigen counterpart to iHS’s sweeps.
+  `subset_haplotypes(hap, region = c("North", "Southwest"))` keeps only
+  some of the haplotypes — by sample or by metadata group, several
+  values allowed — for a mutation that segregates in one part of the
+  cohort and is buried by pooling. The SNP panel is left as built, so
+  subsets stay comparable with each other and with the whole.
   [`plot_ehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ehh.md)
   is the picture behind one point on a scan: the haplotype homozygosity
   decaying either side of a focal SNP, one curve per allele **at that

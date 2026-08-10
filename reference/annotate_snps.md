@@ -20,7 +20,8 @@ annotate_snps(
   within = 0,
   keep = c("all", "hits"),
   collapse = FALSE,
-  prefix = ""
+  prefix = "",
+  one_based_snps = FALSE
 )
 ```
 
@@ -59,6 +60,15 @@ annotate_snps(
 
   Prepend this to the added column names, to keep two annotations side
   by side (e.g. `prefix = "core_"`).
+
+- one_based_snps:
+
+  The positions in `scan` are 1-based (VCF `POS`), so shift them before
+  testing. Genotype-matrix column names from
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+  are 1-based, and joining those against these 0-based intervals without
+  saying so moves every SNP one base and can turn a near-miss into a
+  hit. Default `FALSE`, the package convention.
 
 ## Value
 

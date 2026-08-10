@@ -152,6 +152,8 @@ balancing selection from clustered allele frequencies (beta).
 
 - [`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
   : Build phased haplotypes for a haplotype-homozygosity scan
+- [`subset_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_haplotypes.md)
+  : Keep only some of the haplotypes
 - [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
   : Integrated haplotype score (iHS)
 - [`run_rsb()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_rsb.md)
@@ -214,10 +216,18 @@ Colour-blind-friendly palettes and a shared level-to-colour map.
 ## Genomic intervals
 
 Overlap two BED-style interval tables (genes vs. core / paralog regions,
-…). All coordinates in the package follow one convention.
+…), label SNPs with what they fall in, and turn amino-acid positions
+into genomic intervals. All coordinates in the package follow one
+convention.
 
 - [`annotate_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.md)
   : Which intervals each SNP falls in
+- [`aa_intervals()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/aa_intervals.md)
+  : Genomic interval of an amino-acid position
+- [`snp_aa_positions()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snp_aa_positions.md)
+  : The amino acid a SNP falls in
+- [`read_gff_cds()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_cds.md)
+  : Read the CDS features of a GFF
 - [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md)
   : Intersect two sets of genomic intervals
 - [`plasgenomicsutilsR-coordinates`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)

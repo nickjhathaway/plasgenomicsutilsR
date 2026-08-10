@@ -1,6 +1,7 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/404.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/LICENSE-text.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/amino-acid-coordinates.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/differentiation.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/diversity-and-selection.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/ibd.html</loc></url>
@@ -18,6 +19,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_PARALOG_GENES.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF_EXAMPLE_DRUG_GENES.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/aa_intervals.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/admixture_order.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.html</loc></url>
@@ -79,6 +81,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_structure.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pos_selection_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_coverage.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_cds.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_ld_decay.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.html</loc></url>
@@ -90,6 +93,8 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_cross_entropy.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_q.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snp_aa_positions.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_haplotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d_pvalue.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.html</loc></url>

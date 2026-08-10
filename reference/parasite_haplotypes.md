@@ -115,10 +115,10 @@ seed.
 ``` r
 ps <- example_pop_structure(umap = FALSE)
 parasite_haplotypes(ps, maf = 0.05)
-#> <parasite_haplotypes> 60 haplotypes x 27 SNPs
-#>   from            : 60 samples x 49 SNPs
-#>   mixed calls     : 79 resolved by allele draw 
-#>   SNPs dropped    : 12 missing, 10 MAF
+#> <parasite_haplotypes> 60 haplotypes x 351 SNPs
+#>   from            : 60 samples x 719 SNPs
+#>   mixed calls     : 814 resolved by allele draw 
+#>   SNPs dropped    : 221 missing, 147 MAF
 #>   samples dropped : 0 missing
-#>   imputed calls   : 16  seed: 42 
+#>   imputed calls   : 178  seed: 42 
 ```

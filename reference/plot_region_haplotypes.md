@@ -122,7 +122,12 @@ plot_region_haplotypes(
 - mark_snps:
 
   Optional SNPs to mark with a vertical line: `chr:pos` ids, bare
-  positions, or a gene name from `genes` (marking every SNP in it).
+  positions, a gene name from `genes`, or an interval table with
+  `start`/`end` (and `chr`) – every SNP inside each interval is marked,
+  so an
+  [`aa_intervals()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/aa_intervals.md)
+  codon table can be passed straight in without converting its
+  coordinates.
 
 - mark_colour:
 
@@ -204,9 +209,21 @@ distance. `"genomic"` puts each SNP at its real coordinate, so a dense
 cluster of SNPs looks dense – correct about position, but sparse
 stretches become wide empty bands.
 
+Either way a SNP is only ever drawn over the genes it really falls in.
+Under `"even"` the axis counts SNPs, so a gene's box is exactly the
+columns it holds: its width says how many SNPs are in it, **not** how
+long it is, and a gene with no genotyped SNP in the window has no width
+at all and is left off the track with a message. (Interpolating genomic
+bounds onto a SNP-index axis instead puts each gene edge at a fractional
+column, and since a tile occupies a whole column, a SNP just outside a
+gene ends up drawn over it.) Under `"genomic"` the boxes are true
+extents and it is the fixed-width SNP marks that are clipped, so a mark
+near a gene edge stops there rather than reaching into its neighbour.
+
 ## Examples
 
 ``` r
 ps <- example_pop_structure(umap = FALSE)
-plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfcrt", split = "country", pad = 20000,
+                       genes = PF_EXAMPLE_DRUG_GENES)
 ```

@@ -76,9 +76,10 @@ load_genotypes(
 
 ## Value
 
-A list with `genotype` (matrix; sample row names and `chr:pos` column
-names), `sample.id`, `snp.id`, and the two facts the matrix itself
-cannot carry: `allele` (which allele the dosages count) and `pruned`.
+A list with `genotype` (matrix; sample row names and `chr:pos0` column
+names – 0-based, like every other position in the package), `sample.id`,
+`snp.id`, and the two facts the matrix itself cannot carry: `allele`
+(which allele the dosages count) and `pruned`.
 [PopStructure](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.md)
 keeps both, so anything that names a call or warns about pruning can ask
 instead of assuming.

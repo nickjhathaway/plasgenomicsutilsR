@@ -90,8 +90,8 @@ disequilibrium. *Molecular Ecology Notes* 1, 101-102.
 ps <- example_pop_structure(umap = FALSE)
 ld_index(ps, group = "country")
 #> # A tibble: 2 × 5
-#>   group    n_samples n_loci      ia   rbar_d
-#>   <fct>        <int>  <int>   <dbl>    <dbl>
-#> 1 Cambodia        30     14  0.887   0.0704 
-#> 2 Ghana           30     25 -0.0422 -0.00184
+#>   group    n_samples n_loci    ia  rbar_d
+#>   <fct>        <int>  <int> <dbl>   <dbl>
+#> 1 Cambodia        30     92 11.8  0.141  
+#> 2 Ghana           30    425  2.74 0.00672
 ```

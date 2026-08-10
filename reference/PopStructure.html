@@ -17,7 +17,7 @@ K, and sub-select to a set of samples (or a metadata match) for output."></head>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@ K, and sub-select to a set of samples (or a metadata match) for output."></head>
     <li><a class="dropdown-item" href="../articles/population-structure.html">Population structure</a></li>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
+    <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -48,7 +49,7 @@ K, and sub-select to a set of samples (or a metadata match) for output."></head>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Population-structure workspace (PCA + UMAP + admixture)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>PopStructure.Rd</code></div>
     </div>
 
@@ -91,6 +92,7 @@ K, and sub-select to a set of samples (or a metadata match) for output.</p>
 <li><p><a href="#method-PopStructure-get_meta"><code>PopStructure$get_meta()</code></a></p></li>
 <li><p><a href="#method-PopStructure-get_colors"><code>PopStructure$get_colors()</code></a></p></li>
 <li><p><a href="#method-PopStructure-allele"><code>PopStructure$allele()</code></a></p></li>
+<li><p><a href="#method-PopStructure-positions"><code>PopStructure$positions()</code></a></p></li>
 <li><p><a href="#method-PopStructure-pruned"><code>PopStructure$pruned()</code></a></p></li>
 <li><p><a href="#method-PopStructure-get_samples"><code>PopStructure$get_samples()</code></a></p></li>
 <li><p><a href="#method-PopStructure-as_ps"><code>PopStructure$as_ps()</code></a></p></li>
@@ -126,7 +128,8 @@ K, and sub-select to a set of samples (or a metadata match) for output.</p>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  allele <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pruned <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  full <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  full <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  one_based <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -154,6 +157,11 @@ are indistinguishable afterwards, so anything that names the calls has to be tol
 <dd><p>Whether the SNPs were LD-pruned. Taken from a <code><a href="load_genotypes.html">load_genotypes()</a></code> list
 when it says so. Pruning is right for PCA / admixture and wrong for looking at
 haplotypes, since it drops SNPs precisely for being correlated with a neighbour.</p></dd>
+
+      <dt><code>one_based</code></dt>
+<dd><p>The genotype column names carry 1-based VCF positions (a matrix built
+by an older <code><a href="load_genotypes.html">load_genotypes()</a></code>, or read straight off a VCF); shift them to the 0-based
+convention on the way in.</p></dd>
 
 
 </dl><p></p></div>
@@ -530,11 +538,21 @@ object does not record it (built from a bare matrix, or saved by an older versio
 
 </div>
 
+<p></p><hr><a id="method-PopStructure-positions"></a><div class="section">
+<h3 id="popstructure-positions-"><code>PopStructure$positions()</code><a class="anchor" aria-label="anchor" href="#popstructure-positions-"></a></h3>
+<p>Which convention the SNP positions follow, or <code>NULL</code> when the object does
+not record it (built before this was tracked – rebuild it, or pass <code>one_based</code>).</p><div class="section">
+<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">positions</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-PopStructure-pruned"></a><div class="section">
 <h3 id="popstructure-pruned-"><code>PopStructure$pruned()</code><a class="anchor" aria-label="anchor" href="#popstructure-pruned-"></a></h3>
 <p>Whether the SNPs were LD-pruned (<code>TRUE</code> / <code>FALSE</code>), or <code>NULL</code> when the
 object does not record it.</p><div class="section">
-<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
+<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">pruned</span><span class="op">(</span>panel <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
@@ -550,7 +568,7 @@ object does not record it.</p><div class="section">
 <p></p><hr><a id="method-PopStructure-get_samples"></a><div class="section">
 <h3 id="popstructure-get-samples-"><code>PopStructure$get_samples()</code><a class="anchor" aria-label="anchor" href="#popstructure-get-samples-"></a></h3>
 <p>Active sample ids.</p><div class="section">
-<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
+<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">get_samples</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -559,7 +577,7 @@ object does not record it.</p><div class="section">
 <p></p><hr><a id="method-PopStructure-as_ps"></a><div class="section">
 <h3 id="popstructure-as-ps-"><code>PopStructure$as_ps()</code><a class="anchor" aria-label="anchor" href="#popstructure-as-ps-"></a></h3>
 <p>A <code>pop_structure</code> S3 view (active samples) for the <code>plot_*()</code> fns.</p><div class="section">
-<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
+<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">as_ps</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -568,7 +586,7 @@ object does not record it.</p><div class="section">
 <p></p><hr><a id="method-PopStructure-plot_pca"></a><div class="section">
 <h3 id="popstructure-plot-pca-"><code>PopStructure$plot_pca()</code><a class="anchor" aria-label="anchor" href="#popstructure-plot-pca-"></a></h3>
 <p>PCA scatter coloured by a metadata column (shared colours).</p><div class="section">
-<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
+<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_pca</span><span class="op">(</span>colour <span class="op">=</span> <span class="cn">NULL</span>, pcs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
@@ -590,7 +608,7 @@ object does not record it.</p><div class="section">
 <p></p><hr><a id="method-PopStructure-plot_umap"></a><div class="section">
 <h3 id="popstructure-plot-umap-"><code>PopStructure$plot_umap()</code><a class="anchor" aria-label="anchor" href="#popstructure-plot-umap-"></a></h3>
 <p>UMAP scatter coloured by a metadata column (shared colours).</p><div class="section">
-<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
+<h4 id="usage-29">Usage<a class="anchor" aria-label="anchor" href="#usage-29"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_umap</span><span class="op">(</span>colour <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
@@ -610,7 +628,7 @@ object does not record it.</p><div class="section">
 <h3 id="popstructure-plot-admixture-"><code>PopStructure$plot_admixture()</code><a class="anchor" aria-label="anchor" href="#popstructure-plot-admixture-"></a></h3>
 <p>Admixture bars; the group strip reuses the shared colour map, so it
 matches the UMAP/PCA colouring.</p><div class="section">
-<h4 id="usage-29">Usage<a class="anchor" aria-label="anchor" href="#usage-29"></a></h4>
+<h4 id="usage-30">Usage<a class="anchor" aria-label="anchor" href="#usage-30"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_admixture</span><span class="op">(</span></span>
 <span>  K <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -648,7 +666,7 @@ matches the UMAP/PCA colouring.</p><div class="section">
 <p></p><hr><a id="method-PopStructure-plot_figure"></a><div class="section">
 <h3 id="popstructure-plot-figure-"><code>PopStructure$plot_figure()</code><a class="anchor" aria-label="anchor" href="#popstructure-plot-figure-"></a></h3>
 <p>Combined UMAP + admixture figure (see <code><a href="plot_structure_figure.html">plot_structure_figure()</a></code>).</p><div class="section">
-<h4 id="usage-30">Usage<a class="anchor" aria-label="anchor" href="#usage-30"></a></h4>
+<h4 id="usage-31">Usage<a class="anchor" aria-label="anchor" href="#usage-31"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_figure</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-20">Arguments<a class="anchor" aria-label="anchor" href="#arguments-20"></a></h4>
@@ -669,7 +687,7 @@ matches the UMAP/PCA colouring.</p><div class="section">
 <p>Per-SNP population differentiation between the levels of a metadata
 column (see <code><a href="pop_diff.html">pop_diff()</a></code>); uses the object's genotype matrix (pass
 <code>genotype = load_genotypes(vcf, prune = FALSE)</code> to run on the full unpruned set).</p><div class="section">
-<h4 id="usage-31">Usage<a class="anchor" aria-label="anchor" href="#usage-31"></a></h4>
+<h4 id="usage-32">Usage<a class="anchor" aria-label="anchor" href="#usage-32"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">pop_diff</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-21">Arguments<a class="anchor" aria-label="anchor" href="#arguments-21"></a></h4>
@@ -688,7 +706,7 @@ column (see <code><a href="pop_diff.html">pop_diff()</a></code>); uses the objec
 <p></p><hr><a id="method-PopStructure-jost_d"></a><div class="section">
 <h3 id="popstructure-jost-d-"><code>PopStructure$jost_d()</code><a class="anchor" aria-label="anchor" href="#popstructure-jost-d-"></a></h3>
 <p>Per-SNP Jost's D between the levels of a metadata column (<code><a href="jost_d.html">jost_d()</a></code>).</p><div class="section">
-<h4 id="usage-32">Usage<a class="anchor" aria-label="anchor" href="#usage-32"></a></h4>
+<h4 id="usage-33">Usage<a class="anchor" aria-label="anchor" href="#usage-33"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">jost_d</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-22">Arguments<a class="anchor" aria-label="anchor" href="#arguments-22"></a></h4>
@@ -708,7 +726,7 @@ column (see <code><a href="pop_diff.html">pop_diff()</a></code>); uses the objec
 <h3 id="popstructure-pop-diff-table-"><code>PopStructure$pop_diff_table()</code><a class="anchor" aria-label="anchor" href="#popstructure-pop-diff-table-"></a></h3>
 <p>Group-pair differentiation table across all statistics
 (see <code><a href="pop_diff_table.html">pop_diff_table()</a></code>).</p><div class="section">
-<h4 id="usage-33">Usage<a class="anchor" aria-label="anchor" href="#usage-33"></a></h4>
+<h4 id="usage-34">Usage<a class="anchor" aria-label="anchor" href="#usage-34"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">pop_diff_table</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-23">Arguments<a class="anchor" aria-label="anchor" href="#arguments-23"></a></h4>
@@ -729,7 +747,7 @@ column (see <code><a href="pop_diff.html">pop_diff()</a></code>); uses the objec
 <p>Group x group differentiation triangle heatmap (see
 <code><a href="plot_diff_heatmap.html">plot_diff_heatmap()</a></code>); metadata annotation is resolved against this object's
 metadata automatically.</p><div class="section">
-<h4 id="usage-34">Usage<a class="anchor" aria-label="anchor" href="#usage-34"></a></h4>
+<h4 id="usage-35">Usage<a class="anchor" aria-label="anchor" href="#usage-35"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_diff_heatmap</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-24">Arguments<a class="anchor" aria-label="anchor" href="#arguments-24"></a></h4>
@@ -750,7 +768,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <p></p><hr><a id="method-PopStructure-plot_jost_d_heatmap"></a><div class="section">
 <h3 id="popstructure-plot-jost-d-heatmap-"><code>PopStructure$plot_jost_d_heatmap()</code><a class="anchor" aria-label="anchor" href="#popstructure-plot-jost-d-heatmap-"></a></h3>
 <p>Alias of <code><a href="plot_diff_heatmap.html">plot_diff_heatmap()</a></code> for Jost's D.</p><div class="section">
-<h4 id="usage-35">Usage<a class="anchor" aria-label="anchor" href="#usage-35"></a></h4>
+<h4 id="usage-36">Usage<a class="anchor" aria-label="anchor" href="#usage-36"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_jost_d_heatmap</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-25">Arguments<a class="anchor" aria-label="anchor" href="#arguments-25"></a></h4>
@@ -769,7 +787,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <p></p><hr><a id="method-PopStructure-pop_diff_snps"></a><div class="section">
 <h3 id="popstructure-pop-diff-snps-"><code>PopStructure$pop_diff_snps()</code><a class="anchor" aria-label="anchor" href="#popstructure-pop-diff-snps-"></a></h3>
 <p>Per-SNP differentiation in long form (see <code><a href="pop_diff_snps.html">pop_diff_snps()</a></code>).</p><div class="section">
-<h4 id="usage-36">Usage<a class="anchor" aria-label="anchor" href="#usage-36"></a></h4>
+<h4 id="usage-37">Usage<a class="anchor" aria-label="anchor" href="#usage-37"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">pop_diff_snps</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-26">Arguments<a class="anchor" aria-label="anchor" href="#arguments-26"></a></h4>
@@ -788,7 +806,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <p></p><hr><a id="method-PopStructure-plot_diff_manhattan"></a><div class="section">
 <h3 id="popstructure-plot-diff-manhattan-"><code>PopStructure$plot_diff_manhattan()</code><a class="anchor" aria-label="anchor" href="#popstructure-plot-diff-manhattan-"></a></h3>
 <p>Genome-wide differentiation Manhattan (see <code><a href="plot_diff_manhattan.html">plot_diff_manhattan()</a></code>).</p><div class="section">
-<h4 id="usage-37">Usage<a class="anchor" aria-label="anchor" href="#usage-37"></a></h4>
+<h4 id="usage-38">Usage<a class="anchor" aria-label="anchor" href="#usage-38"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_diff_manhattan</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-27">Arguments<a class="anchor" aria-label="anchor" href="#arguments-27"></a></h4>
@@ -807,7 +825,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <p></p><hr><a id="method-PopStructure-diversity"></a><div class="section">
 <h3 id="popstructure-diversity-"><code>PopStructure$diversity()</code><a class="anchor" aria-label="anchor" href="#popstructure-diversity-"></a></h3>
 <p>Within-group diversity (see <code><a href="pop_diversity.html">pop_diversity()</a></code>).</p><div class="section">
-<h4 id="usage-38">Usage<a class="anchor" aria-label="anchor" href="#usage-38"></a></h4>
+<h4 id="usage-39">Usage<a class="anchor" aria-label="anchor" href="#usage-39"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">diversity</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-28">Arguments<a class="anchor" aria-label="anchor" href="#arguments-28"></a></h4>
@@ -826,7 +844,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <p></p><hr><a id="method-PopStructure-ld_index"></a><div class="section">
 <h3 id="popstructure-ld-index-"><code>PopStructure$ld_index()</code><a class="anchor" aria-label="anchor" href="#popstructure-ld-index-"></a></h3>
 <p>Multilocus index of association (see <code><a href="ld_index.html">ld_index()</a></code>).</p><div class="section">
-<h4 id="usage-39">Usage<a class="anchor" aria-label="anchor" href="#usage-39"></a></h4>
+<h4 id="usage-40">Usage<a class="anchor" aria-label="anchor" href="#usage-40"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">ld_index</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-29">Arguments<a class="anchor" aria-label="anchor" href="#arguments-29"></a></h4>
@@ -845,7 +863,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <p></p><hr><a id="method-PopStructure-beta_score"></a><div class="section">
 <h3 id="popstructure-beta-score-"><code>PopStructure$beta_score()</code><a class="anchor" aria-label="anchor" href="#popstructure-beta-score-"></a></h3>
 <p>Beta scores for balancing selection (see <code><a href="beta_score.html">beta_score()</a></code>).</p><div class="section">
-<h4 id="usage-40">Usage<a class="anchor" aria-label="anchor" href="#usage-40"></a></h4>
+<h4 id="usage-41">Usage<a class="anchor" aria-label="anchor" href="#usage-41"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">beta_score</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-30">Arguments<a class="anchor" aria-label="anchor" href="#arguments-30"></a></h4>
@@ -865,7 +883,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <h3 id="popstructure-haplotypes-"><code>PopStructure$haplotypes()</code><a class="anchor" aria-label="anchor" href="#popstructure-haplotypes-"></a></h3>
 <p>Phased haplotypes for a haplotype-homozygosity scan
 (see <code><a href="parasite_haplotypes.html">parasite_haplotypes()</a></code>).</p><div class="section">
-<h4 id="usage-41">Usage<a class="anchor" aria-label="anchor" href="#usage-41"></a></h4>
+<h4 id="usage-42">Usage<a class="anchor" aria-label="anchor" href="#usage-42"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">haplotypes</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-31">Arguments<a class="anchor" aria-label="anchor" href="#arguments-31"></a></h4>
@@ -882,7 +900,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <h3 id="popstructure-plot-region-haplotypes-"><code>PopStructure$plot_region_haplotypes()</code><a class="anchor" aria-label="anchor" href="#popstructure-plot-region-haplotypes-"></a></h3>
 <p>Genotype heatmap over one region, samples clustered
 (see <code><a href="plot_region_haplotypes.html">plot_region_haplotypes()</a></code>).</p><div class="section">
-<h4 id="usage-42">Usage<a class="anchor" aria-label="anchor" href="#usage-42"></a></h4>
+<h4 id="usage-43">Usage<a class="anchor" aria-label="anchor" href="#usage-43"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">plot_region_haplotypes</span><span class="op">(</span><span class="va">region</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-32">Arguments<a class="anchor" aria-label="anchor" href="#arguments-32"></a></h4>
@@ -902,7 +920,7 @@ override, see <code><a href="pop_diff.html">pop_diff()</a></code>).</p></dd>
 <h3 id="popstructure-ihs-"><code>PopStructure$ihs()</code><a class="anchor" aria-label="anchor" href="#popstructure-ihs-"></a></h3>
 <p>Integrated haplotype score (see <code><a href="run_ihs.html">run_ihs()</a></code>); builds the haplotypes
 first unless one is supplied.</p><div class="section">
-<h4 id="usage-43">Usage<a class="anchor" aria-label="anchor" href="#usage-43"></a></h4>
+<h4 id="usage-44">Usage<a class="anchor" aria-label="anchor" href="#usage-44"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">ihs</span><span class="op">(</span>group <span class="op">=</span> <span class="cn">NULL</span>, hap <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-33">Arguments<a class="anchor" aria-label="anchor" href="#arguments-33"></a></h4>
@@ -927,7 +945,7 @@ first unless one is supplied.</p><div class="section">
 and sNMF fit) to an <code>.rds</code> file so it can be reloaded without recomputing.
 Note: an sNMF fit references LEA project files on disk – run <code><a href="run_snmf.html">run_snmf()</a></code> with
 a persistent <code>cache_dir</code> if you want the admixture to survive a reload.</p><div class="section">
-<h4 id="usage-44">Usage<a class="anchor" aria-label="anchor" href="#usage-44"></a></h4>
+<h4 id="usage-45">Usage<a class="anchor" aria-label="anchor" href="#usage-45"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">save</span><span class="op">(</span><span class="va">file</span>, compress <span class="op">=</span> <span class="st">"xz"</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-34">Arguments<a class="anchor" aria-label="anchor" href="#arguments-34"></a></h4>
@@ -946,7 +964,7 @@ a persistent <code>cache_dir</code> if you want the admixture to survive a reloa
 <p></p><hr><a id="method-PopStructure-print"></a><div class="section">
 <h3 id="popstructure-print-"><code>PopStructure$print()</code><a class="anchor" aria-label="anchor" href="#popstructure-print-"></a></h3>
 <p>Compact summary.</p><div class="section">
-<h4 id="usage-45">Usage<a class="anchor" aria-label="anchor" href="#usage-45"></a></h4>
+<h4 id="usage-46">Usage<a class="anchor" aria-label="anchor" href="#usage-46"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-35">Arguments<a class="anchor" aria-label="anchor" href="#arguments-35"></a></h4>
@@ -962,7 +980,7 @@ a persistent <code>cache_dir</code> if you want the admixture to survive a reloa
 <p></p><hr><a id="method-PopStructure-clone"></a><div class="section">
 <h3 id="popstructure-clone-"><code>PopStructure$clone()</code><a class="anchor" aria-label="anchor" href="#popstructure-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-46">Usage<a class="anchor" aria-label="anchor" href="#usage-46"></a></h4>
+<h4 id="usage-47">Usage<a class="anchor" aria-label="anchor" href="#usage-47"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">PopStructure</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-36">Arguments<a class="anchor" aria-label="anchor" href="#arguments-36"></a></h4>
