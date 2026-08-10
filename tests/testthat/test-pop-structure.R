@@ -196,7 +196,7 @@ test_that("plot_structure_figure composes UMAP + admixture in one object", {
   expect_s3_class(figh, "patchwork")
 })
 
-test_that("run_ld_prune converts a VCF and returns a genotype matrix", {
+test_that("load_genotypes converts a VCF and returns a genotype matrix", {
   testthat::skip_if_not_installed("SNPRelate")
   testthat::skip_if_not_installed("gdsfmt")
   set.seed(9)
@@ -212,7 +212,7 @@ test_that("run_ld_prune converts a VCF and returns a genotype matrix", {
   }, character(1))
   vcf <- tempfile(fileext = ".vcf")
   writeLines(c(hdr, body), vcf)
-  res <- run_ld_prune(vcf, gds = tempfile(fileext = ".gds"))
+  res <- load_genotypes(vcf, gds = tempfile(fileext = ".gds"))
   expect_true(is.matrix(res$genotype))
   expect_equal(nrow(res$genotype), n_s)
   expect_length(res$sample.id, n_s)
@@ -500,4 +500,79 @@ test_that("a saved workspace is re-bound to the installed class", {
   expect_true(all(names(PopStructure$public_methods) %in% ls(back)))
   expect_identical(body(back$plot_admixture),
                    body(PopStructure$public_methods$plot_admixture))
+})
+
+test_that("a PopStructure can hold both a pruned and a full SNP panel", {
+  m <- matrix(c(0L, 1L, 2L, 0L, 1L, 2L), 3,
+              dimnames = list(c("a", "b", "c"), c("1:10", "1:20")))
+  big <- cbind(m, matrix(1L, 3, 2, dimnames = list(c("a", "b", "c"), c("1:30", "1:40"))))
+
+  ps <- PopStructure$new(m, allele = "alt", pruned = TRUE)
+  # the primary panel is named for what it is, so `$genotype("full")` finds an unpruned object
+  expect_identical(ps$panels(), "pruned")
+  expect_identical(PopStructure$new(m, pruned = FALSE)$panels(), "full")
+  expect_identical(PopStructure$new(m)$panels(), "genotypes")
+
+  ps$add_panel("full", big, allele = "alt", pruned = FALSE)
+  expect_setequal(ps$panels(), c("pruned", "full"))
+  expect_equal(ncol(ps$genotype()), 2L)              # primary is still primary
+  expect_equal(ncol(ps$genotype("full")), 4L)
+  expect_equal(ncol(ps$genotype(prefer = "full")), 4L)
+  # `prefer` is a wish, `panel` a requirement
+  expect_equal(ncol(ps$genotype(prefer = "nope")), 2L)
+  expect_error(ps$genotype("nope"), "no panel called")
+  # facts are per panel
+  expect_true(ps$pruned("pruned"))
+  expect_false(ps$pruned("full"))
+
+  expect_setequal(PopStructure$new(m, full = big, pruned = TRUE)$panels(),
+                  c("pruned", "full"))
+  # a panel that does not cover the samples is refused rather than silently recycled
+  expect_error(ps$add_panel("short", big[1:2, , drop = FALSE]), "missing 1 of")
+  expect_error(ps$add_panel("bad", unname(big)), "needs sample row names")
+})
+
+test_that("asking for the full panel says so when only a pruned one is there", {
+  m <- matrix(c(0L, 1L, 2L, 0L, 1L, 2L), 3,
+              dimnames = list(c("a", "b", "c"), c("1:10", "1:20")))
+  ps <- PopStructure$new(m, pruned = TRUE)
+  expect_message(ps$genotype(prefer = "full"), "only holds a pruned panel")
+  # said once, not on every call
+  expect_silent(ps$genotype(prefer = "full"))
+  # and never when the object does not claim to be pruned
+  expect_silent(PopStructure$new(m)$genotype(prefer = "full"))
+})
+
+test_that("the analyses whose signal is SNP correlation read the full panel", {
+  skip_if_not_installed("ggplot2")
+  ps <- example_pop_structure(umap = FALSE)
+  G <- ps$genotype()
+  # a "full" panel with an extra SNP, so which panel was read is visible in the output
+  extra <- cbind(G, matrix(G[, 1], ncol = 1,
+                           dimnames = list(rownames(G), "14:12345")))
+  ps$add_panel("full", extra, allele = "alt", pruned = FALSE)
+  expect_equal(ncol(.geno_for(ps)), ncol(extra))
+  expect_equal(ncol(.geno_for(ps, prefer = "pruned")), ncol(G))
+  # an explicit matrix still wins over either panel
+  expect_equal(ncol(.geno_for(ps, genotype = G[, 1:3, drop = FALSE])), 3L)
+})
+
+test_that("a saved object without panels rebuilds them from its genotypes", {
+  m <- matrix(c(0L, 1L, 2L, 0L, 1L, 2L), 3,
+              dimnames = list(c("a", "b", "c"), c("1:10", "1:20")))
+  ps <- PopStructure$new(m)
+  # simulate an object saved before panels existed: the fields simply are not there
+  e <- ps$.__enclos_env__$private
+  e$panel_list <- NULL
+  e$primary <- NULL
+  f <- tempfile(fileext = ".rds")
+  saveRDS(ps, f)
+
+  back <- load_pop_structure(f)
+  # .refresh_pop_structure() copies onto a two-sample placeholder and skips NULL fields, so a
+  # stale panel list would still describe that placeholder rather than these genotypes
+  expect_identical(back$panels(), "genotypes")
+  expect_equal(dim(back$genotype()), dim(m))
+  expect_setequal(rownames(back$genotype()), rownames(m))
+  expect_equal(unname(back$genotype()), unname(m))
 })

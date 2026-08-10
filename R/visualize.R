@@ -128,6 +128,16 @@
   })
 }
 
+# The facet value the gene labels are pinned to, as a FACTOR carrying the full level set.
+# Passing a bare character here is the recurring bug in this package: a secondary layer whose
+# facet column is character makes ggplot merge the layers' facet values and re-sort them
+# alphabetically, which both scrambles the panel order and sends the labels to the wrong
+# panel. `levels(v)[1]` returns character, so never use it directly for this.
+.first_level <- function(v) {
+  v <- .as_group_factor(v)
+  factor(levels(v)[1], levels = levels(v))
+}
+
 # room above the panel for outside gene labels (only when labelling)
 .gene_label_space <- function(label_genes) {
   if (!label_genes) return(NULL)
@@ -374,9 +384,29 @@
 #'   only when `highlight_genes` is given; `TRUE`/`FALSE` forces it.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours Optional length-2 colour vector for the alternating chromosome bands.
+#' @param zoom Optional single interval to crop to, keeping the same data and the same
+#'   coordinates as the genome-wide plot: a chromosome (`"7"`), a range
+#'   (`"7:728,081-988,719"`), a gene name from the object's track, or a one-row data frame
+#'   with chr/start/end. Every gene in the window is drawn and named unless
+#'   `label_genes = FALSE`.
+#' @param zoom_pad Context to add around `zoom`, clamped to the chromosome. One value pads
+#'   both sides (default 5%); two pad the left and the right, either in that order or named
+#'   -- `c(left = 5000, right = 40000)`, and naming only one side pads only that side. Each
+#'   side is read on its own: below 1 it is a fraction of the interval's span, at or above 1
+#'   it is base pairs, so `c(0.1, 20000)` is legal.
+#' @param genes_for_track Optional gene table for the track drawn beneath a zoomed plot
+#'   (e.g. [PF3D7_GENES]), so every gene in the window is shown and named while the plot's
+#'   own short track still supplies the marked positions inside the panel. Without it the
+#'   track and the marks come from the same genes, which means marking a whole annotation
+#'   just to see the neighbours.
+#' @param gene_label_angle Rotation for the gene names in that track, in degrees. `0`
+#'   (default) centres each name under its gene; `45` or `90` runs it down to the left,
+#'   which is what keeps long systematic ids from colliding over a dense annotation.
 #' @return A ggplot object.
 #' @export
 plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr = NULL,
+                                       zoom = NULL, zoom_pad = 0.05,
+                                       genes_for_track = NULL, gene_label_angle = 0,
                                highlight_genes = NULL, label_genes = NULL,
                                point_size = 0.5, point_alpha = 0.6, colours = NULL) {
   .need_package("ggplot2", "plot_ibd_sharing_manhattan()")
@@ -384,20 +414,28 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
   df <- x$get_per_snp_group()
   if (is.null(df)) stop("this IbdResults has no per_snp_group table", call. = FALSE)
   .check_gene_request(x$get_genes(), highlight_genes)
-  if (is.null(label_genes)) label_genes <- !is.null(highlight_genes)
+  label_arg <- label_genes
   layout <- .select_layout(x$chrom_layout(), chroms, skip_chr)
+  z <- .zoom_setup(zoom, x$get_genes(), layout, label_arg, zoom_pad,
+                   x$reference_id(), genes_for_track = genes_for_track)
+  # zoomed, the gene names go in the track stacked underneath, not above the panel
+  label_genes <- if (!is.null(z)) FALSE
+    else if (is.null(label_arg)) !is.null(highlight_genes) else isTRUE(label_arg)
   df <- .attach_band(.recum(.filter_group(df, groups), layout), layout)
   df <- df[is.finite(df$frac_pairs_ibd), , drop = FALSE]
-  genes <- .genes_for_layout(x$get_genes(), layout, highlight_genes)
+  df <- .crop_to_window(df, z, "IBD SNPs")
+  genes <- if (is.null(z)) .genes_for_layout(x$get_genes(), layout, highlight_genes)
+           else z$genes
   faceted <- "group" %in% names(df)
-  top_level <- if (faceted) sort(unique(df$group))[1] else NULL
+  top_level <- if (faceted) .first_level(df$group) else NULL
   genome_frac <- sum(layout$len) / sum(x$chrom_layout()$len)
 
   p <- ggplot2::ggplot(df, ggplot2::aes(.data$cum_pos, .data$frac_pairs_ibd)) +
     .chr_band_layer(layout) +
     .gene_line_layer(genes) +
     (if (label_genes) .gene_label_layer(genes, if (faceted) "group" else NULL, top_level,
-       footprint = .label_footprint_bp(nchar(genes$name), layout, genome_frac))) +
+       footprint = .label_footprint_bp(nchar(genes$name), .fp_layout(z, layout),
+                                       .fp_frac(z, genome_frac)))) +
     ggplot2::geom_point(ggplot2::aes(colour = .data$.band), size = point_size,
                         alpha = point_alpha, stroke = 0) +
     ggplot2::scale_colour_manual(values = .band_colours(colours)) +
@@ -409,8 +447,11 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
   if (faceted) {
     p <- p + ggplot2::facet_wrap(~ .data$group, ncol = 1, strip.position = "right")
   }
-  attr(p, "plasgenomics_dims") <- .dims_genome(
-    if (faceted) length(unique(df$group)) else 1L, genome_frac, label_genes = label_genes)
+  n_panels <- if (faceted) length(unique(df$group)) else 1L
+  p <- .apply_zoom(p, z, layout, n_panels, gene_label_angle)
+  attr(p, "plasgenomics_dims") <- if (is.null(z))
+    .dims_genome(n_panels, genome_frac, label_genes = label_genes)
+    else .dims_zoom(n_panels, attr(p, "plasgenomics_track_in"))
   p
 }
 
@@ -448,10 +489,30 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
 #'   threshold table carries.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours Optional length-2 colour vector for the alternating chromosome bands.
+#' @param zoom Optional single interval to crop to, keeping the same data and the same
+#'   coordinates as the genome-wide plot: a chromosome (`"7"`), a range
+#'   (`"7:728,081-988,719"`), a gene name from the object's track, or a one-row data frame
+#'   with chr/start/end. Every gene in the window is drawn and named unless
+#'   `label_genes = FALSE`.
+#' @param zoom_pad Context to add around `zoom`, clamped to the chromosome. One value pads
+#'   both sides (default 5%); two pad the left and the right, either in that order or named
+#'   -- `c(left = 5000, right = 40000)`, and naming only one side pads only that side. Each
+#'   side is read on its own: below 1 it is a fraction of the interval's span, at or above 1
+#'   it is base pairs, so `c(0.1, 20000)` is legal.
+#' @param genes_for_track Optional gene table for the track drawn beneath a zoomed plot
+#'   (e.g. [PF3D7_GENES]), so every gene in the window is shown and named while the plot's
+#'   own short track still supplies the marked positions inside the panel. Without it the
+#'   track and the marks come from the same genes, which means marking a whole annotation
+#'   just to see the neighbours.
+#' @param gene_label_angle Rotation for the gene names in that track, in degrees. `0`
+#'   (default) centres each name under its gene; `45` or `90` runs it down to the left,
+#'   which is what keeps long systematic ids from colliding over a dense annotation.
 #' @return A ggplot object.
 #' @export
 plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "z_score"),
                                      groups = NULL, chroms = NULL, skip_chr = NULL,
+                                     zoom = NULL, zoom_pad = 0.05,
+                                     genes_for_track = NULL, gene_label_angle = 0,
                                      highlight_genes = NULL, label_genes = NULL,
                                      draw_threshold = TRUE,
                                      point_size = 0.5, point_alpha = 0.6, colours = NULL) {
@@ -462,21 +523,29 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
   if (!metric %in% names(df)) stop(sprintf("selection table has no '%s' column", metric),
                                     call. = FALSE)
   .check_gene_request(x$get_genes(), highlight_genes)
-  if (is.null(label_genes)) label_genes <- !is.null(highlight_genes)
+  label_arg <- label_genes
   layout <- .select_layout(x$chrom_layout(), chroms, skip_chr)
+  z <- .zoom_setup(zoom, x$get_genes(), layout, label_arg, zoom_pad,
+                   x$reference_id(), genes_for_track = genes_for_track)
+  # zoomed, the gene names go in the track stacked underneath, not above the panel
+  label_genes <- if (!is.null(z)) FALSE
+    else if (is.null(label_arg)) !is.null(highlight_genes) else isTRUE(label_arg)
   df <- .attach_band(.recum(.filter_group(df, groups), layout), layout)
   df$.y <- df[[metric]]
   df <- df[is.finite(df$.y), , drop = FALSE]
-  genes <- .genes_for_layout(x$get_genes(), layout, highlight_genes)
+  df <- .crop_to_window(df, z, "SNPs")
+  genes <- if (is.null(z)) .genes_for_layout(x$get_genes(), layout, highlight_genes)
+           else z$genes
   faceted <- "group" %in% names(df)
-  top_level <- if (faceted) sort(unique(df$group))[1] else NULL
+  top_level <- if (faceted) .first_level(df$group) else NULL
   genome_frac <- sum(layout$len) / sum(x$chrom_layout()$len)
 
   p <- ggplot2::ggplot(df, ggplot2::aes(.data$cum_pos, .data$.y)) +
     .chr_band_layer(layout) +
     .gene_line_layer(genes) +
     (if (label_genes) .gene_label_layer(genes, if (faceted) "group" else NULL, top_level,
-       footprint = .label_footprint_bp(nchar(genes$name), layout, genome_frac))) +
+       footprint = .label_footprint_bp(nchar(genes$name), .fp_layout(z, layout),
+                                       .fp_frac(z, genome_frac)))) +
     ggplot2::geom_point(ggplot2::aes(colour = .data$.band), size = point_size,
                         alpha = point_alpha, stroke = 0) +
     ggplot2::scale_colour_manual(values = .band_colours(colours)) +
@@ -509,8 +578,11 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
   if ("group" %in% names(df)) {
     p <- p + ggplot2::facet_wrap(~ .data$group, ncol = 1, strip.position = "right")
   }
-  attr(p, "plasgenomics_dims") <- .dims_genome(
-    if (faceted) length(unique(df$group)) else 1L, genome_frac, label_genes = label_genes)
+  n_panels <- if (faceted) length(unique(df$group)) else 1L
+  p <- .apply_zoom(p, z, layout, n_panels, gene_label_angle)
+  attr(p, "plasgenomics_dims") <- if (is.null(z))
+    .dims_genome(n_panels, genome_frac, label_genes = label_genes)
+    else .dims_zoom(n_panels, attr(p, "plasgenomics_track_in"))
   p
 }
 
@@ -597,6 +669,29 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 
 # ---- "tug of war" mirror plot ----------------------------------------------
 
+# The top half of the mirror is either the object's own IBD selection statistic or an
+# external per-SNP scan (iHS, beta, ...), which is the same shape: chr, pos, a value column
+# and optionally the group the IBD half is split by. Keeping the two interchangeable is
+# what lets one plot ask whether the IBD signal coincides with a haplotype signal, not only
+# with the IBD statistic derived from the same segments.
+.top_track <- function(x, top, metric, label = NULL) {
+  if (is.null(top)) {
+    df <- x$get_selection()
+    if (is.null(df)) stop("this IbdResults has no selection table", call. = FALSE)
+    return(list(df = df, label = label %||% "selection", own = TRUE))
+  }
+  df <- as.data.frame(top)
+  if (!all(c("chr", "pos") %in% names(df)))
+    stop("`top` needs chr and pos columns", call. = FALSE)
+  if (!"group" %in% names(df) && "pair" %in% names(df))
+    stop("a two-population scan (Rsb / XP-EHH) is indexed by population pair, not by the ",
+         "groups the IBD half is split by; use a run_ihs() scan for the top track",
+         call. = FALSE)
+  df$chr <- normalise_chr(df$chr)
+  list(df = df, label = label %||% "scan", own = FALSE)
+}
+
+
 #' IBD / selection "tug-of-war" mirror plot
 #'
 #' The selection statistic hangs from the top (bars descending) while the per-SNP
@@ -604,10 +699,23 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #' peaks of each line up. A single left axis carries both halves, its tick labels
 #' tinted to their track (selection on top, IBD on the bottom).
 #'
-#' @param x An [IbdResults] object (needs both selection and per_snp_group tables).
+#' @param x An [IbdResults] object (needs a per_snp_group table, and a selection table
+#'   unless `top` supplies the upper track).
+#' @param top Optional per-SNP scan to hang from the top instead of the object's own IBD
+#'   selection statistic: a [run_ihs()] result, a [beta_score()] table, or any table with
+#'   chr, pos, the `metric` column and (to face the IBD groups) a matching `group` column.
+#'   Two-population scans ([run_rsb()], [run_xpehh()]) are indexed by population pair
+#'   rather than group and cannot be mirrored against per-group IBD.
+#' @param top_label Name for the upper track on the shared axis; defaults to
+#'   `"selection"` for the object's statistic and `"scan"` for a `top` table.
 #' @param group Group(s) to plot. `NULL` (default) plots every group, faceted one
 #'   per row; a single group gives one panel; a vector facets those groups.
 #' @param metric Selection metric for the top track (default `"neg_log10_p"`).
+#' @param scan_abs Plot the magnitude of a signed `metric` (iHS, Rsb, a z-score). `NULL`
+#'   (default) does so whenever the metric has negative values, labelling the axis
+#'   `|metric|`. The mirror cannot show the sign -- its top half only spans zero to the
+#'   maximum -- so `FALSE` on signed values is an error rather than a silently clipped plot;
+#'   use [plot_ibd_locus()] when the sign matters.
 #' @param scale `"common"` (default) scales every panel to a shared maximum so they
 #'   are directly comparable; `"free"` scales each group to its own maximum for more
 #'   per-group detail (the axis then reads as within-group percentages).
@@ -625,47 +733,104 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #'   Each line is mapped through the same transform as the mirrored selection half, so it
 #'   lands where the data does.
 #' @param selection_colour,ibd_colour Bar and axis colours for the two tracks.
+#' @param zoom Optional single interval to crop to, keeping the same data and the same
+#'   coordinates as the genome-wide plot: a chromosome (`"7"`), a range
+#'   (`"7:728,081-988,719"`), a gene name from the object's track, or a one-row data frame
+#'   with chr/start/end. Every gene in the window is drawn and named unless
+#'   `label_genes = FALSE`.
+#' @param zoom_pad Context to add around `zoom`, clamped to the chromosome. One value pads
+#'   both sides (default 5%); two pad the left and the right, either in that order or named
+#'   -- `c(left = 5000, right = 40000)`, and naming only one side pads only that side. Each
+#'   side is read on its own: below 1 it is a fraction of the interval's span, at or above 1
+#'   it is base pairs, so `c(0.1, 20000)` is legal.
+#' @param genes_for_track Optional gene table for the track drawn beneath a zoomed plot
+#'   (e.g. [PF3D7_GENES]), so every gene in the window is shown and named while the plot's
+#'   own short track still supplies the marked positions inside the panel. Without it the
+#'   track and the marks come from the same genes, which means marking a whole annotation
+#'   just to see the neighbours.
+#' @param gene_label_angle Rotation for the gene names in that track, in degrees. `0`
+#'   (default) centres each name under its gene; `45` or `90` runs it down to the left,
+#'   which is what keeps long systematic ids from colliding over a dense annotation.
 #' @return A ggplot object.
 #' @export
-plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
+plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
+                              metric = "neg_log10_p", scan_abs = NULL,
                               scale = c("common", "free"), chroms = NULL, skip_chr = NULL,
+                              zoom = NULL, zoom_pad = 0.05,
+                              genes_for_track = NULL, gene_label_angle = 0,
                               highlight_genes = NULL, label_genes = NULL,
                               draw_threshold = TRUE,
                               selection_colour = "#fd8d3c", ibd_colour = "#2166ac") {
   .need_package("ggplot2", "plot_ibd_tugofwar()")
   .need_package("scales", "plot_ibd_tugofwar()")
   scale <- match.arg(scale)
-  sel <- x$get_selection()
+  tt <- .top_track(x, top, metric, top_label)
+  sel <- tt$df
   ibd <- x$get_per_snp_group()
-  if (is.null(sel) || is.null(ibd)) {
-    stop("plot_ibd_tugofwar() needs both selection and per_snp_group tables", call. = FALSE)
+  if (is.null(ibd)) {
+    stop("plot_ibd_tugofwar() needs a per_snp_group table", call. = FALSE)
   }
-  if (!metric %in% names(sel)) stop(sprintf("selection table has no '%s' column", metric),
-                                    call. = FALSE)
+  if (!metric %in% names(sel))
+    stop(sprintf("the top track has no '%s' column", metric), call. = FALSE)
+  if (!tt$own && all(c("group") %in% names(sel)) && "group" %in% names(ibd) &&
+      !any(as.character(sel$group) %in% as.character(ibd$group)))
+    stop("`top` and the IBD table share no group: top has ",
+         paste(unique(as.character(sel$group)), collapse = ", "), "; IBD has ",
+         paste(unique(as.character(ibd$group)), collapse = ", "), call. = FALSE)
   .check_gene_request(x$get_genes(), highlight_genes)
-  if (is.null(label_genes)) label_genes <- !is.null(highlight_genes)
+  label_arg <- label_genes
   regs <- .resolve_groups(group, sel, ibd)
   if (!is.null(regs)) {
     if ("group" %in% names(sel)) sel <- sel[sel$group %in% regs, , drop = FALSE]
     if ("group" %in% names(ibd)) ibd <- ibd[ibd$group %in% regs, , drop = FALSE]
   }
   layout <- .select_layout(x$chrom_layout(), chroms, skip_chr)
-  sel <- .recum(sel[is.finite(sel[[metric]]), , drop = FALSE], layout)
-  ibd <- .recum(ibd[is.finite(ibd$frac_pairs_ibd), , drop = FALSE], layout)
-  genes <- .genes_for_layout(x$get_genes(), layout, highlight_genes)
+  z <- .zoom_setup(zoom, x$get_genes(), layout, label_arg, zoom_pad,
+                   x$reference_id(), genes_for_track = genes_for_track)
+  # zoomed, the gene names go in the track stacked underneath, not above the panel
+  label_genes <- if (!is.null(z)) FALSE
+    else if (is.null(label_arg)) !is.null(highlight_genes) else isTRUE(label_arg)
+  sel <- .crop_to_window(.recum(sel[is.finite(sel[[metric]]), , drop = FALSE], layout),
+                         z, "SNPs in the top track")
+  ibd <- .crop_to_window(.recum(ibd[is.finite(ibd$frac_pairs_ibd), , drop = FALSE], layout),
+                         z, "IBD SNPs")
+  genes <- if (is.null(z)) .genes_for_layout(x$get_genes(), layout, highlight_genes)
+           else z$genes
   genome_frac <- sum(layout$len) / sum(x$chrom_layout()$len)
 
   # Only test for the column, never reach through it: a table written before the grouping
   # column was standardised names it after the grouping instead ("region"), and `$group`
-  # there warns and silently unfacets. Combining with `c()` keeps the factor and its levels,
-  # so `sort()` gives the declared group order rather than the alphabet -- and `top_level`
-  # stays a factor, which matters because a secondary layer carrying the facet column as
-  # bare character makes ggplot merge the layers' facet values alphabetically.
-  grp <- c(if ("group" %in% names(sel)) sel$group,
-           if ("group" %in% names(ibd)) ibd$group)
-  present <- sort(unique(grp))
+  # there warns and silently unfacets. `.combine_groups()` keeps the declared group order
+  # rather than the alphabet -- and `top_level` stays a factor, which matters because a
+  # secondary layer carrying the facet column as bare character makes ggplot merge the
+  # layers' facet values alphabetically.
+  grp <- .combine_groups(if ("group" %in% names(sel)) sel$group,
+                         if ("group" %in% names(ibd)) ibd$group)
+  present <- levels(droplevels(grp))
   faceted <- ("group" %in% names(sel)) && length(present) > 1
-  top_level <- if (faceted) present[1] else NULL
+  top_level <- if (faceted) factor(present[1], levels = present) else NULL
+  # Both halves must carry the SAME factor. The two tracks are separate layers, and when
+  # one holds `group` as a factor and the other as character, ggplot merges their facet
+  # values into character and re-sorts them alphabetically, scrambling the panel order.
+  if ("group" %in% names(sel)) sel$group <- factor(as.character(sel$group), levels = present)
+  if ("group" %in% names(ibd)) ibd$group <- factor(as.character(ibd$group), levels = present)
+
+  # A signed statistic (iHS, Rsb, a z-score) cannot be mirrored with its sign: the top half
+  # of the mirror only has room for [0, max], so a negative value maps above the top and is
+  # clipped away silently. Take the magnitude -- both tails of these statistics mean
+  # selection anyway -- and say so on the axis.
+  signed <- any(sel[[metric]] < 0, na.rm = TRUE)
+  if (is.null(scan_abs)) scan_abs <- signed
+  if (signed && !isTRUE(scan_abs))
+    stop("`", metric, "` has negative values and the mirror has no room below zero on the ",
+         "top half; leave `scan_abs` alone to plot the magnitude, or use plot_ibd_locus() ",
+         "to keep the sign", call. = FALSE)
+  if (isTRUE(scan_abs) && signed) {
+    sel[[metric]] <- abs(sel[[metric]])
+    metric_lab <- paste0("|", metric, "|")
+  } else {
+    metric_lab <- metric
+  }
 
   # normalise each track so its tallest bar reaches the centre (y = 0). common =
   # one shared max (panels comparable); free = each group to its own max.
@@ -704,18 +869,34 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
     # colour each tick label via markdown so we avoid vectorised element_text()
     yax$lab <- paste0("<span style='color:", yax$col, ";'>", yax$lab, "</span>")
     ytitle <- paste0(
-      "<span style='color:", selection_colour, ";'>selection (", metric, ", top)</span>",
+      "<span style='color:", selection_colour, ";'>", tt$label, " (", metric_lab, ", top)</span>",
       " / <span style='color:", ibd_colour, ";'>IBD fraction (bottom)</span>")
     ytext_elem  <- ggtext::element_markdown()
     ytitle_elem <- ggtext::element_markdown(angle = 90)
   } else {
-    ytitle <- paste0("selection ", metric, " (top)  /  IBD fraction (bottom)")
+    ytitle <- paste0(tt$label, " ", metric_lab, " (top)  /  IBD fraction (bottom)")
     ytext_elem  <- ggplot2::element_text()
     ytitle_elem <- ggplot2::element_text()
   }
 
-  which_thr <- .resolve_threshold(draw_threshold)
   thr_layer <- NULL
+  # The threshold table describes the object's own statistic, so it says nothing about an
+  # external scan: that is read at a fixed tail (the same 1% the scan Manhattans draw) or
+  # at whatever height the caller names.
+  which_thr <- if (tt$own) .resolve_threshold(draw_threshold) else "none"
+  if (!tt$own && !normalized) {
+    lvl <- if (isTRUE(draw_threshold)) -log10(0.01)
+           else if (is.numeric(draw_threshold)) draw_threshold else NULL
+    if (!is.null(lvl) && lvl > sel_max) {
+      # the top half only spans [0, sel_max]; a higher threshold would be drawn down in the
+      # IBD half, where it would read as an IBD line
+      message("the ", tt$label, " threshold (", signif(lvl, 3), ") is above every value in ",
+              "the top track (max ", signif(sel_max, 3), "), so no line is drawn")
+    } else if (!is.null(lvl)) {
+      thr_layer <- ggplot2::geom_hline(yintercept = 1 - lvl / sel_max, colour = "firebrick",
+                                       linetype = "dashed", linewidth = 0.4)
+    }
+  }
   if (which_thr != "none" && metric == "neg_log10_p" && !normalized) {
     all_thr <- x$get_thresholds()
     thr_layer <- list()
@@ -726,8 +907,11 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
         thr <- thr[thr$group %in% present, , drop = FALSE]
       if (!nrow(thr)) next
       # the selection half of the mirror is drawn upside down in [0, 1], so the line has
-      # to be mapped through the same transform as the data
+      # to be mapped through the same transform as the data -- and a threshold above the
+      # tallest bar would land in the IBD half, where it would read as an IBD line
       thr$.y <- 1 - thr$threshold / sel_max
+      thr <- thr[thr$.y >= 0, , drop = FALSE]
+      if (!nrow(thr)) next
       sty <- .THRESHOLD_STYLE[[kind]]
       thr_layer[[kind]] <- ggplot2::geom_hline(
         data = thr, ggplot2::aes(yintercept = .data$.y), inherit.aes = FALSE,
@@ -740,7 +924,8 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
     .chr_band_layer(layout) +
     .gene_line_layer(genes) +
     (if (label_genes) .gene_label_layer(genes, if (faceted) "group" else NULL, top_level,
-       footprint = .label_footprint_bp(nchar(genes$name), layout, genome_frac))) +
+       footprint = .label_footprint_bp(nchar(genes$name), .fp_layout(z, layout),
+                                       .fp_frac(z, genome_frac)))) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey55", linewidth = 0.3) +
     ggplot2::geom_segment(data = sel,
       ggplot2::aes(x = .data$cum_pos, xend = .data$cum_pos, y = 1, yend = .data$.tip),
@@ -765,8 +950,11 @@ plot_ibd_tugofwar <- function(x, group = NULL, metric = "neg_log10_p",
   } else if (!is.null(regs)) {
     p <- p + ggplot2::labs(title = paste0("tug-of-war: ", paste(regs, collapse = ", ")))
   }
-  attr(p, "plasgenomics_dims") <- .dims_genome(
-    if (faceted) length(present) else 1L, genome_frac, label_genes = label_genes)
+  n_panels <- if (faceted) length(present) else 1L
+  p <- .apply_zoom(p, z, layout, n_panels, gene_label_angle)
+  attr(p, "plasgenomics_dims") <- if (is.null(z))
+    .dims_genome(n_panels, genome_frac, label_genes = label_genes)
+    else .dims_zoom(n_panels, attr(p, "plasgenomics_track_in"))
   p
 }
 
@@ -1072,9 +1260,19 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
   out
 }
 
+# Groups from two tables as one factor, declared order first. `c()` is not usable here:
+# combining a factor with a character vector drops the factor to its integer codes, so the
+# groups come back as "1", "2", ... whenever the two tables disagree about the column type.
+.combine_groups <- function(a, b) {
+  lv <- unique(c(if (!is.null(a)) levels(.as_group_factor(a)),
+                 if (!is.null(b)) levels(.as_group_factor(b))))
+  if (!length(lv)) return(NULL)
+  factor(c(as.character(a), as.character(b)), levels = lv)
+}
+
 .resolve_groups <- function(group, sel, ibd) {
   if (!is.null(group)) return(group)
-  regs <- unique(c(if ("group" %in% names(sel)) sel$group,
-                   if ("group" %in% names(ibd)) ibd$group))
-  if (length(regs)) regs else NULL
+  regs <- .combine_groups(if ("group" %in% names(sel)) sel$group,
+                          if ("group" %in% names(ibd)) ibd$group)
+  if (is.null(regs)) NULL else levels(droplevels(regs))
 }

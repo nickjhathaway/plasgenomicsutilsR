@@ -67,7 +67,7 @@ parasite_haplotypes <- function(x, samples = NULL, fws = NULL, min_fws = IHS_MIN
                                 impute = TRUE, seed = 42, meta = NULL, genotype = NULL) {
   het <- match.arg(het)
   if (inherits(x, "PopStructure")) {
-    G <- if (is.null(genotype)) x$genotype() else .coerce_geno(genotype)
+    G <- .geno_for(x, genotype)
     if (is.null(meta)) meta <- x$get_meta()
   } else {
     G <- .coerce_geno(x)
@@ -228,6 +228,19 @@ print.parasite_haplotypes <- function(x, ...) {
   stats::setNames(lapply(keep, function(l) which(grp == l)), keep)
 }
 
+# Frequency binning only means something when there IS a derived allele to bin by, so an
+# unpolarized scan gets a single bin. Warn rather than silently override a deliberate choice.
+.resolve_freqbin <- function(freqbin, polarized) {
+  if (is.null(freqbin)) return(if (polarized) 0.05 else 1)
+  if (!polarized && freqbin < 1) {
+    warning("freqbin = ", freqbin, " bins an unpolarized scan by major-allele frequency, ",
+            "which is not the derived-allele frequency the standardisation is for. ",
+            "freqbin = 1 (the default here) is what rehh recommends; on real data the two ",
+            "share only half their top hits.", call. = FALSE)
+  }
+  freqbin
+}
+
 #' Integrated haplotype score (iHS)
 #'
 #' Scans each group for recent positive directional selection, standardising the
@@ -246,7 +259,15 @@ print.parasite_haplotypes <- function(x, ...) {
 #'   rows, or `NULL` to scan every sample as one population.
 #' @param meta Metadata (defaults to the one carried by `hap`).
 #' @param polarized Treat allele 1 as derived (needs a real ancestral state).
-#' @param freqbin Width of the allele-frequency bins used for standardisation.
+#' @param freqbin Width of the allele-frequency bins iHS is standardised within, or `NULL`
+#'   (default) to pick one from `polarized`: **1** (a single bin) when unpolarized, `0.05`
+#'   when polarized. The binning exists to control for *derived* allele frequency, and an
+#'   unpolarized scan has no ancestral state -- only `FREQ_MAJ`/`FREQ_MIN` -- so major/minor
+#'   is not derived/ancestral and binning by it controls nothing. rehh warns about this and
+#'   about the resulting sparse bins above 0.5; a single bin silences both because it is the
+#'   right answer, not because the warning was noise. Not cosmetic: on a real 249-sample
+#'   cohort the two settings share only 25 of their top 50 |iHS| hits, and 4-12% of SNPs
+#'   change sign (most in the 0.05-0.1 and >0.3 MAF bands).
 #' @param min_maf Minor-allele frequency floor applied at standardisation.
 #' @param min_samples Skip groups smaller than this.
 #' @param threads Threads for \pkg{rehh}.
@@ -266,10 +287,11 @@ print.parasite_haplotypes <- function(x, ...) {
 #' hap <- parasite_haplotypes(ps, maf = 0.05)
 #' run_ihs(hap, group = "country")
 #' @export
-run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin = 0.05,
+run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin = NULL,
                     min_maf = 0.05, min_samples = 4, threads = 1) {
   .need_package("rehh", "run_ihs()")
   stopifnot(inherits(hap, "parasite_haplotypes"))
+  freqbin <- .resolve_freqbin(freqbin, polarized)
   rows <- .ihs_rows(hap, group, meta, min_samples)
 
   out <- list()
@@ -341,6 +363,26 @@ run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin =
 #' @param pairs Optional list of `c(group_a, group_b)` pairs; defaults to all pairs.
 #' @return A tibble with `pair`, `pop1`, `pop2`, `chr`, `pos`, `snp_id`, `value` (Rsb)
 #'   and `neg_log10_p`.
+#'
+#'   **Reading `value`.** Rsb is a log ratio of site-specific extended haplotype
+#'   homozygosity between the two populations, standardised to roughly a standard normal
+#'   under neutrality. So it is a z-score, and its **sign says which population**:
+#'   positive means haplotype homozygosity extends further in `pop1` than `pop2`, i.e. the
+#'   sweep is in `pop1`; negative points at `pop2`. Swapping the pair flips the sign.
+#'
+#'   Magnitude reads like any z: |Rsb| above ~2 is unremarkable in a genome scan, above ~4
+#'   is worth a look, and real sweeps in *P. falciparum* run higher still. Rather than
+#'   picking a cutoff by eye, use `neg_log10_p` -- the two-sided normal p-value rehh derives
+#'   from `value` -- and correct it: at ~20k SNPs a Bonferroni line sits near 5.6, which is
+#'   the convention in the literature. [selection_peaks()] will merge the survivors into
+#'   loci, since one sweep spans many SNPs, and [annotate_snps()] says which genes they are
+#'   in.
+#'
+#'   Two cautions. The standardisation assumes most of the genome is neutral, so a
+#'   genome-wide p-value is relative to *this* comparison and not comparable across pairs
+#'   with different sample sizes. And Rsb contrasts two populations, so a high score means
+#'   they differ -- it cannot by itself tell a sweep in one from a loss of variation in the
+#'   other; that is what the EHH decay curves are for.
 #' @references Tang, K., Thornton, K. R. & Stoneking, M. (2007) A new approach for using
 #'   genome scans to detect recent positive selection in the human genome.
 #'   \emph{PLoS Biology} 5, e171. \doi{10.1371/journal.pbio.0050171}
@@ -357,7 +399,11 @@ run_rsb <- function(hap, group, meta = NULL, pairs = NULL, polarized = FALSE,
 #' allele between two populations.
 #'
 #' @inheritParams run_rsb
-#' @return A tibble shaped like [run_rsb()]'s, with `value` holding XP-EHH.
+#' @return A tibble shaped like [run_rsb()]'s, with `value` holding XP-EHH. Read it exactly
+#'   as Rsb -- a standardised log ratio, positive when the extended haplotype is in `pop1` --
+#'   the difference being that XP-EHH integrates to a fixed distance while Rsb uses the
+#'   site-specific EHH, so XP-EHH is the more sensitive of the two to a sweep that has gone
+#'   nearly to fixation, where within-population statistics like iHS lose power.
 #' @references Sabeti, P. C. et al. (2007) Genome-wide detection and characterization of
 #'   positive selection in human populations. \emph{Nature} 449, 913-918.
 #'   \doi{10.1038/nature06250}

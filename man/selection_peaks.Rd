@@ -59,28 +59,32 @@ each peak with the genes it overlaps; \link{PF3D7_GENES} is a sensible argument.
 A tibble with one row per peak: the grouping column, \code{chr}, \code{start}, \code{end},
 \code{width}, \code{n_snps} (significant SNPs in the peak), \code{peak_pos} (the single
 highest-scoring SNP), \code{peak_value}, \code{mean_value}, and -- when a gene table was given
--- four annotation columns. Sorted by \code{peak_value}.
+-- five annotation columns. Sorted by \code{peak_value}.
 
 Everything is anchored on \code{peak_pos}, not the interval's midpoint: the midpoint is an
 artefact of where merging started and stopped, and can land in a gap between genes.
 \itemize{
-\item \code{peak_genes} — the gene(s) whose span \strong{contains} the peak SNP, comma-separated.
+\item \code{peak_interval_genes} — a \strong{list-column} of every gene the interval spans, in
+genomic order. A peak of a few hundred kb, as real IBD sharing regions are, can
+cross dozens, so this is the set to take into a follow-up rather than something to
+read off the screen. Unnest it for one row per peak x gene:
+\code{tidyr::unnest(pk, peak_interval_genes)}; \code{lengths()} of it is \code{n_genes}.
+\item \code{gene_at_peak} — the gene(s) whose span \strong{contains} the peak SNP, comma-separated.
 Usually one, since gene spans rarely overlap, and \strong{empty when the peak SNP is
 intergenic} — about a third of peaks on a real cohort.
 \item \code{nearest_gene}, \code{distance_to_gene} — of the genes the peak \strong{covers}, the closest
 one to the peak SNP and the gap to it in bp, \code{0} when the SNP is inside it. This is
-what to read when \code{peak_genes} is empty; those intergenic peaks are typically within
-a kb or two of a gene in the same peak. Candidates are restricted to the interval,
-so a peak that covers no gene reports none rather than pointing at something far
-outside it — which matters when \code{genes} is a short list, where most peaks cover
-nothing from it.
-\item \code{n_genes} — how many genes the interval spans. A peak of a few hundred kb, as real
-IBD sharing regions are, can cross dozens; naming them all helps nobody, so this
-counts them. Narrow \code{gap} if the intervals are wider than you want.
+what to read when \code{gene_at_peak} is empty; those intergenic peaks are typically
+within a kb or two of a gene in the same peak. Candidates are restricted to the
+interval, so a peak that covers no gene reports none rather than pointing at
+something far outside it — which matters when \code{genes} is a short list, where most
+peaks cover nothing from it.
+\item \code{n_genes} — how many genes the interval spans, i.e. \code{lengths(peak_interval_genes)}.
 }
 
-The three agree by construction: \code{n_genes == 0} implies both name columns are empty,
-and a non-empty \code{peak_genes} implies \code{distance_to_gene == 0}.
+They agree by construction: \code{n_genes == 0} implies an empty \code{peak_interval_genes} and
+empty name columns, \code{n_genes == lengths(peak_interval_genes)}, and a non-empty
+\code{gene_at_peak} implies \code{distance_to_gene == 0}.
 }
 \description{
 Turns a per-SNP scan into one row per implicated locus. A sweep leaves a run of

@@ -325,6 +325,17 @@ IbdResults <- R6::R6Class(
     get_analyzed_samples = function() private$analyzed_samples,
     #' @description Sample metadata data frame, or `NULL`.
     get_meta = function() private$meta,
+    #' @description Replace the metadata, keeping the declared group order applied. Used by
+    #'   [add_ibd_clusters()] to add derived columns; the `sample` column must survive.
+    #' @param meta The new metadata data frame.
+    #' @return Invisibly self.
+    set_meta = function(meta) {
+      if (!is.data.frame(meta) || !"sample" %in% names(meta))
+        stop("meta must be a data frame with a `sample` column", call. = FALSE)
+      private$meta <- meta
+      private$apply_group_order()
+      invisible(self)
+    },
     #' @description Precomputed per-gene block-overlap table, or `NULL`.
     get_gene_overlap = function() private$gene_overlap,
     #' @description Chromosome layout tibble (offsets, bands, axis mid-points).
@@ -388,6 +399,10 @@ IbdResults <- R6::R6Class(
     #' @description Sample pairs sharing IBD over each gene (see [gene_ibd_pairs()]).
     #' @param ... Passed to [gene_ibd_pairs()].
     gene_ibd_pairs = function(...) gene_ibd_pairs(self, ...),
+
+    #' @description Add single-linkage IBD cluster ids to the metadata.
+    #' @param ... Passed to [add_ibd_clusters()].
+    add_ibd_clusters = function(...) add_ibd_clusters(self, ...),
 
     #' @description Sample-level IBD network at a gene / locus (see [plot_ibd_network()]).
     #' @param ... Passed to [plot_ibd_network()].

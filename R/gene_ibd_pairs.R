@@ -2,6 +2,35 @@
 # one row per sample pair whose IBD segment touches a gene, with how much of the gene that
 # segment covers.
 
+# Connected components over an edge list: single-linkage clustering, where a sample joins a
+# cluster if it shares IBD with ANY member of it. Union-find in base R rather than igraph,
+# which is only Suggested and should not become required to build a table.
+# Ids are assigned largest cluster first, so `gene_cluster_id == 1` is the biggest group at
+# that gene and the numbering means the same thing across genes.
+.single_linkage <- function(a, b) {
+  nodes <- unique(c(a, b))
+  parent <- seq_along(nodes)
+  find <- function(i) {
+    while (parent[i] != i) i <- parent[i]
+    i
+  }
+  ia <- match(a, nodes); ib <- match(b, nodes)
+  for (k in seq_along(ia)) {
+    ra <- find(ia[k]); rb <- find(ib[k])
+    if (ra != rb) parent[ra] <- rb
+  }
+  root <- vapply(seq_along(nodes), find, integer(1))
+  size <- tabulate(root, nbins = length(nodes))
+  # rank by size, then by the first member's name, so the id is stable run to run
+  first <- vapply(split(nodes, root)[as.character(sort(unique(root)))],
+                  function(z) sort(z)[1], character(1))
+  ord <- sort(unique(root))[order(-size[sort(unique(root))], first)]
+  id <- match(root, ord)
+  list(id = stats::setNames(id, nodes),
+       size = stats::setNames(size[root], nodes))
+}
+
+
 #' Sample pairs sharing IBD over each gene
 #'
 #' An adjacency list of the pairs that are IBD across one or more genes: one row per
@@ -30,6 +59,13 @@
 #'       `"partial"`.}
 #'     \item{`covered_start`, `covered_end`}{the covered portion of the gene -- the gene's
 #'       own bounds when `coverage` is `"complete"`.}
+#'     \item{`gene_cluster_id`, `gene_cluster_size`}{single-linkage cluster of samples
+#'       sharing at this gene, and how many samples are in it. A sample joins a cluster if
+#'       it shares with **any** member, so a chain of pairs is one cluster even where its
+#'       ends never share directly -- which is what [plot_ibd_network()] draws as a
+#'       connected component. Ids run largest first, so `1` is the biggest group at that
+#'       gene; they are per gene, so cluster 1 at `pfcrt` and cluster 1 at `pfdhps` are
+#'       unrelated.}
 #'     \item{`covered_bp`, `percent_covered`}{width of that portion, and it as a percentage
 #'       of the gene's length.}
 #'   }
@@ -82,6 +118,9 @@ gene_ibd_pairs <- function(x, genes = NULL, within = 0) {
       covered_bp = covered,
       percent_covered = if (ge > gs) 100 * covered / (ge - gs) else NA_real_,
       stringsAsFactors = FALSE)
+    cl <- .single_linkage(s1, s2)
+    out[[i]]$gene_cluster_id <- unname(cl$id[s1])
+    out[[i]]$gene_cluster_size <- unname(cl$size[s1])
   }
   out <- out[!vapply(out, is.null, logical(1))]
   if (!length(out)) {
@@ -90,7 +129,8 @@ gene_ibd_pairs <- function(x, genes = NULL, within = 0) {
       block_start = numeric(0), block_end = numeric(0), gene = character(0),
       name = character(0), gene_id = character(0), gene_start = numeric(0),
       gene_end = numeric(0), coverage = character(0), covered_start = numeric(0),
-      covered_end = numeric(0), covered_bp = numeric(0), percent_covered = numeric(0)))
+      covered_end = numeric(0), covered_bp = numeric(0), percent_covered = numeric(0),
+      gene_cluster_id = integer(0), gene_cluster_size = integer(0)))
   }
   res <- do.call(rbind, out)
   res$gene <- factor(res$gene, levels = gtrack$.label[gtrack$.label %in% res$gene])

@@ -116,7 +116,7 @@ test_that("pop_diff accepts a genotype override (full unpruned set)", {
   pd_over    <- ps$pop_diff(group = "region", genotype = wide)
   expect_equal(length(pd_over$snp), ncol(wide))               # used the override matrix
   expect_gt(length(pd_over$snp), length(pd_default$snp))
-  # a run_ld_prune-style list is accepted too
+  # a load_genotypes-style list is accepted too
   lst <- list(genotype = wide, sample.id = rownames(wide))
   expect_s3_class(ps$pop_diff(group = "region", genotype = lst), "pop_diff")
 })

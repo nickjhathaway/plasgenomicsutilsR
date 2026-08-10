@@ -107,7 +107,9 @@
 #'   are 0-based half-open (see [plasgenomicsutilsR-coordinates]), so `"chr:1000-2000"` is
 #'   the 1000 bases from 0-based 1000 up to but not including 2000, and a bare `"chr:1000"`
 #'   is the single base at 0-based 1000.
-#' @param color_group Optional metadata column to colour nodes by (needs `meta`).
+#' @param color_group Optional metadata column to colour nodes by (needs `meta`). To colour
+#'   by the graph's own connected components, add them to the metadata first with
+#'   [add_ibd_clusters()] and name the column it creates.
 #' @param colors Colours for `color_group`. A **named** `level -> colour` vector maps by
 #'   name and may cover only some levels (the rest keep their automatic colour); an
 #'   unnamed vector is taken positionally, in the column's level order. `NULL` (default)

@@ -1,6 +1,6 @@
 Package: plasgenomicsutilsR
 Title: Utilities for Visualizing Plasmodium Genomics Data
-Version: 0.2.0
+Version: 0.3.0
 Authors@R:
     person("Nicholas", "Hathaway", email = "nickjhathaway@gmail.com",
            role = c("aut", "cre"))
@@ -28,6 +28,8 @@ Imports:
     tibble
 Suggests:
     testthat (>= 3.0.0),
+    yaml,
+    tidyr,
     knitr,
     rmarkdown,
     readr,

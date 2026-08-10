@@ -26,7 +26,7 @@ LD_MAX_SNPS <- 3000L
 
 .ld_prepare <- function(x, group, meta, genotype, het) {
   if (inherits(x, "PopStructure")) {
-    G <- if (is.null(genotype)) x$genotype() else .coerce_geno(genotype)
+    G <- .geno_for(x, genotype)
     if (is.null(meta)) meta <- x$get_meta()
   } else {
     G <- .coerce_geno(x)

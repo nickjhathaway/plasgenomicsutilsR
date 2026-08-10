@@ -1055,4 +1055,27 @@ test_that("gene labels do not reorder the facets of any genome-wide plot", {
   for (f in fns) {
     expect_equal(panels(f(sub, label_genes = TRUE)), setdiff(levs, "West"))
   }
+
+  # the scan plots take a different route to the same layer, so cover them here too
+  n <- length(levs)
+  scan <- data.frame(
+    group = factor(rep(levs, each = 3), levels = levs), chr = "Pf3D7_07_v3",
+    pos = rep(c(400000, 410000, 420000), n),
+    ihs = seq(-3, 3, length.out = 3 * n), neg_log10_p = seq(0.1, 4, length.out = 3 * n),
+    beta = seq(0, 5, length.out = 3 * n))
+  facets <- function(p) as.character(ggplot2::ggplot_build(p)$layout$layout$.facet)
+  for (f in list(plot_ihs, plot_beta)) {
+    expect_equal(facets(f(scan, genes = PF_EXAMPLE_DRUG_GENES)), levs)
+    expect_equal(facets(f(scan, genes = PF_EXAMPLE_DRUG_GENES, label_genes = TRUE)), levs)
+  }
+})
+
+test_that(".first_level keeps the factor, which is what stops the facet re-sort", {
+  levs <- c("Northwest", "North", "East")
+  v <- factor(c("East", "North", "Northwest"), levels = levs)
+  got <- plasgenomicsutilsR:::.first_level(v)
+  # a factor carrying the FULL level set, not the bare string `levels(v)[1]` returns
+  expect_s3_class(got, "factor")
+  expect_identical(levels(got), levs)
+  expect_identical(as.character(got), "Northwest")
 })

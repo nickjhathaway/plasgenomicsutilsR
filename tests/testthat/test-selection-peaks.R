@@ -101,7 +101,7 @@ test_that("genes are named at the peak SNP, not at the interval's midpoint", {
   pk <- selection_peaks(s, criterion = "value", cutoff = 5, gap = 200000, genes = genes)
   expect_equal(nrow(pk), 1)
   expect_equal(pk$peak_pos, 404000)         # the strongest SNP
-  expect_equal(pk$peak_genes, "pfcrt")      # ...and the gene containing it
+  expect_equal(pk$gene_at_peak, "pfcrt")      # ...and the gene containing it
   expect_equal(pk$distance_to_gene, 0)
   expect_equal(pk$n_genes, 2L)              # the interval reaches both
   # the midpoint (~451,750) is inside neither, which is why it is not the anchor
@@ -114,7 +114,7 @@ test_that("an intergenic peak names a gene it covers elsewhere", {
   genes <- data.frame(name = "pfcrt", chrom = "Pf3D7_07_v3",
                       start = 403221, end = 406317)
   pk <- selection_peaks(s, criterion = "value", cutoff = 5, genes = genes)
-  expect_equal(pk$peak_genes, "")           # the top SNP is not inside it
+  expect_equal(pk$gene_at_peak, "")           # the top SNP is not inside it
   expect_equal(pk$nearest_gene, "pfcrt")    # ...but the peak does cover it
   expect_equal(pk$distance_to_gene, 410500 - (406317 - 1))
   expect_equal(pk$n_genes, 1L)
@@ -127,7 +127,7 @@ test_that("a gene outside the peak is never named, however close it is", {
                       start = 403221, end = 406317)
   pk <- selection_peaks(s, criterion = "value", cutoff = 5, genes = genes)
   expect_equal(pk$n_genes, 0L)
-  expect_equal(pk$peak_genes, "")
+  expect_equal(pk$gene_at_peak, "")
   expect_equal(pk$nearest_gene, "")         # not "pfcrt, 3.7 kb away"
   expect_true(is.na(pk$distance_to_gene))
 
@@ -147,17 +147,17 @@ test_that("the three gene columns cannot contradict each other", {
   pk <- selection_peaks(s, criterion = "value", cutoff = 5, genes = genes)
   expect_true(all(pk$nearest_gene[pk$n_genes == 0] == ""))
   expect_true(all(is.na(pk$distance_to_gene[pk$n_genes == 0])))
-  expect_true(all(pk$peak_genes[pk$n_genes == 0] == ""))
-  expect_true(all(pk$distance_to_gene[pk$peak_genes != ""] == 0))
-  expect_true(all(pk$nearest_gene[pk$peak_genes != ""] == pk$peak_genes[pk$peak_genes != ""]))
+  expect_true(all(pk$gene_at_peak[pk$n_genes == 0] == ""))
+  expect_true(all(pk$distance_to_gene[pk$gene_at_peak != ""] == 0))
+  expect_true(all(pk$nearest_gene[pk$gene_at_peak != ""] == pk$gene_at_peak[pk$gene_at_peak != ""]))
 })
 
-test_that("peak_genes holds every gene covering the peak SNP when spans overlap", {
+test_that("gene_at_peak holds every gene covering the peak SNP when spans overlap", {
   s <- .scan(1000, 9)
   genes <- data.frame(name = c("a", "b", "c"), chrom = "Pf3D7_07_v3",
                       start = c(500, 900, 5000), end = c(1500, 1200, 6000))
   pk <- selection_peaks(s, criterion = "value", cutoff = 5, genes = genes)
-  expect_equal(pk$peak_genes, "a,b")        # comma-separated, sorted
+  expect_equal(pk$gene_at_peak, "a,b")        # comma-separated, sorted
   expect_equal(pk$distance_to_gene, 0)
 })
 
@@ -200,4 +200,39 @@ test_that("pad widens the reported interval", {
   # never negative
   expect_gte(selection_peaks(.scan(100, 6), criterion = "value", cutoff = 5,
                              pad = 5000)$start, 0)
+})
+
+test_that("peak_interval_genes lists every gene the interval spans, as an unnestable list-column", {
+  # three genes across the peak; the peak SNP sits inside the middle one
+  genes <- data.frame(
+    name = c("gA", "gB", "gC", "far"), chr = "Pf3D7_07_v3",
+    start = c(400000, 410000, 420000, 900000),
+    end = c(405000, 415000, 425000, 905000), stringsAsFactors = FALSE)
+  s <- .scan(c(401000, 412000, 423000), c(9, 12, 9), chr = "Pf3D7_07_v3")
+  pk <- selection_peaks(s, criterion = "value", cutoff = 5, genes = genes, gap = 50000)
+  expect_equal(nrow(pk), 1)
+
+  expect_true(is.list(pk$peak_interval_genes))
+  # every spanned gene, in genomic order, and the far one excluded
+  expect_equal(pk$peak_interval_genes[[1]], c("gA", "gB", "gC"))
+  expect_equal(pk$n_genes, lengths(pk$peak_interval_genes))
+  # the scalar columns still answer their own narrower questions
+  expect_equal(pk$gene_at_peak, "gB")          # the peak SNP is inside gB
+  expect_equal(pk$nearest_gene, "gB")
+  expect_equal(pk$distance_to_gene, 0)
+
+  skip_if_not_installed("tidyr")
+  expect_equal(nrow(tidyr::unnest(pk, "peak_interval_genes")), 3)
+})
+
+test_that("a peak spanning no gene reports empty in every annotation column", {
+  genes <- data.frame(name = "far", chr = "Pf3D7_07_v3", start = 900000, end = 905000,
+                      stringsAsFactors = FALSE)
+  s <- .scan(c(401000, 402000), c(9, 12), chr = "Pf3D7_07_v3")
+  pk <- selection_peaks(s, criterion = "value", cutoff = 5, genes = genes)
+  expect_equal(pk$n_genes, 0L)
+  expect_equal(pk$peak_interval_genes[[1]], character(0))
+  expect_equal(pk$gene_at_peak, "")
+  expect_equal(pk$nearest_gene, "")
+  expect_true(is.na(pk$distance_to_gene))
 })

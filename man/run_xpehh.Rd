@@ -31,7 +31,11 @@ two groups to compare).}
 \item{threads}{Threads for \pkg{rehh}.}
 }
 \value{
-A tibble shaped like \code{\link[=run_rsb]{run_rsb()}}'s, with \code{value} holding XP-EHH.
+A tibble shaped like \code{\link[=run_rsb]{run_rsb()}}'s, with \code{value} holding XP-EHH. Read it exactly
+as Rsb -- a standardised log ratio, positive when the extended haplotype is in \code{pop1} --
+the difference being that XP-EHH integrates to a fixed distance while Rsb uses the
+site-specific EHH, so XP-EHH is the more sensitive of the two to a sweep that has gone
+nearly to fixation, where within-population statistics like iHS lose power.
 }
 \description{
 The allele-aware sibling of \code{\link[=run_rsb]{run_rsb()}}: it contrasts the integrated EHH of the same

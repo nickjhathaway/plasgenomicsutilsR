@@ -24,6 +24,8 @@ west <- ps$subset(population = c("PopA", "PopB"))
 \subsection{Public methods}{
   \itemize{
     \item \href{#method-PopStructure-initialize}{\code{PopStructure$new()}}
+    \item \href{#method-PopStructure-add_panel}{\code{PopStructure$add_panel()}}
+    \item \href{#method-PopStructure-panels}{\code{PopStructure$panels()}}
     \item \href{#method-PopStructure-add_meta}{\code{PopStructure$add_meta()}}
     \item \href{#method-PopStructure-set_colors}{\code{PopStructure$set_colors()}}
     \item \href{#method-PopStructure-set_levels}{\code{PopStructure$set_levels()}}
@@ -44,6 +46,8 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-umap_df}{\code{PopStructure$umap_df()}}
     \item \href{#method-PopStructure-get_meta}{\code{PopStructure$get_meta()}}
     \item \href{#method-PopStructure-get_colors}{\code{PopStructure$get_colors()}}
+    \item \href{#method-PopStructure-allele}{\code{PopStructure$allele()}}
+    \item \href{#method-PopStructure-pruned}{\code{PopStructure$pruned()}}
     \item \href{#method-PopStructure-get_samples}{\code{PopStructure$get_samples()}}
     \item \href{#method-PopStructure-as_ps}{\code{PopStructure$as_ps()}}
     \item \href{#method-PopStructure-plot_pca}{\code{PopStructure$plot_pca()}}
@@ -61,6 +65,7 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-ld_index}{\code{PopStructure$ld_index()}}
     \item \href{#method-PopStructure-beta_score}{\code{PopStructure$beta_score()}}
     \item \href{#method-PopStructure-haplotypes}{\code{PopStructure$haplotypes()}}
+    \item \href{#method-PopStructure-plot_region_haplotypes}{\code{PopStructure$plot_region_haplotypes()}}
     \item \href{#method-PopStructure-ihs}{\code{PopStructure$ihs()}}
     \item \href{#method-PopStructure-save}{\code{PopStructure$save()}}
     \item \href{#method-PopStructure-print}{\code{PopStructure$print()}}
@@ -71,21 +76,72 @@ west <- ps$subset(population = c("PopA", "PopB"))
 \if{html}{\out{<a id="method-PopStructure-initialize"></a>}}
 \if{latex}{\out{\hypertarget{method-PopStructure-initialize}{}}}
 \subsection{\code{PopStructure$new()}}{
-  Build from a genotype matrix (or a \code{\link[=run_ld_prune]{run_ld_prune()}} list).
+  Build from a genotype matrix (or a \code{\link[=load_genotypes]{load_genotypes()}} list).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$new(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL)}
+    \preformatted{PopStructure$new(
+  geno,
+  samples = NULL,
+  meta = NULL,
+  n_pcs = 50,
+  colors = NULL,
+  allele = NULL,
+  pruned = NULL,
+  full = NULL
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{geno}}{Genotype matrix (samples x SNPs, 0/1/2, \code{NA}) or \code{run_ld_prune()} list.}
+      \item{\code{geno}}{Genotype matrix (samples x SNPs, 0/1/2, \code{NA}) or \code{load_genotypes()} list.}
       \item{\code{samples}}{Sample ids (default row names / the list's \code{sample.id}).}
       \item{\code{meta}}{Optional metadata (data frame with a \code{sample} column).}
       \item{\code{n_pcs}}{Number of PCs to summarise.}
       \item{\code{colors}}{Optional named list of colour maps (see \code{\link[=meta_colors]{meta_colors()}}).}
+      \item{\code{allele}}{Which allele the dosages count, \code{"alt"} or \code{"ref"}. Taken from a
+\code{\link[=load_genotypes]{load_genotypes()}} list when it says so; a bare matrix cannot say, and the two codings
+are indistinguishable afterwards, so anything that names the calls has to be told.}
+      \item{\code{pruned}}{Whether the SNPs were LD-pruned. Taken from a \code{\link[=load_genotypes]{load_genotypes()}} list
+when it says so. Pruning is right for PCA / admixture and wrong for looking at
+haplotypes, since it drops SNPs precisely for being correlated with a neighbour.}
     }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-add_panel"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-add_panel}{}}}
+\subsection{\code{PopStructure$add_panel()}}{
+  Register another genotype panel under a name, so one object can hold the
+pruned SNPs for PCA / admixture and the full set for the analyses where the
+correlation between neighbouring SNPs is the signal.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$add_panel(name, geno, allele = NULL, pruned = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Panel name (\code{"full"} and \code{"pruned"} are the ones other functions ask for).}
+      \item{\code{geno}}{Genotype matrix, or a \code{\link[=load_genotypes]{load_genotypes()}} list.}
+      \item{\code{allele, pruned}}{What this panel is; taken from a \code{load_genotypes()} list when it
+says so.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-panels"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-panels}{}}}
+\subsection{\code{PopStructure$panels()}}{
+  The panels this object holds, primary first.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$panels()}
     \if{html}{\out{</div>}}
   }
 }
@@ -368,7 +424,16 @@ simply filtered).
   The genotype matrix for the active samples (samples x SNPs).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$genotype()}
+    \preformatted{PopStructure$genotype(panel = NULL, prefer = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{panel}}{Panel to return by name; the primary one when \code{NULL}.}
+      \item{\code{prefer}}{Panel to use \emph{if the object has it}, falling back to the primary one --
+how an analysis asks for the panel it wants without requiring it.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -441,6 +506,46 @@ simply filtered).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{PopStructure$get_colors()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-allele"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-allele}{}}}
+\subsection{\code{PopStructure$allele()}}{
+  Which allele the dosages count (\code{"alt"} / \code{"ref"}), or \code{NULL} when the
+object does not record it (built from a bare matrix, or saved by an older version).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$allele(panel = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{panel}}{Which panel to report on; the primary one when \code{NULL}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-pruned"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-pruned}{}}}
+\subsection{\code{PopStructure$pruned()}}{
+  Whether the SNPs were LD-pruned (\code{TRUE} / \code{FALSE}), or \code{NULL} when the
+object does not record it.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$pruned(panel = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{panel}}{Which panel to report on; the primary one when \code{NULL}.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -568,7 +673,7 @@ matches the UMAP/PCA colouring.
 \subsection{\code{PopStructure$pop_diff()}}{
   Per-SNP population differentiation between the levels of a metadata
 column (see \code{\link[=pop_diff]{pop_diff()}}); uses the object's genotype matrix (pass
-\code{genotype = run_ld_prune(vcf, prune = FALSE)} to run on the full unpruned set).
+\code{genotype = load_genotypes(vcf, prune = FALSE)} to run on the full unpruned set).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{PopStructure$pop_diff(group = NULL, ...)}
@@ -784,6 +889,27 @@ override, see \code{\link[=pop_diff]{pop_diff()}}).}
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{...}}{Passed to \code{\link[=parasite_haplotypes]{parasite_haplotypes()}} (e.g. \verb{fws = }, \verb{maf = }).}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-plot_region_haplotypes"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-plot_region_haplotypes}{}}}
+\subsection{\code{PopStructure$plot_region_haplotypes()}}{
+  Genotype heatmap over one region, samples clustered
+(see \code{\link[=plot_region_haplotypes]{plot_region_haplotypes()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$plot_region_haplotypes(region, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{region}}{The interval to draw.}
+      \item{\code{...}}{Passed to \code{\link[=plot_region_haplotypes]{plot_region_haplotypes()}} (e.g. \verb{split = }, \verb{spacing = }).}
     }
     \if{html}{\out{</div>}}
   }

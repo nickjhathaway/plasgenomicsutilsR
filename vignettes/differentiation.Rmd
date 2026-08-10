@@ -16,7 +16,7 @@ library(plasgenomicsutilsR)
 groups: **Jost's D** (`jost_d()`), **Hedrick's standardized G′st**, and **Hudson's Fst**.
 It wants the **full, unpruned** genotypes (LD-pruning throws away the differentiating SNPs);
 a `PopStructure` holds a *pruned* matrix for PCA/UMAP, so pass a full set through the
-`genotype` override, `genotype = run_ld_prune(vcf, prune = FALSE)`.
+`genotype` override, `genotype = load_genotypes(vcf, prune = FALSE)`.
 
 ```r
 ps <- example_pop_structure("africa")

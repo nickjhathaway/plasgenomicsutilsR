@@ -225,3 +225,14 @@ test_that("read_ld_decay rejects a table missing its columns", {
   writeLines(c("group\tbin_mid", "a\t100"), f)
   expect_error(read_ld_decay(f), "missing column")
 })
+
+test_that("freqbin defaults to one bin for an unpolarized scan", {
+  rf <- plasgenomicsutilsR:::.resolve_freqbin
+  # unpolarized has no derived allele to bin by, so a single bin is the honest choice
+  expect_equal(rf(NULL, polarized = FALSE), 1)
+  expect_equal(rf(NULL, polarized = TRUE), 0.05)
+  # an explicit choice is respected, but binning an unpolarized scan is called out
+  expect_warning(rf(0.05, polarized = FALSE), "not the derived-allele frequency")
+  expect_silent(rf(0.05, polarized = TRUE))
+  expect_silent(rf(1, polarized = FALSE))
+})
