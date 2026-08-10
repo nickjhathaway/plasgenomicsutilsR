@@ -47,6 +47,7 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-get_meta}{\code{PopStructure$get_meta()}}
     \item \href{#method-PopStructure-get_colors}{\code{PopStructure$get_colors()}}
     \item \href{#method-PopStructure-allele}{\code{PopStructure$allele()}}
+    \item \href{#method-PopStructure-positions}{\code{PopStructure$positions()}}
     \item \href{#method-PopStructure-pruned}{\code{PopStructure$pruned()}}
     \item \href{#method-PopStructure-get_samples}{\code{PopStructure$get_samples()}}
     \item \href{#method-PopStructure-as_ps}{\code{PopStructure$as_ps()}}
@@ -87,7 +88,8 @@ west <- ps$subset(population = c("PopA", "PopB"))
   colors = NULL,
   allele = NULL,
   pruned = NULL,
-  full = NULL
+  full = NULL,
+  one_based = FALSE
 )}
     \if{html}{\out{</div>}}
   }
@@ -105,6 +107,9 @@ are indistinguishable afterwards, so anything that names the calls has to be tol
       \item{\code{pruned}}{Whether the SNPs were LD-pruned. Taken from a \code{\link[=load_genotypes]{load_genotypes()}} list
 when it says so. Pruning is right for PCA / admixture and wrong for looking at
 haplotypes, since it drops SNPs precisely for being correlated with a neighbour.}
+      \item{\code{one_based}}{The genotype column names carry 1-based VCF positions (a matrix built
+by an older \code{load_genotypes()}, or read straight off a VCF); shift them to the 0-based
+convention on the way in.}
     }
     \if{html}{\out{</div>}}
   }
@@ -526,6 +531,19 @@ object does not record it (built from a bare matrix, or saved by an older versio
     \describe{
       \item{\code{panel}}{Which panel to report on; the primary one when \code{NULL}.}
     }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-positions"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-positions}{}}}
+\subsection{\code{PopStructure$positions()}}{
+  Which convention the SNP positions follow, or \code{NULL} when the object does
+not record it (built before this was tracked -- rebuild it, or pass \code{one_based}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$positions()}
     \if{html}{\out{</div>}}
   }
 }

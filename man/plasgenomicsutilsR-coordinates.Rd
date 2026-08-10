@@ -21,8 +21,27 @@ them. A variant sits inside a gene when \code{pos >= start & pos < end}.
 Formats that number differently are converted once, at the boundary, and never leak
 inward: the PlasmoDB GFF (1-based inclusive) is shifted where the gene datasets are
 built in \verb{data-raw/}; \code{hmmibd-rs} blocks (0-based, both endpoints inclusive) get
-\code{end + 1} when an \link{IbdResults} reads them; and VCF \code{POS} becomes \code{POS - 1} in the
-companion Python package before any table reaches R.
+\code{end + 1} when an \link{IbdResults} reads them; and VCF \code{POS} becomes \code{POS - 1} both in the
+companion Python package before any table reaches R and in \code{\link[=load_genotypes]{load_genotypes()}}, which is
+where positions enter on the R side (\pkg{SNPRelate} reports 1-based \code{POS}). That last
+one matters more than it looks: a scan built from those genotypes -- \code{\link[=run_ihs]{run_ihs()}},
+\code{\link[=beta_score]{beta_score()}}, \code{pop_diff_snps()} -- would otherwise sit one base off every IBD table and
+every interval, which breaks exact joins between tracks and mis-assigns a SNP sitting on a
+gene boundary. A \link{PopStructure} records the convention (\verb{$positions()}); a matrix built
+elsewhere, or by a version before this, can be declared with
+\code{PopStructure$new(..., one_based = TRUE)} and is shifted on the way in.
+
+\strong{One deliberate exception: amino-acid positions are 1-based}, counting the initiator
+methionine as residue 1, both where you supply them (\code{\link[=aa_intervals]{aa_intervals()}}) and where they are
+reported (\code{\link[=snp_aa_positions]{snp_aa_positions()}}) -- as is \code{codon_base}, which runs 1/2/3 through the codon in
+transcript orientation. Residue numbering is too settled in the literature to renumber:
+\emph{pfcrt} K76T is codon 76 everywhere it is written down, and a package that called it 75
+would be wrong in the only sense that matters. Verified against the sequence -- codon 1 of
+\emph{pfcrt} is \verb{403,222-403,224}, which reads \code{ATG}, and codon 1 of the minus-strand
+\emph{pfkelch13} is \verb{1,726,995-1,726,997}, \code{CAT} on the forward strand and so \code{ATG} read along
+the transcript. Genomic coordinates in those same tables (\code{start}, \code{end}) stay 0-based
+half-open like everything else; \code{codon_positions} is the one place a 1-based \emph{position} is
+reported, because those are the numbers people quote.
 
 A \code{snp_id} is therefore \code{chr:pos0}, one less than the position the VCF or a genome
 browser shows. Pass \code{--with-pos-vcf} to the Python tools to carry the 1-based position

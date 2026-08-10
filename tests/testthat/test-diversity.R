@@ -109,7 +109,8 @@ test_that("pop_diversity accepts a PopStructure and its grouping", {
   expect_equal(nrow(d), 2)
   expect_setequal(as.character(d$group), c("Ghana", "Cambodia"))
   expect_true(all(d$he > 0 & d$he < 1))
-  expect_true(all(d$n_snps == ncol(ps$genotype())))
+  # these read the full panel, not the thinned one PCA uses
+  expect_true(all(d$n_snps == ncol(ps$genotype(prefer = "full"))))
 })
 
 

@@ -1,6 +1,6 @@
 Package: plasgenomicsutilsR
 Title: Utilities for Visualizing Plasmodium Genomics Data
-Version: 0.3.0
+Version: 0.3.1
 Authors@R:
     person("Nicholas", "Hathaway", email = "nickjhathaway@gmail.com",
            role = c("aut", "cre"))

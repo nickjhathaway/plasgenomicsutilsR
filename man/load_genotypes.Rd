@@ -49,7 +49,8 @@ arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation
 and selection statistic here is symmetric in \code{p} and \code{1 - p}.}
 }
 \value{
-A list with \code{genotype} (matrix; sample row names and \code{chr:pos} column names),
+A list with \code{genotype} (matrix; sample row names and \code{chr:pos0} column names --
+0-based, like every other position in the package),
 \code{sample.id}, \code{snp.id}, and the two facts the matrix itself cannot carry: \code{allele} (which
 allele the dosages count) and \code{pruned}. \link{PopStructure} keeps both, so anything that names
 a call or warns about pruning can ask instead of assuming.

@@ -66,9 +66,25 @@
   segs
 }
 
-# Which SNPs to mark: `chr:pos` ids, bare positions, or a gene name resolved in `genes`.
+# Which SNPs to mark: `chr:pos` ids, bare positions, a gene name resolved in `genes`, or an
+# interval table (every SNP inside each interval -- an aa_intervals() codon table, say, which
+# saves the caller doing coordinate arithmetic on it).
 .resolve_marks <- function(marks, loci, genes, reference) {
   if (is.null(marks) || !length(marks)) return(numeric(0))
+  if (is.data.frame(marks)) {
+    if (!all(c("start", "end") %in% names(marks)))
+      stop("a data frame `mark_snps` needs start and end columns", call. = FALSE)
+    ch <- if ("chr" %in% names(marks)) normalise_chr(marks$chr)
+          else if ("chrom" %in% names(marks)) normalise_chr(marks$chrom) else NA_character_
+    out <- unlist(lapply(seq_len(nrow(marks)), function(i) {
+      keep <- loci$pos >= marks$start[i] & loci$pos < marks$end[i]
+      if (!is.na(ch[i])) keep <- keep & loci$chr == ch[i]
+      loci$pos[keep]
+    }), use.names = FALSE)
+    if (!length(out))
+      message("no genotyped SNP inside any `mark_snps` interval, so nothing is marked")
+    return(out)
+  }
   if (is.numeric(marks)) return(marks)
   out <- lapply(marks, function(m) {
     hit <- which(loci$snp_id == m | loci$id_norm == m)
@@ -107,6 +123,15 @@
 #' coordinate, so a dense cluster of SNPs looks dense -- correct about position, but sparse
 #' stretches become wide empty bands.
 #'
+#' Either way a SNP is only ever drawn over the genes it really falls in. Under `"even"` the
+#' axis counts SNPs, so a gene's box is exactly the columns it holds: its width says how many
+#' SNPs are in it, **not** how long it is, and a gene with no genotyped SNP in the window has no
+#' width at all and is left off the track with a message. (Interpolating genomic bounds onto a
+#' SNP-index axis instead puts each gene edge at a fractional column, and since a tile occupies a
+#' whole column, a SNP just outside a gene ends up drawn over it.) Under `"genomic"` the boxes
+#' are true extents and it is the fixed-width SNP marks that are clipped, so a mark near a gene
+#' edge stops there rather than reaching into its neighbour.
+#'
 #' @param x A [PopStructure] object (its genotypes supply the calls, its metadata the split).
 #' @param region The interval to draw: a gene name from `genes`, a range
 #'   (`"13:1,720,000-1,730,000"`), a whole chromosome, or a one-row data frame with
@@ -134,8 +159,10 @@
 #'   arrive, which is worth doing when the metadata order is the point.
 #' @param dendrogram Draw the dendrogram beside the rows (needs `cluster`).
 #' @param dend_width Width of the dendrogram panel, as a fraction of the heatmap's.
-#' @param mark_snps Optional SNPs to mark with a vertical line: `chr:pos` ids, bare
-#'   positions, or a gene name from `genes` (marking every SNP in it).
+#' @param mark_snps Optional SNPs to mark with a vertical line: `chr:pos` ids, bare positions,
+#'   a gene name from `genes`, or an interval table with `start`/`end` (and `chr`) -- every SNP
+#'   inside each interval is marked, so an [aa_intervals()] codon table can be passed straight
+#'   in without converting its coordinates.
 #' @param mark_colour Colour for those lines.
 #' @param genes Gene table for the track and for resolving names (e.g. [PF3D7_GENES]).
 #' @param gene_track Draw the gene track under the heatmap (default `TRUE` when `genes` is
@@ -159,7 +186,8 @@
 #'   neither of those two is drawn.
 #' @examples
 #' ps <- example_pop_structure(umap = FALSE)
-#' plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES)
+#' plot_region_haplotypes(ps, "pfcrt", split = "country", pad = 20000,
+#'                        genes = PF_EXAMPLE_DRUG_GENES)
 #' @export
 plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                                    genotypes = NULL, samples = NULL,
@@ -236,6 +264,9 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
             "`load_genotypes(..., prune = FALSE)` for a haplotype view")
 
   tiles <- .snp_tile_x(sel, spacing, snp_width)
+  gene_boxes <- .gene_boxes_in_x(genes, iv, sel, tiles, spacing)
+  # a mark must never straddle into a gene the SNP is not in (see .clip_tiles_to_genes)
+  if (spacing == "genomic") tiles <- .clip_tiles_to_genes(tiles, sel, gene_boxes)
   long$xmin <- tiles$xmin[long$col]
   long$xmax <- tiles$xmax[long$col]
   # under genomic spacing the marks no longer reach the window edges, but the axis should
@@ -290,8 +321,9 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                             strip.text.y.right = ggplot2::element_blank(),
                             strip.background = ggplot2::element_blank())
   track <- if (gene_track) {
-    boxes <- .gene_boxes_in_x(genes, iv, sel, tiles, spacing)
-    .gene_track_panel(boxes, xlim, angle = gene_label_angle, width_in = .ZOOM_WIDTH_IN)
+    boxes <- gene_boxes
+    .gene_track_panel(boxes, xlim, angle = gene_label_angle, width_in = .ZOOM_WIDTH_IN,
+                      min_width = spacing == "genomic")
   } else NULL
 
   out <- .assemble_haplotype_panels(p, dend, ann, track, dend_width)
@@ -480,13 +512,54 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
     g$.gene_xmax <- as.numeric(g$end)
     return(g)
   }
-  to_col <- function(v) {
-    if (nrow(sel) == 1) return(rep(1, length(v)))
-    stats::approx(sel$pos, seq_len(nrow(sel)), xout = v, rule = 2)$y
-  }
-  g$.gene_xmin <- to_col(as.numeric(g$start))
-  g$.gene_xmax <- to_col(as.numeric(g$end))
+
+  # Under even spacing the axis counts SNPs, so a gene's extent on it is exactly the columns it
+  # holds -- nothing else is well defined. Interpolating its genomic bounds onto the axis instead
+  # puts each edge at a fractional column, and since a tile occupies a whole column, a SNP just
+  # outside a gene ends up drawn over that gene's box. Snap to the columns.
+  #
+  # A gene with no SNP in the window therefore has no extent at all, and any box drawn for it
+  # would necessarily sit under some other gene's SNPs; those are dropped and reported.
+  in_gene <- lapply(seq_len(nrow(g)), function(j)
+    which(sel$pos >= as.numeric(g$start[j]) & sel$pos < as.numeric(g$end[j])))
+  empty <- lengths(in_gene) == 0
+  if (any(empty))
+    message(sum(empty), " gene(s) in the window hold no genotyped SNP and are left off the ",
+            "track under `spacing = \"even\"`, where they have no width: ",
+            paste(utils::head(g$name[empty], 5), collapse = ", "),
+            if (sum(empty) > 5) ", ..." else "")
+  g <- g[!empty, , drop = FALSE]
+  in_gene <- in_gene[!empty]
+  if (!nrow(g)) return(NULL)
+  g$.gene_xmin <- vapply(in_gene, function(i) min(i) - 0.5, numeric(1))
+  g$.gene_xmax <- vapply(in_gene, function(i) max(i) + 0.5, numeric(1))
   g
+}
+
+# Keep a genomic-spacing mark from spilling into a gene it is not in: each SNP's fixed-width
+# mark is clipped to the gene that holds it, or to the gap between the flanking genes when it
+# holds none. Only marks within half their own width of a boundary move at all.
+.clip_tiles_to_genes <- function(tiles, sel, boxes, min_frac = 0.25) {
+  if (is.null(boxes) || !nrow(boxes)) return(tiles)
+  gs <- as.numeric(boxes$.gene_xmin); ge <- as.numeric(boxes$.gene_xmax)
+  w <- tiles$xmax - tiles$xmin
+  for (k in seq_along(tiles$xmin)) {
+    p <- sel$pos[k]
+    inside <- which(p >= gs & p < ge)
+    if (length(inside)) {
+      lo <- max(gs[inside]); hi <- min(ge[inside])
+    } else {
+      before <- ge[ge <= p]; after <- gs[gs > p]
+      lo <- if (length(before)) max(before) else -Inf
+      hi <- if (length(after)) min(after) else Inf
+    }
+    # never shrink a mark to invisibility: keep a quarter of its width, centred on the SNP
+    floor_w <- w[k] * min_frac
+    if (hi - lo < floor_w) next
+    tiles$xmin[k] <- min(max(tiles$xmin[k], lo), hi - floor_w)
+    tiles$xmax[k] <- max(min(tiles$xmax[k], hi), lo + floor_w)
+  }
+  tiles
 }
 
 # The dendrogram panel: rows on the y axis so it lines up with the heatmap, distance growing

@@ -27,6 +27,10 @@
 #'   in `n_intervals`, instead of one row per SNP x interval (default `FALSE`).
 #' @param prefix Prepend this to the added column names, to keep two annotations side by
 #'   side (e.g. `prefix = "core_"`).
+#' @param one_based_snps The positions in `scan` are 1-based (VCF `POS`), so shift them before
+#'   testing. Genotype-matrix column names from [load_genotypes()] are 1-based, and joining
+#'   those against these 0-based intervals without saying so moves every SNP one base and can
+#'   turn a near-miss into a hit. Default `FALSE`, the package convention.
 #' @return `scan` with `name`, `interval_start`, `interval_end`, `distance_to_midpoint` and
 #'   any `gene_id` carried through -- plus `n_intervals` when `collapse = TRUE`. The
 #'   original columns and their order are preserved.
@@ -39,7 +43,7 @@
 #' annotate_snps(ihs, PF_EXAMPLE_DRUG_GENES, keep = "hits")
 #' @export
 annotate_snps <- function(scan, intervals, within = 0, keep = c("all", "hits"),
-                          collapse = FALSE, prefix = "") {
+                          collapse = FALSE, prefix = "", one_based_snps = FALSE) {
   keep <- match.arg(keep)
   df <- as.data.frame(scan, stringsAsFactors = FALSE)
   if (!nrow(df)) return(scan)
@@ -57,6 +61,10 @@ annotate_snps <- function(scan, intervals, within = 0, keep = c("all", "hits"),
   } else {
     stop("`scan` needs a `snp_id` column, or `chr` and `pos` columns", call. = FALSE)
   }
+  # A genotype matrix from load_genotypes() names its columns with 1-based VCF positions
+  # (SNPRelate's convention), while intervals here are 0-based half-open. Joining the two
+  # without saying so shifts every SNP one base and quietly turns near-misses into hits.
+  if (isTRUE(one_based_snps)) pos <- pos - 1
 
   iv <- .gene_track(intervals)
   gid <- if ("gene_id" %in% names(intervals)) as.character(intervals$gene_id) else NULL

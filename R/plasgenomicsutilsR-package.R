@@ -28,8 +28,27 @@ NULL
 #' Formats that number differently are converted once, at the boundary, and never leak
 #' inward: the PlasmoDB GFF (1-based inclusive) is shifted where the gene datasets are
 #' built in `data-raw/`; `hmmibd-rs` blocks (0-based, both endpoints inclusive) get
-#' `end + 1` when an [IbdResults] reads them; and VCF `POS` becomes `POS - 1` in the
-#' companion Python package before any table reaches R.
+#' `end + 1` when an [IbdResults] reads them; and VCF `POS` becomes `POS - 1` both in the
+#' companion Python package before any table reaches R and in [load_genotypes()], which is
+#' where positions enter on the R side (\pkg{SNPRelate} reports 1-based `POS`). That last
+#' one matters more than it looks: a scan built from those genotypes -- [run_ihs()],
+#' [beta_score()], `pop_diff_snps()` -- would otherwise sit one base off every IBD table and
+#' every interval, which breaks exact joins between tracks and mis-assigns a SNP sitting on a
+#' gene boundary. A [PopStructure] records the convention (`$positions()`); a matrix built
+#' elsewhere, or by a version before this, can be declared with
+#' `PopStructure$new(..., one_based = TRUE)` and is shifted on the way in.
+#'
+#' **One deliberate exception: amino-acid positions are 1-based**, counting the initiator
+#' methionine as residue 1, both where you supply them ([aa_intervals()]) and where they are
+#' reported ([snp_aa_positions()]) -- as is `codon_base`, which runs 1/2/3 through the codon in
+#' transcript orientation. Residue numbering is too settled in the literature to renumber:
+#' *pfcrt* K76T is codon 76 everywhere it is written down, and a package that called it 75
+#' would be wrong in the only sense that matters. Verified against the sequence -- codon 1 of
+#' *pfcrt* is `403,222-403,224`, which reads `ATG`, and codon 1 of the minus-strand
+#' *pfkelch13* is `1,726,995-1,726,997`, `CAT` on the forward strand and so `ATG` read along
+#' the transcript. Genomic coordinates in those same tables (`start`, `end`) stay 0-based
+#' half-open like everything else; `codon_positions` is the one place a 1-based *position* is
+#' reported, because those are the numbers people quote.
 #'
 #' A `snp_id` is therefore `chr:pos0`, one less than the position the VCF or a genome
 #' browser shows. Pass `--with-pos-vcf` to the Python tools to carry the 1-based position
