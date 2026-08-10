@@ -19,6 +19,8 @@ Genome-wide and group-by-group IBD figures.
   : IBD selection-statistic Manhattan plot
 - [`plot_ibd_tugofwar()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_tugofwar.md)
   : IBD / selection "tug-of-war" mirror plot
+- [`plot_ibd_locus()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_locus.md)
+  : One locus in detail: IBD sharing against a selection scan
 - [`plot_ibd_pairwise_group_heatmap()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pairwise_group_heatmap.md)
   : Group-by-group IBD heatmap along the genome
 - [`plot_pairwise_ibd_for_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pairwise_ibd_for_genes.md)
@@ -36,6 +38,8 @@ adjacency list with gene coverage.
   : Per-gene IBD-block overlap between groups
 - [`gene_ibd_pairs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_pairs.md)
   : Sample pairs sharing IBD over each gene
+- [`add_ibd_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.md)
+  : Add IBD cluster ids to the stored metadata
 
 ## Selection genes
 
@@ -51,8 +55,10 @@ workspace.
 
 - [`PopStructure`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.md)
   : Population-structure workspace (PCA + UMAP + admixture)
+- [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+  : Load genotypes from a VCF, optionally LD-pruned
 - [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
-  : LD-prune a VCF and return the genotype matrix
+  : Deprecated name for load_genotypes()
 - [`pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_structure.md)
   : Compute PCA and UMAP from a genotype matrix
 - [`plot_pca()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pca.md)
@@ -156,6 +162,10 @@ balancing selection from clustered allele frequencies (beta).
   : Summarise a haplotype scan per gene
 - [`plot_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ihs.md)
   : Manhattan plot of a haplotype-homozygosity scan
+- [`plot_ehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ehh.md)
+  : EHH decay around one SNP
+- [`plot_region_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_region_haplotypes.md)
+  : Genotypes over one region, clustered by sample
 - [`beta_score()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.md)
   : Beta: balancing selection from clustered allele frequencies
 - [`beta_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_genes.md)
@@ -206,6 +216,8 @@ Colour-blind-friendly palettes and a shared level-to-colour map.
 Overlap two BED-style interval tables (genes vs. core / paralog regions,
 …). All coordinates in the package follow one convention.
 
+- [`annotate_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.md)
+  : Which intervals each SNP falls in
 - [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md)
   : Intersect two sets of genomic intervals
 - [`plasgenomicsutilsR-coordinates`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)

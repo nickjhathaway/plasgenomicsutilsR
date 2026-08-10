@@ -29,7 +29,7 @@ run_snmf(
 
   A genotype matrix (samples x SNPs, 0/1/2, `NA` allowed) or the list
   from
-  [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md).
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md).
 
 - K:
 

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -96,6 +96,13 @@
 
         <dt>
 
+          <code><a href="plot_ibd_locus.html">plot_ibd_locus()</a></code>
+
+        </dt>
+        <dd>One locus in detail: IBD sharing against a selection scan</dd>
+
+        <dt>
+
           <code><a href="plot_ibd_pairwise_group_heatmap.html">plot_ibd_pairwise_group_heatmap()</a></code>
 
         </dt>
@@ -137,6 +144,13 @@
 
         </dt>
         <dd>Sample pairs sharing IBD over each gene</dd>
+
+        <dt>
+
+          <code><a href="add_ibd_clusters.html">add_ibd_clusters()</a></code>
+
+        </dt>
+        <dd>Add IBD cluster ids to the stored metadata</dd>
       </dl></div><div class="section level2">
       <h2 id="selection-genes">Selection genes<a class="anchor" aria-label="anchor" href="#selection-genes"></a></h2>
 
@@ -172,10 +186,17 @@
 
         <dt>
 
+          <code><a href="load_genotypes.html">load_genotypes()</a></code>
+
+        </dt>
+        <dd>Load genotypes from a VCF, optionally LD-pruned</dd>
+
+        <dt>
+
           <code><a href="run_ld_prune.html">run_ld_prune()</a></code>
 
         </dt>
-        <dd>LD-prune a VCF and return the genotype matrix</dd>
+        <dd>Deprecated name for load_genotypes()</dd>
 
         <dt>
 
@@ -467,6 +488,20 @@
 
         <dt>
 
+          <code><a href="plot_ehh.html">plot_ehh()</a></code>
+
+        </dt>
+        <dd>EHH decay around one SNP</dd>
+
+        <dt>
+
+          <code><a href="plot_region_haplotypes.html">plot_region_haplotypes()</a></code>
+
+        </dt>
+        <dd>Genotypes over one region, clustered by sample</dd>
+
+        <dt>
+
           <code><a href="beta_score.html">beta_score()</a></code>
 
         </dt>
@@ -600,6 +635,13 @@
 
 
       <dl><dt>
+
+          <code><a href="annotate_snps.html">annotate_snps()</a></code>
+
+        </dt>
+        <dd>Which intervals each SNP falls in</dd>
+
+        <dt>
 
           <code><a href="bed_intersect.html">bed_intersect()</a></code>
 

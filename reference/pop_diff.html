@@ -13,7 +13,7 @@ plot_diff_heatmap() for a group summary, or top_differentiating_snps() for marke
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,7 @@ plot_diff_heatmap() for a group summary, or top_differentiating_snps() for marke
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Population differentiation between metadata groups, per SNP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
       <div class="d-none name"><code>pop_diff.Rd</code></div>
     </div>
 
@@ -98,9 +98,9 @@ genome-wide in <em>P. falciparum</em>); its standardized form G'st is provided i
 
 
 <dt id="arg-genotype">genotype<a class="anchor" aria-label="anchor" href="#arg-genotype"></a></dt>
-<dd><p>Optional genotype matrix (samples x SNPs) or <code><a href="run_ld_prune.html">run_ld_prune()</a></code> list to
+<dd><p>Optional genotype matrix (samples x SNPs) or <code><a href="load_genotypes.html">load_genotypes()</a></code> list to
 use <strong>instead</strong> of a <code>PopStructure</code>'s stored matrix – pass the <strong>full, unpruned</strong>
-set here (e.g. <code>run_ld_prune(vcf, prune = FALSE)</code>) so differentiation is measured on
+set here (e.g. <code>load_genotypes(vcf, prune = FALSE)</code>) so differentiation is measured on
 every SNP while PCA/UMAP keep using the pruned matrix. Ignored when <code>x</code> is a matrix.</p></dd>
 
 </dl></div>

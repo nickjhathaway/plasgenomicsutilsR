@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@
       <h1>IBD analysis</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/vignettes/ibd.Rmd" class="external-link"><code>vignettes/ibd.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/vignettes/ibd.Rmd" class="external-link"><code>vignettes/ibd.Rmd</code></a></small>
       <div class="d-none name"><code>ibd.Rmd</code></div>
     </div>
 
@@ -249,7 +249,37 @@ threshold:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_selection_manhattan.html">plot_selection_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, chroms <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"7"</span>, <span class="st">"13"</span><span class="op">)</span>,</span>
 <span>                         highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfkelch13"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p><img src="ibd_files/figure-html/chroms-1.png" class="r-plt" alt="" width="768"></p>
+</div>
+<div class="section level2">
+<h2 id="zooming-in">Zooming in<a class="anchor" aria-label="anchor" href="#zooming-in"></a>
+</h2>
+<p><code>zoom</code> crops the same plot to one interval without
+changing the data behind it, so a locus sits at the same coordinate in
+the zoomed and the genome-wide figure. It takes a chromosome, a range, a
+gene name from the object’s track, or a data frame with chr/start/end,
+and every gene in the window is drawn and named in a track
+underneath:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_selection_manhattan.html">plot_selection_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, zoom <span class="op">=</span> <span class="st">"7:340,000-470,000"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/zoom-1.png" class="r-plt" alt="" width="768"></p>
+<p><code>zoom_pad</code> adds context around the interval – a fraction
+of its span below 1, base pairs at or above it – which is what makes a
+single gene a usable window:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_sharing_manhattan.html">plot_ibd_sharing_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, zoom <span class="op">=</span> <span class="st">"pfcrt"</span>, zoom_pad <span class="op">=</span> <span class="fl">100000</span><span class="op">)</span></span></code></pre></div>
+<p><img src="ibd_files/figure-html/zoom-gene-1.png" class="r-plt" alt="" width="768"></p>
+<p>Two values pad the left and the right separately, in that order or
+named, so a window can follow a signal that runs off one side of a
+gene:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_sharing_manhattan.html">plot_ibd_sharing_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, zoom <span class="op">=</span> <span class="st">"pfcrt"</span>,</span>
+<span>                           zoom_pad <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>left <span class="op">=</span> <span class="fl">20000</span>, right <span class="op">=</span> <span class="fl">120000</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><img src="ibd_files/figure-html/zoom-asym-1.png" class="r-plt" alt="" width="768"></p>
+<p><code>zoom</code> works the same way on
+<code><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar()</a></code> and on the scan plots
+(<code><a href="../reference/plot_ihs.html">plot_ihs()</a></code>, <code><a href="../reference/plot_beta.html">plot_beta()</a></code>,
+<code><a href="../reference/plot_diversity.html">plot_diversity()</a></code>).</p>
 </div>
 <div class="section level2">
 <h2 id="which-genes-are-under-selection">Which genes are under selection?<a class="anchor" aria-label="anchor" href="#which-genes-are-under-selection"></a>
@@ -259,7 +289,7 @@ threshold:</p>
 <code>genes</code> track. Because filtering can leave the peak SNP just
 outside a gene, a SNP counts when it falls within <code>within</code> bp
 of the gene (default 2 kb):</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pos_selection_genes.html">pos_selection_genes</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span>                       <span class="co"># object's drug-gene track, 2 kb window</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 0 × 14</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 14 variables: group &lt;chr&gt;, gene_id &lt;chr&gt;, name &lt;chr&gt;, chr &lt;chr&gt;,</span></span></span>
@@ -271,7 +301,7 @@ SNP (<code>peak_*</code>). Pass <code>genes = PF3D7_GENES</code> to scan
 <strong>every</strong> gene without attaching the 5,000-gene track to
 the object (which would make the Manhattan plots draw a line per
 gene):</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pos_selection_genes.html">pos_selection_genes</a></span><span class="op">(</span><span class="va">ibd</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, within <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 56 × 14</span></span></span>
 <span><span class="co">#&gt;    group gene_id    name  chr   gene_start gene_end n_snps min_distance peak_pos</span></span>
@@ -296,7 +326,7 @@ gene):</p>
 <p><code>ibd_selection_statistic</code> reports up to four cutoffs, and
 <code>get_thresholds()</code> shows them beside the diagnostic that says
 which to use:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ibd</span><span class="op">$</span><span class="fu">get_thresholds</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 2</span></span></span>
 <span><span class="co">#&gt;   group    threshold</span></span>
@@ -330,25 +360,25 @@ monotone, but they are not probabilities.</p>
 wrote (chi-square lines warm, permutation lines cool). The shipped
 example comes from a run without <code>--permute</code>, so only the
 Bonferroni line is available here:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_selection_manhattan.html">plot_selection_manhattan</a></span><span class="op">(</span><span class="va">ibd</span>, draw_threshold <span class="op">=</span> <span class="st">"all"</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/sel-thresholds-plot-1.png" class="r-plt" alt="" width="768"></p>
 <p>Then merge whichever criterion you settle on into loci, rather than
 reporting SNP counts — a sweep spans many SNPs, so a SNP count largely
 measures panel density:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/selection_peaks.html">selection_peaks</a></span><span class="op">(</span><span class="va">ibd</span>, criterion <span class="op">=</span> <span class="st">"bonferroni"</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, min_snps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 13</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 14</span></span></span>
 <span><span class="co">#&gt;   group chr    start    end width n_snps peak_pos peak_value mean_value</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> DRC   7     <span style="text-decoration: underline;">417</span>012 <span style="text-decoration: underline;">435</span>119 <span style="text-decoration: underline;">18</span>107      2   <span style="text-decoration: underline;">417</span>012       9.45       7.88</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Sudan 4     <span style="text-decoration: underline;">631</span>781 <span style="text-decoration: underline;">655</span>067 <span style="text-decoration: underline;">23</span>286      3   <span style="text-decoration: underline;">631</span>781       7.47       6.34</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 4 more variables: peak_genes &lt;chr&gt;, nearest_gene &lt;chr&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   distance_to_gene &lt;dbl&gt;, n_genes &lt;int&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: peak_interval_genes &lt;list&gt;, gene_at_peak &lt;chr&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   nearest_gene &lt;chr&gt;, distance_to_gene &lt;dbl&gt;, n_genes &lt;int&gt;</span></span></span></code></pre></div>
 <p>With a <code>--permute</code> run the same call takes
 <code>criterion = "permutation"</code> or <code>"empirical"</code>, and
 <code>draw_threshold</code> the matching names:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/selection_peaks.html">selection_peaks</a></span><span class="op">(</span><span class="va">ibd</span>, criterion <span class="op">=</span> <span class="st">"permutation"</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, min_snps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/selection_peaks.html">selection_peaks</a></span><span class="op">(</span><span class="va">ibd</span>, criterion <span class="op">=</span> <span class="st">"empirical"</span>, genes <span class="op">=</span> <span class="va">PF3D7_GENES</span>, min_snps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -359,9 +389,53 @@ measures panel density:</p>
 colour-coded axis. <code>scale = "common"</code> keeps panels
 comparable; <code>scale = "free"</code> lets each group use its own
 maximum:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span>, highlight_genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfdhps"</span><span class="op">)</span>, label_genes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/tugofwar-1.png" class="r-plt" alt="" width="768"></p>
+<p><code>top</code> replaces the upper track with any per-SNP scan,
+which is how you ask whether the IBD signal coincides with a haplotype
+signal rather than with the statistic derived from the same segments.
+The scan needs a <code>group</code> column matching the IBD groups;
+two-population scans (<code><a href="../reference/run_rsb.html">run_rsb()</a></code>, <code><a href="../reference/run_xpehh.html">run_xpehh()</a></code>)
+are indexed by population pair and cannot be mirrored against per-group
+IBD.</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># hap &lt;- parasite_haplotypes(ps, maf = 0.05)</span></span>
+<span><span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span>, top <span class="op">=</span> <span class="fu"><a href="../reference/run_ihs.html">run_ihs</a></span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span>, top_label <span class="op">=</span> <span class="st">"iHS"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="one-locus-in-detail">One locus in detail<a class="anchor" aria-label="anchor" href="#one-locus-in-detail"></a>
+</h2>
+<p><code><a href="../reference/plot_ibd_locus.html">plot_ibd_locus()</a></code> puts the two signals on two axes over a
+single window: IBD sharing as a step curve on the left, the scan as
+points on the right, genes underneath. The axes carry different units,
+so read shapes and positions rather than comparing heights.</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_locus.html">plot_ibd_locus</a></span><span class="op">(</span><span class="va">ibd</span>, <span class="st">"pfcrt"</span>, pad <span class="op">=</span> <span class="fl">50000</span><span class="op">)</span></span></code></pre></div>
+<p><img src="ibd_files/figure-html/locus-1.png" class="r-plt" alt="" width="768"></p>
+<p><code>size_by</code> and <code>shape_by</code> map extra scan columns
+onto the points when the scan has them – <code>shape_by</code> picks up
+a mutation-class column (<code>mutation_type</code>,
+<code>mutation_class</code>, <code>effect</code>,
+<code>consequence</code>) on its own, and <code>NA</code> turns either
+off.</p>
+<div class="section level3">
+<h3 id="showing-every-gene-in-the-window">Showing every gene in the window<a class="anchor" aria-label="anchor" href="#showing-every-gene-in-the-window"></a>
+</h3>
+<p>The gene track and the marks inside the panel can come from different
+tables. <code>genes_for_track</code> fills the track from a full
+annotation so the whole neighbourhood is visible, while the object’s own
+short track still decides what gets marked – without it the only way to
+see the neighbours is to attach the whole annotation, which draws a
+reference line per gene. Systematic ids are much wider than the genes
+they sit under, so <code>gene_label_angle</code> turns them out of each
+other’s way:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_locus.html">plot_ibd_locus</a></span><span class="op">(</span><span class="va">ibd</span>, <span class="st">"pfcrt"</span>, pad <span class="op">=</span> <span class="fl">50000</span>,</span>
+<span>               genes_for_track <span class="op">=</span> <span class="va">PF3D7_GENES</span>, gene_label_angle <span class="op">=</span> <span class="fl">45</span><span class="op">)</span></span></code></pre></div>
+<p><img src="ibd_files/figure-html/locus-all-genes-1.png" class="r-plt" alt="" width="768"></p>
+<p>Both arguments work on any zoomed plot, including the scan plots.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="region-by-group-sharing">Region-by-group sharing<a class="anchor" aria-label="anchor" href="#region-by-group-sharing"></a>
@@ -369,12 +443,12 @@ maximum:</p>
 <p>IBD between group pairs along the genome; <code>trans = "log2"</code>
 and a single-hue ramp keep it readable when most values are near
 zero:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_pairwise_group_heatmap.html">plot_ibd_pairwise_group_heatmap</a></span><span class="op">(</span><span class="va">ibd</span>, trans <span class="op">=</span> <span class="st">"log2"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="ibd_files/figure-html/heatmap-1.png" class="r-plt" alt="" width="768"></p>
 <p>Triangles ask whether a gene (or a specific locus) is itself
 shared:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span>                              <span class="co"># one facet per gene</span></span>
 <span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, snps <span class="op">=</span> <span class="st">"Pf3D7_07_v3:403222"</span><span class="op">)</span> <span class="co"># a single locus</span></span>
 <span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, individual <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>           <span class="co"># a list, one plot per feature</span></span>
@@ -389,7 +463,7 @@ it. Without blocks it falls back to aggregating the SNPs inside the gene
 (<code>agg = "mean"</code>/<code>"median"</code>/<code>"max"</code>).
 Gene spans are CDS, which can be short relative to a sparse panel, so
 <code>within</code> widens the window on either path:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, within <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span>   <span class="co"># count SNPs / blocks within 10 kb</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -399,7 +473,7 @@ Gene spans are CDS, which can be short relative to a sparse panel, so
 <code><a href="../reference/gene_ibd_pairs.html">gene_ibd_pairs()</a></code> gives the adjacency list underneath it —
 one row per sample pair × IBD block × gene, with how much of the gene
 that block covers. Pairs with no IBD over a gene are simply absent.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ov</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gene_ibd_overlap.html">gene_ibd_overlap</a></span><span class="op">(</span><span class="va">ibd</span>, genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfdhps"</span><span class="op">)</span><span class="op">)</span>   <span class="co"># fractions per group pair</span></span>
 <span></span>
 <span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/gene_ibd_pairs.html">gene_ibd_pairs</a></span><span class="op">(</span><span class="va">ibd</span>, genes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pfcrt"</span>, <span class="st">"pfdhps"</span><span class="op">)</span><span class="op">)</span></span>
@@ -422,7 +496,7 @@ TSV.</p>
 <p>Each node is a sample, each edge a pair sharing an IBD block over the
 gene or locus. Colour and shape are independent metadata columns, so two
 variables can be read off one plot:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfcrt"</span>, color_group <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfcrt"</span>, color_group <span class="op">=</span> <span class="st">"region"</span>, shape_group <span class="op">=</span> <span class="st">"collection_year"</span><span class="op">)</span></span>
 <span></span>
@@ -436,7 +510,7 @@ touching the interval anywhere, <code>"complete"</code> demands one
 spanning the whole gene/locus. Which you want depends on the question —
 <em>any</em> shared ancestry at the locus, or the whole locus inherited
 together:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfdhps"</span>, color_group <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span>                       <span class="co"># overlap</span></span>
 <span><span class="fu"><a href="../reference/plot_ibd_network.html">plot_ibd_network</a></span><span class="op">(</span><span class="va">ibd</span>, gene <span class="op">=</span> <span class="st">"pfdhps"</span>, color_group <span class="op">=</span> <span class="st">"region"</span>, sharing <span class="op">=</span> <span class="st">"complete"</span><span class="op">)</span></span></code></pre></div>
 <p>The two can differ a lot: on one real cohort 90% of the pairs sharing
@@ -465,12 +539,12 @@ Give one dimension and the other is computed from the built plot’s panel
 ratio and the space its titles, legends and margins actually need; give
 neither and both are worked out; give both and they are used as-is.
 <code>fit = FALSE</code> opts out.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span><span class="op">)</span>                 <span class="co"># both worked out, no leftover margin</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, width <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>     <span class="co"># height follows from the contents</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, height <span class="op">=</span> <span class="fl">6</span><span class="op">)</span>     <span class="co"># width follows instead</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, width <span class="op">=</span> <span class="fl">9</span>, height <span class="op">=</span> <span class="fl">9</span><span class="op">)</span>   <span class="co"># exactly as asked</span></span></code></pre></div>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"ibd_tugofwar.pdf"</span>, <span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span><span class="op">)</span>   <span class="co"># auto-sized; cairo PDF by default</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"triangles.pdf"</span>, <span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, individual <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>  <span class="co"># multi-page</span></span></code></pre></div>
 </div>

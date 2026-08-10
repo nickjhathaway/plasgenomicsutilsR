@@ -50,43 +50,5 @@ A tibble with the grouping column, `gene`, `chr`, `start`, `end`,
 ps <- example_pop_structure(umap = FALSE)
 hap <- parasite_haplotypes(ps, maf = 0.05)
 ihs_genes(run_ihs(hap, group = "country"), genes = PF_EXAMPLE_DRUG_GENES, min_snps = 1)
-#> Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).
-#> Warning: The number of markers with allele frequencies in bin [0.05,0.1) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.1,0.15) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.15,0.2) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.2,0.25) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.25,0.3) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.3,0.35) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.35,0.4) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.4,0.45) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.45,0.5) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.5,0.55) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.55,0.6) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.6,0.65) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.65,0.7) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.7,0.75) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.75,0.8) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.8,0.85) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.85,0.9) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.9,0.95) is less than 10: you should probably increase bin width.
-#> Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).
-#> Warning: The number of markers with allele frequencies in bin [0.05,0.1) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.1,0.15) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.15,0.2) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.2,0.25) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.25,0.3) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.3,0.35) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.35,0.4) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.4,0.45) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.45,0.5) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.5,0.55) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.55,0.6) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.6,0.65) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.65,0.7) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.7,0.75) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.75,0.8) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.8,0.85) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.85,0.9) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.9,0.95) is less than 10: you should probably increase bin width.
 #> # A tibble: 0 × 0
 ```

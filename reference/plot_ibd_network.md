@@ -57,7 +57,11 @@ plot_ibd_network(
 
 - color_group:
 
-  Optional metadata column to colour nodes by (needs `meta`).
+  Optional metadata column to colour nodes by (needs `meta`). To colour
+  by the graph's own connected components, add them to the metadata
+  first with
+  [`add_ibd_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.md)
+  and name the column it creates.
 
 - colors:
 

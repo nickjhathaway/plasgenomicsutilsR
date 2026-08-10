@@ -56,7 +56,12 @@ run_xpehh(
 
 A tibble shaped like
 [`run_rsb()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_rsb.md)'s,
-with `value` holding XP-EHH.
+with `value` holding XP-EHH. Read it exactly as Rsb – a standardised log
+ratio, positive when the extended haplotype is in `pop1` – the
+difference being that XP-EHH integrates to a fixed distance while Rsb
+uses the site-specific EHH, so XP-EHH is the more sensitive of the two
+to a sweep that has gone nearly to fixation, where within-population
+statistics like iHS lose power.
 
 ## References
 

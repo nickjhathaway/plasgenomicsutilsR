@@ -75,6 +75,36 @@ beta_score(
 A tibble with `group`, `chr`, `pos`, `snp_id`, `freq`, `n_called`,
 `n_window_snps` and `beta`, one row per core SNP per group.
 
+**Reading `beta`.** This is Siewert & Voight's folded Beta1: how much
+more the SNPs around this one share its allele frequency than drift
+alone would produce. Long-term balancing selection holds a variant at
+intermediate frequency for many generations, and its neighbours
+hitch-hike to *similar* frequencies – so a cluster of matched
+frequencies is the signature, which is what beta measures.
+
+The scale is not a z-score and has no p-value here: it depends on the
+window, the SNP density and the sample size, so a value meaningful in
+one scan is not comparable to another. **Rank rather than threshold.**
+Larger is more evidence of balancing selection; around zero is what
+neutrality gives; negative means the neighbourhood is *less*
+frequency-matched than expected, which is a directional-sweep pattern,
+not balancing selection – for that read
+[`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
+instead.
+
+In practice take the top tail –
+`selection_peaks(b, criterion = "top", top = 0.01, metric = "beta")` –
+and annotate it with
+[`annotate_snps()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.md).
+In *P. falciparum* the expected hits are the antigens under long-term
+frequency-dependent selection from host immunity – on a real 249-sample
+cohort the top 1% is led by *pfama1* and *pfdblmsp*, which is the
+positive control to look for; a scan that surfaces none of them is a
+reason to check the input before believing anything else in it. Note the
+classic examples *var* and *rifin* will **not** appear: they are
+subtelomeric, so a core-genome filter removes them before the scan ever
+sees them.
+
 ## References
 
 Siewert, K. M. & Voight, B. F. (2017) Detecting long-term balancing

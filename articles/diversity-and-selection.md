@@ -213,123 +213,13 @@ different seed.
 ``` r
 
 ihs <- run_ihs(hap, group = "country")
-#> Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.05,0.1) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.1,0.15) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.15,0.2) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.2,0.25) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.25,0.3) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.3,0.35) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.35,0.4) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.4,0.45) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.45,0.5) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.5,0.55) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.55,0.6) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.6,0.65) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.65,0.7) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.7,0.75) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.75,0.8) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.8,0.85) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.85,0.9) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.9,0.95) is less
-#> than 10: you should probably increase bin width.
-#> Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.05,0.1) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.1,0.15) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.15,0.2) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.2,0.25) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.25,0.3) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.3,0.35) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.35,0.4) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.4,0.45) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.45,0.5) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.5,0.55) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.55,0.6) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.6,0.65) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.65,0.7) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.7,0.75) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.75,0.8) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.8,0.85) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.85,0.9) is less
-#> than 10: you should probably increase bin width.
-#> Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =
-#> FALSE): The number of markers with allele frequencies in bin [0.9,0.95) is less
-#> than 10: you should probably increase bin width.
 head(ihs, 3)
 #> # A tibble: 3 × 7
-#>   group    chr            pos snp_id             freq_minor   ihs neg_log10_p
-#>   <fct>    <chr>        <dbl> <chr>                   <dbl> <dbl>       <dbl>
-#> 1 Cambodia Pf3D7_04_v3  92597 Pf3D7_04_v3:92597      0.1    -1.20       0.639
-#> 2 Cambodia Pf3D7_04_v3 544673 Pf3D7_04_v3:544673     0.467  NA         NA    
-#> 3 Cambodia Pf3D7_04_v3 898668 Pf3D7_04_v3:898668     0.0667 NA         NA
+#>   group    chr            pos snp_id             freq_minor     ihs neg_log10_p
+#>   <fct>    <chr>        <dbl> <chr>                   <dbl>   <dbl>       <dbl>
+#> 1 Cambodia Pf3D7_04_v3  92597 Pf3D7_04_v3:92597      0.1    -1.50        0.878 
+#> 2 Cambodia Pf3D7_04_v3 544673 Pf3D7_04_v3:544673     0.467  -0.0946      0.0340
+#> 3 Cambodia Pf3D7_04_v3 898668 Pf3D7_04_v3:898668     0.0667 -1.38        0.775
 ```
 
 **How to read it.** At each SNP, iHS contrasts how far haplotype
@@ -365,6 +255,110 @@ plot_ihs(ihs, genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
 ![](diversity-and-selection_files/figure-html/unnamed-chunk-11-1.png)
+
+`zoom` crops any of these plots to one interval – a chromosome, a
+`"chr:start-end"` range, or a gene name from `genes` – and names every
+gene in the window in a track underneath:
+
+``` r
+
+plot_ihs(ihs, genes = PF_EXAMPLE_DRUG_GENES, zoom = "7", zoom_pad = 0)
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-12-1.png)
+
+### EHH around one SNP
+
+A scan point says a locus looks selected; the EHH decay says what the
+haplotype is doing there.
+[`plot_ehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ehh.md)
+draws one curve per allele **at the focal SNP** – so it is the
+mutant-versus-reference comparison without needing the SNPs annotated –
+and a sweep shows as one allele holding EHH near 1 far past where the
+other has decayed:
+
+``` r
+
+plot_ehh(hap, hap$map$snp_id[which.max(abs(ihs$ihs))], span = 3e5)
+#> `geom_line()`: Each group consists of only one observation.
+#> ℹ Do you need to adjust the group aesthetic?
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-13-1.png)
+
+`focal` also takes a bare position or a gene name from `genes`; a gene
+holding several SNPs resolves to the most balanced one and says which,
+since EHH from a near-singleton is a flat line. `group` gives a panel
+per metadata group – worth doing after the pooled view, because EHH
+knows nothing about population structure and a group with few carriers
+gives a ragged curve, which is why `min_haplotypes` drops the smallest
+ones. `span` crops the window, one value or two (`c(left =, right =)`).
+
+### The genotypes behind a signal
+
+A scan says a locus looks selected; the genotypes say what the
+haplotypes actually are.
+[`plot_region_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_region_haplotypes.md)
+draws one row per sample and one column per SNP over a window, clusters
+the samples and puts the dendrogram beside them, with the gene track
+underneath:
+
+``` r
+
+plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png)
+
+`split` blocks the rows by a metadata column and clusters *within* each
+block, so a haplotype shared across a group reads as a solid band
+instead of being scattered by one global ordering (this is what
+`ComplexHeatmap`’s `row_split` does). `mark_snps` puts a line on the
+SNPs worth pointing at:
+
+``` r
+
+plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES,
+                       mark_snps = "pfcrt")
+#> no genotyped SNP inside pfcrt, so nothing is marked there
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png)
+
+`annotations` adds coloured strips down the right, one column per
+metadata variable, each with its own legend and taking its colours from
+the object’s shared maps – so a level keeps the colour it has in the
+UMAP or the admixture bars:
+
+``` r
+
+plot_region_haplotypes(ps, "7", split = "country", annotations = "country",
+                       genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png)
+
+`spacing` decides what the horizontal axis means, and the two answers
+show different things. `"even"` (the default) gives every SNP the same
+width, which is how the haplotype structure is easiest to read but says
+nothing about distance. `"genomic"` keeps every mark the same width and
+moves it to its real coordinate, so the gaps between SNPs are what you
+see:
+
+``` r
+
+plot_region_haplotypes(ps, "7", split = "country", spacing = "genomic",
+                       genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png)
+
+One thing to be sure of before reading the colours: `allele` says
+whether a dosage of 2 means two alternate alleles or two reference ones.
+The plot asks the object, which knows when it came from
+\[load_genotypes()\]; an object built from a bare matrix cannot say, and
+the two codings are indistinguishable afterwards, so it assumes alt
+dosage and tells you it did.
 
 Rsb and XP-EHH compare two populations rather than two alleles, so they
 see exactly those completed sweeps:
@@ -406,7 +400,7 @@ b <- beta_score(ps, group = "country", window = 300000, min_window_snps = 1)
 plot_beta(b)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-20-1.png)
 
 Use `window = 1000` (the default) on a real, dense callset; the fixture
 needs a far wider window just to find any neighbours.

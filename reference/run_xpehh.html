@@ -9,7 +9,7 @@ allele between two populations."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,7 +40,7 @@ allele between two populations."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Cross-population extended haplotype homozygosity (XP-EHH)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>run_xpehh.Rd</code></div>
     </div>
 
@@ -97,7 +97,11 @@ two groups to compare).</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tibble shaped like <code><a href="run_rsb.html">run_rsb()</a></code>'s, with <code>value</code> holding XP-EHH.</p>
+    <p>A tibble shaped like <code><a href="run_rsb.html">run_rsb()</a></code>'s, with <code>value</code> holding XP-EHH. Read it exactly
+as Rsb – a standardised log ratio, positive when the extended haplotype is in <code>pop1</code> –
+the difference being that XP-EHH integrates to a fixed distance while Rsb uses the
+site-specific EHH, so XP-EHH is the more sensitive of the two to a sweep that has gone
+nearly to fixation, where within-population statistics like iHS lose power.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@
       <h1>Population structure</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/vignettes/population-structure.Rmd" class="external-link"><code>vignettes/population-structure.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/vignettes/population-structure.Rmd" class="external-link"><code>vignettes/population-structure.Rmd</code></a></small>
       <div class="d-none name"><code>population-structure.Rmd</code></div>
     </div>
 
@@ -182,14 +182,37 @@ identical ancestry distinct; <code>legend_point_size</code>,
 <div class="section level2">
 <h2 id="from-your-own-data">From your own data<a class="anchor" aria-label="anchor" href="#from-your-own-data"></a>
 </h2>
-<p>Build from a genotype matrix, or LD-prune a VCF first with
-<code><a href="../reference/run_ld_prune.html">run_ld_prune()</a></code> (SNPRelate), then attach metadata — colours
-are auto-assigned per column and reused across every plot:</p>
+<p>Build from a genotype matrix, or read a VCF with
+<code><a href="../reference/load_genotypes.html">load_genotypes()</a></code> (SNPRelate), then attach metadata —
+colours are auto-assigned per column and reused across every plot:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">geno</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_ld_prune.html">run_ld_prune</a></span><span class="op">(</span><span class="st">"clean.snps.vcf.gz"</span><span class="op">)</span>             <span class="co"># SNPRelate LD-pruned genotypes</span></span>
+<code class="sourceCode R"><span><span class="va">geno</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_genotypes.html">load_genotypes</a></span><span class="op">(</span><span class="st">"clean.snps.vcf.gz"</span><span class="op">)</span>           <span class="co"># LD-pruned by default</span></span>
 <span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/PopStructure.html">PopStructure</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">geno</span>, meta <span class="op">=</span> <span class="va">sample_meta</span><span class="op">)</span>      <span class="co"># sample, region, country, ...</span></span>
 <span><span class="va">ps</span><span class="op">$</span><span class="fu">run_umap</span><span class="op">(</span>pca_components <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="va">ps</span><span class="op">$</span><span class="fu">run_snmf</span><span class="op">(</span>K <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">8</span>, cache_dir <span class="op">=</span> <span class="st">"snmf_cache"</span><span class="op">)</span>        <span class="co"># persistent cache survives sessions</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="both-snp-panels-in-one-object">Both SNP panels in one object<a class="anchor" aria-label="anchor" href="#both-snp-panels-in-one-object"></a>
+</h3>
+<p>LD pruning keeps one SNP out of each correlated run. That is what you
+want for PCA, UMAP and admixture, where a correlated block would
+otherwise dominate the structure — and the opposite of what you want
+wherever that correlation <em>is</em> the signal: differentiation,
+diversity, LD, haplotype scans, haplotype plots. Rather than juggling
+two objects, register both panels and let each analysis take the one it
+needs:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">add_panel</span><span class="op">(</span><span class="st">"full"</span>, <span class="fu"><a href="../reference/load_genotypes.html">load_genotypes</a></span><span class="op">(</span><span class="st">"clean.snps.vcf.gz"</span>, prune <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ps</span><span class="op">$</span><span class="fu">panels</span><span class="op">(</span><span class="op">)</span>            <span class="co"># "pruned" "full"</span></span>
+<span></span>
+<span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_pca</span><span class="op">(</span><span class="op">)</span>          <span class="co"># the pruned panel, as before</span></span>
+<span><span class="fu"><a href="../reference/pop_diff.html">pop_diff</a></span><span class="op">(</span><span class="va">ps</span><span class="op">)</span>           <span class="co"># the full panel, automatically</span></span>
+<span><span class="va">ps</span><span class="op">$</span><span class="fu">genotype</span><span class="op">(</span><span class="st">"full"</span><span class="op">)</span>    <span class="co"># or ask for one by name</span></span></code></pre></div>
+<p>The GDS is reused between the two calls, so the second is only a
+read. Any other panel works the same way
+(<code>ps$add_panel("core", ...)</code>), and <code>genotype =</code>
+still overrides everything. Without a full panel, the analyses that want
+one say so once rather than quietly using pruned SNPs.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="ordering-the-groups">Ordering the groups<a class="anchor" aria-label="anchor" href="#ordering-the-groups"></a>
@@ -199,7 +222,7 @@ precedes <code>site10</code>). <code>set_levels()</code> imposes your
 own order, and it applies to <strong>every</strong> output — PCA and
 UMAP legends, the admixture facets and sample sweep, the differentiation
 matrix, and the composite figure:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">set_levels</span><span class="op">(</span><span class="st">"site"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Uganda_North"</span>, <span class="st">"Uganda_East"</span>, <span class="st">"Kenya_West"</span>, <span class="st">"Kenya_East"</span>,</span>
 <span>                        <span class="st">"Tanzania_West"</span>, <span class="st">"Tanzania_East"</span>, <span class="st">"DRC"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Two things to know. Levels you leave out are dropped, so those

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@
       <h1>Diversity, linkage and selection</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
       <div class="d-none name"><code>diversity-and-selection.Rmd</code></div>
     </div>
 
@@ -249,123 +249,13 @@ whole thing under a different seed.</p>
 </h3>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ihs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_ihs.html">run_ihs</a></span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.05,0.1) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.1,0.15) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.15,0.2) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.2,0.25) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.25,0.3) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.3,0.35) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.35,0.4) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.4,0.45) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.45,0.5) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.5,0.55) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.55,0.6) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.6,0.65) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.65,0.7) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.7,0.75) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.75,0.8) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.8,0.85) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.85,0.9) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.9,0.95) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.05,0.1) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.1,0.15) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.15,0.2) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.2,0.25) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.25,0.3) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.3,0.35) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.35,0.4) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.4,0.45) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.45,0.5) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.5,0.55) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.55,0.6) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.6,0.65) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.65,0.7) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.7,0.75) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.75,0.8) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.8,0.85) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.85,0.9) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
-<span><span class="co">#&gt; Warning in rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose =</span></span>
-<span><span class="co">#&gt; FALSE): The number of markers with allele frequencies in bin [0.9,0.95) is less</span></span>
-<span><span class="co">#&gt; than 10: you should probably increase bin width.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ihs</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 7</span></span></span>
-<span><span class="co">#&gt;   group    chr            pos snp_id             freq_minor   ihs neg_log10_p</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">92</span>597 Pf3D7_04_v3:92597      0.1    -<span style="color: #BB0000;">1.20</span>       0.639</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia Pf3D7_04_v3 <span style="text-decoration: underline;">544</span>673 Pf3D7_04_v3:544673     0.467  <span style="color: #BB0000;">NA</span>         <span style="color: #BB0000;">NA</span>    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia Pf3D7_04_v3 <span style="text-decoration: underline;">898</span>668 Pf3D7_04_v3:898668     0.066<span style="text-decoration: underline;">7</span> <span style="color: #BB0000;">NA</span>         <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
+<span><span class="co">#&gt;   group    chr            pos snp_id             freq_minor     ihs neg_log10_p</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">92</span>597 Pf3D7_04_v3:92597      0.1    -<span style="color: #BB0000;">1.50</span>        0.878 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> Cambodia Pf3D7_04_v3 <span style="text-decoration: underline;">544</span>673 Pf3D7_04_v3:544673     0.467  -<span style="color: #BB0000;">0.094</span><span style="color: #BB0000; text-decoration: underline;">6</span>      0.034<span style="text-decoration: underline;">0</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Cambodia Pf3D7_04_v3 <span style="text-decoration: underline;">898</span>668 Pf3D7_04_v3:898668     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">1.38</span>        0.775</span></span></code></pre></div>
 <p><strong>How to read it.</strong> At each SNP, iHS contrasts how far
 haplotype homozygosity extends from one allele against the other. An
 allele that rose recently and fast still carries the long stretch it
@@ -402,9 +292,86 @@ for.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ihs.html">plot_ihs</a></span><span class="op">(</span><span class="va">ihs</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
 <p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="672"></p>
+<p><code>zoom</code> crops any of these plots to one interval – a
+chromosome, a <code>"chr:start-end"</code> range, or a gene name from
+<code>genes</code> – and names every gene in the window in a track
+underneath:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ihs.html">plot_ihs</a></span><span class="op">(</span><span class="va">ihs</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, zoom <span class="op">=</span> <span class="st">"7"</span>, zoom_pad <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="672"></p>
+</div>
+<div class="section level3">
+<h3 id="ehh-around-one-snp">EHH around one SNP<a class="anchor" aria-label="anchor" href="#ehh-around-one-snp"></a>
+</h3>
+<p>A scan point says a locus looks selected; the EHH decay says what the
+haplotype is doing there. <code><a href="../reference/plot_ehh.html">plot_ehh()</a></code> draws one curve per
+allele <strong>at the focal SNP</strong> – so it is the
+mutant-versus-reference comparison without needing the SNPs annotated –
+and a sweep shows as one allele holding EHH near 1 far past where the
+other has decayed:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ehh.html">plot_ehh</a></span><span class="op">(</span><span class="va">hap</span>, <span class="va">hap</span><span class="op">$</span><span class="va">map</span><span class="op">$</span><span class="va">snp_id</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">ihs</span><span class="op">$</span><span class="va">ihs</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>, span <span class="op">=</span> <span class="fl">3e5</span><span class="op">)</span></span>
+<span><span class="co">#&gt; `geom_line()`: Each group consists of only one observation.</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Do you need to adjust the <span style="color: #00BB00;">group</span> aesthetic?</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="672"></p>
+<p><code>focal</code> also takes a bare position or a gene name from
+<code>genes</code>; a gene holding several SNPs resolves to the most
+balanced one and says which, since EHH from a near-singleton is a flat
+line. <code>group</code> gives a panel per metadata group – worth doing
+after the pooled view, because EHH knows nothing about population
+structure and a group with few carriers gives a ragged curve, which is
+why <code>min_haplotypes</code> drops the smallest ones.
+<code>span</code> crops the window, one value or two
+(<code>c(left =, right =)</code>).</p>
+</div>
+<div class="section level3">
+<h3 id="the-genotypes-behind-a-signal">The genotypes behind a signal<a class="anchor" aria-label="anchor" href="#the-genotypes-behind-a-signal"></a>
+</h3>
+<p>A scan says a locus looks selected; the genotypes say what the
+haplotypes actually are. <code><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes()</a></code> draws one
+row per sample and one column per SNP over a window, clusters the
+samples and puts the dendrogram beside them, with the gene track
+underneath:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="768"></p>
+<p><code>split</code> blocks the rows by a metadata column and clusters
+<em>within</em> each block, so a haplotype shared across a group reads
+as a solid band instead of being scattered by one global ordering (this
+is what <code>ComplexHeatmap</code>’s <code>row_split</code> does).
+<code>mark_snps</code> puts a line on the SNPs worth pointing at:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, split <span class="op">=</span> <span class="st">"country"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>,</span>
+<span>                       mark_snps <span class="op">=</span> <span class="st">"pfcrt"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; no genotyped SNP inside pfcrt, so nothing is marked there</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="768"></p>
+<p><code>annotations</code> adds coloured strips down the right, one
+column per metadata variable, each with its own legend and taking its
+colours from the object’s shared maps – so a level keeps the colour it
+has in the UMAP or the admixture bars:</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, split <span class="op">=</span> <span class="st">"country"</span>, annotations <span class="op">=</span> <span class="st">"country"</span>,</span>
+<span>                       genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png" class="r-plt" alt="" width="768"></p>
+<p><code>spacing</code> decides what the horizontal axis means, and the
+two answers show different things. <code>"even"</code> (the default)
+gives every SNP the same width, which is how the haplotype structure is
+easiest to read but says nothing about distance. <code>"genomic"</code>
+keeps every mark the same width and moves it to its real coordinate, so
+the gaps between SNPs are what you see:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"7"</span>, split <span class="op">=</span> <span class="st">"country"</span>, spacing <span class="op">=</span> <span class="st">"genomic"</span>,</span>
+<span>                       genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png" class="r-plt" alt="" width="768"></p>
+<p>One thing to be sure of before reading the colours:
+<code>allele</code> says whether a dosage of 2 means two alternate
+alleles or two reference ones. The plot asks the object, which knows
+when it came from [load_genotypes()]; an object built from a bare matrix
+cannot say, and the two codings are indistinguishable afterwards, so it
+assumes alt dosage and tells you it did.</p>
 <p>Rsb and XP-EHH compare two populations rather than two alleles, so
 they see exactly those completed sweeps:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/run_rsb.html">run_rsb</a></span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 8</span></span></span>
 <span><span class="co">#&gt;   pair              pop1     pop2  chr            pos snp_id   value neg_log10_p</span></span>
@@ -416,7 +383,7 @@ they see exactly those completed sweeps:</p>
 default is every pair.</p>
 <p><code><a href="../reference/ihs_genes.html">ihs_genes()</a></code> reduces any of these to one row per gene –
 the peak SNP inside it:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ihs_genes.html">ihs_genes</a></span><span class="op">(</span><span class="va">ihs</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, within <span class="op">=</span> <span class="fl">10000</span>, min_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 0 × 0</span></span></span></code></pre></div>
 </div>
@@ -427,10 +394,10 @@ the peak SNP inside it:</p>
 frequencies pile up around an intermediate-frequency core – the
 footprint of long-term balancing selection, and in this parasite usually
 an antigen rather than a drug target.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/beta_score.html">beta_score</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, window <span class="op">=</span> <span class="fl">300000</span>, min_window_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/plot_beta.html">plot_beta</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span></span></code></pre></div>
-<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="672"></p>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" alt="" width="672"></p>
 <p>Use <code>window = 1000</code> (the default) on a real, dense
 callset; the fixture needs a far wider window just to find any
 neighbours. <code><a href="../reference/beta_genes.html">beta_genes()</a></code> summarises per gene, giving the
@@ -446,7 +413,7 @@ the iHS peak and Tajima’s D from
 (<code>plasgenomicsutils coverage_depth_stats</code> and
 <code>coverage_dropout_regions</code>, which read the BAMs); this
 package reads and plots them.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cov</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_coverage.html">read_coverage</a></span><span class="op">(</span><span class="st">"coverage_by_sample.tsv.gz"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/coverage_qc.html">coverage_qc</a></span><span class="op">(</span><span class="va">cov</span>, threshold <span class="op">=</span> <span class="fl">10</span>, min_mean <span class="op">=</span> <span class="fl">5</span>, min_breadth <span class="op">=</span> <span class="fl">80</span><span class="op">)</span>   <span class="co"># one row per sample</span></span>
 <span><span class="fu"><a href="../reference/plot_coverage_summary.html">plot_coverage_summary</a></span><span class="op">(</span><span class="va">cov</span><span class="op">)</span>     <span class="co"># mean vs breadth, failures labelled</span></span>

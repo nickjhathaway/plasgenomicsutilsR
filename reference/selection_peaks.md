@@ -96,34 +96,40 @@ selection_peaks(
 A tibble with one row per peak: the grouping column, `chr`, `start`,
 `end`, `width`, `n_snps` (significant SNPs in the peak), `peak_pos` (the
 single highest-scoring SNP), `peak_value`, `mean_value`, and – when a
-gene table was given – four annotation columns. Sorted by `peak_value`.
+gene table was given – five annotation columns. Sorted by `peak_value`.
 
 Everything is anchored on `peak_pos`, not the interval's midpoint: the
 midpoint is an artefact of where merging started and stopped, and can
 land in a gap between genes.
 
-- `peak_genes` — the gene(s) whose span **contains** the peak SNP,
+- `peak_interval_genes` — a **list-column** of every gene the interval
+  spans, in genomic order. A peak of a few hundred kb, as real IBD
+  sharing regions are, can cross dozens, so this is the set to take into
+  a follow-up rather than something to read off the screen. Unnest it
+  for one row per peak x gene: `tidyr::unnest(pk, peak_interval_genes)`;
+  [`lengths()`](https://rdrr.io/r/base/lengths.html) of it is `n_genes`.
+
+- `gene_at_peak` — the gene(s) whose span **contains** the peak SNP,
   comma-separated. Usually one, since gene spans rarely overlap, and
   **empty when the peak SNP is intergenic** — about a third of peaks on
   a real cohort.
 
 - `nearest_gene`, `distance_to_gene` — of the genes the peak **covers**,
   the closest one to the peak SNP and the gap to it in bp, `0` when the
-  SNP is inside it. This is what to read when `peak_genes` is empty;
+  SNP is inside it. This is what to read when `gene_at_peak` is empty;
   those intergenic peaks are typically within a kb or two of a gene in
   the same peak. Candidates are restricted to the interval, so a peak
   that covers no gene reports none rather than pointing at something far
   outside it — which matters when `genes` is a short list, where most
   peaks cover nothing from it.
 
-- `n_genes` — how many genes the interval spans. A peak of a few hundred
-  kb, as real IBD sharing regions are, can cross dozens; naming them all
-  helps nobody, so this counts them. Narrow `gap` if the intervals are
-  wider than you want.
+- `n_genes` — how many genes the interval spans, i.e.
+  `lengths(peak_interval_genes)`.
 
-The three agree by construction: `n_genes == 0` implies both name
-columns are empty, and a non-empty `peak_genes` implies
-`distance_to_gene == 0`.
+They agree by construction: `n_genes == 0` implies an empty
+`peak_interval_genes` and empty name columns,
+`n_genes == lengths(peak_interval_genes)`, and a non-empty
+`gene_at_peak` implies `distance_to_gene == 0`.
 
 ## Details
 
@@ -150,7 +156,7 @@ gene to exist where the signal is.
 ps <- example_pop_structure(umap = FALSE)
 b <- beta_score(ps, group = "country", window = 300000, min_window_snps = 1)
 selection_peaks(b, criterion = "top", top = 0.2, genes = PF_EXAMPLE_DRUG_GENES)
-#> # A tibble: 5 × 13
+#> # A tibble: 5 × 14
 #>   group    chr          start    end width n_snps peak_pos peak_value mean_value
 #>   <chr>    <chr>        <dbl>  <dbl> <dbl>  <int>    <dbl>      <dbl>      <dbl>
 #> 1 Cambodia Pf3D7_01_v3 5.31e5 5.31e5     1      1   531105      0.536      0.536
@@ -158,6 +164,6 @@ selection_peaks(b, criterion = "top", top = 0.2, genes = PF_EXAMPLE_DRUG_GENES)
 #> 3 Ghana    Pf3D7_07_v3 5.99e5 5.99e5     1      1   598578      0.275      0.275
 #> 4 Ghana    Pf3D7_09_v3 1.48e6 1.48e6     1      1  1475529      0.169      0.169
 #> 5 Ghana    Pf3D7_07_v3 5.37e5 5.37e5     1      1   536889      0.142      0.142
-#> # ℹ 4 more variables: peak_genes <chr>, nearest_gene <chr>,
-#> #   distance_to_gene <dbl>, n_genes <int>
+#> # ℹ 5 more variables: peak_interval_genes <list>, gene_at_peak <chr>,
+#> #   nearest_gene <chr>, distance_to_gene <dbl>, n_genes <int>
 ```

@@ -18,7 +18,9 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_PARALOG_GENES.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF_EXAMPLE_DRUG_GENES.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/admixture_order.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/available_references.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_genes.html</loc></url>
@@ -35,6 +37,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/index.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/jost_d.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ld_index.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_pop_structure.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/n_pcs_for_variance.html</loc></url>
@@ -53,6 +56,8 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diff_manhattan.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_dims.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diversity.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ehh.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_locus.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_network.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pairwise_group_heatmap.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_sharing_manhattan.html</loc></url>
@@ -61,6 +66,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ld_decay.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pairwise_ibd_for_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pca.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_region_haplotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_selection_manhattan.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_structure_figure.html</loc></url>

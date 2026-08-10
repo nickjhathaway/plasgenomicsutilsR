@@ -35,7 +35,7 @@ z_score), optionally group and significant
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,7 +66,7 @@ z_score), optionally group and significant
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>IBD post-analysis results</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/IbdResults.R" class="external-link"><code>R/IbdResults.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/IbdResults.R" class="external-link"><code>R/IbdResults.R</code></a></small>
       <div class="d-none name"><code>IbdResults.Rd</code></div>
     </div>
 
@@ -105,6 +105,7 @@ plot. The <code>plot_*()</code> functions read from an object of this class.</p>
 <li><p><a href="#method-IbdResults-get_blocks"><code>IbdResults$get_blocks()</code></a></p></li>
 <li><p><a href="#method-IbdResults-get_analyzed_samples"><code>IbdResults$get_analyzed_samples()</code></a></p></li>
 <li><p><a href="#method-IbdResults-get_meta"><code>IbdResults$get_meta()</code></a></p></li>
+<li><p><a href="#method-IbdResults-set_meta"><code>IbdResults$set_meta()</code></a></p></li>
 <li><p><a href="#method-IbdResults-get_gene_overlap"><code>IbdResults$get_gene_overlap()</code></a></p></li>
 <li><p><a href="#method-IbdResults-chrom_layout"><code>IbdResults$chrom_layout()</code></a></p></li>
 <li><p><a href="#method-IbdResults-reference_id"><code>IbdResults$reference_id()</code></a></p></li>
@@ -116,6 +117,7 @@ plot. The <code>plot_*()</code> functions read from an object of this class.</p>
 <li><p><a href="#method-IbdResults-plot_pairwise_ibd_for_genes"><code>IbdResults$plot_pairwise_ibd_for_genes()</code></a></p></li>
 <li><p><a href="#method-IbdResults-gene_ibd_overlap"><code>IbdResults$gene_ibd_overlap()</code></a></p></li>
 <li><p><a href="#method-IbdResults-gene_ibd_pairs"><code>IbdResults$gene_ibd_pairs()</code></a></p></li>
+<li><p><a href="#method-IbdResults-add_ibd_clusters"><code>IbdResults$add_ibd_clusters()</code></a></p></li>
 <li><p><a href="#method-IbdResults-plot_ibd_network"><code>IbdResults$plot_ibd_network()</code></a></p></li>
 <li><p><a href="#method-IbdResults-pos_selection_genes"><code>IbdResults$pos_selection_genes()</code></a></p></li>
 <li><p><a href="#method-IbdResults-clone"><code>IbdResults$clone()</code></a></p></li>
@@ -365,10 +367,30 @@ the usual "everything except these" form.</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-IbdResults-set_meta"></a><div class="section">
+<h3 id="ibdresults-set-meta-"><code>IbdResults$set_meta()</code><a class="anchor" aria-label="anchor" href="#ibdresults-set-meta-"></a></h3>
+<p>Replace the metadata, keeping the declared group order applied. Used by
+<code><a href="add_ibd_clusters.html">add_ibd_clusters()</a></code> to add derived columns; the <code>sample</code> column must survive.</p><div class="section">
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">set_meta</span><span class="op">(</span><span class="va">meta</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>meta</code></dt>
+<dd><p>The new metadata data frame.</p></dd>
+
+
+</dl><p></p></div>
+</div><p></p><div class="section">
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<p>Invisibly self.</p>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-IbdResults-get_gene_overlap"></a><div class="section">
 <h3 id="ibdresults-get-gene-overlap-"><code>IbdResults$get_gene_overlap()</code><a class="anchor" aria-label="anchor" href="#ibdresults-get-gene-overlap-"></a></h3>
 <p>Precomputed per-gene block-overlap table, or <code>NULL</code>.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">get_gene_overlap</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -377,7 +399,7 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-chrom_layout"></a><div class="section">
 <h3 id="ibdresults-chrom-layout-"><code>IbdResults$chrom_layout()</code><a class="anchor" aria-label="anchor" href="#ibdresults-chrom-layout-"></a></h3>
 <p>Chromosome layout tibble (offsets, bands, axis mid-points).</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">chrom_layout</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -386,7 +408,7 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-reference_id"></a><div class="section">
 <h3 id="ibdresults-reference-id-"><code>IbdResults$reference_id()</code><a class="anchor" aria-label="anchor" href="#ibdresults-reference-id-"></a></h3>
 <p>The reference id used for chromosome lengths.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">reference_id</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -395,10 +417,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-print"></a><div class="section">
 <h3 id="ibdresults-print-"><code>IbdResults$print()</code><a class="anchor" aria-label="anchor" href="#ibdresults-print-"></a></h3>
 <p>Compact summary of what the object holds.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Ignored; present for the <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> generic.</p></dd>
 
@@ -411,10 +433,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-plot_ibd_sharing_manhattan"></a><div class="section">
 <h3 id="ibdresults-plot-ibd-sharing-manhattan-"><code>IbdResults$plot_ibd_sharing_manhattan()</code><a class="anchor" aria-label="anchor" href="#ibdresults-plot-ibd-sharing-manhattan-"></a></h3>
 <p>Genome-wide per-SNP IBD-sharing Manhattan. See <code><a href="plot_ibd_sharing_manhattan.html">plot_ibd_sharing_manhattan()</a></code>.</p><div class="section">
-<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">plot_ibd_sharing_manhattan</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="plot_ibd_sharing_manhattan.html">plot_ibd_sharing_manhattan()</a></code>.</p></dd>
 
@@ -427,10 +449,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-plot_selection_manhattan"></a><div class="section">
 <h3 id="ibdresults-plot-selection-manhattan-"><code>IbdResults$plot_selection_manhattan()</code><a class="anchor" aria-label="anchor" href="#ibdresults-plot-selection-manhattan-"></a></h3>
 <p>IBD selection-statistic Manhattan. See <code><a href="plot_selection_manhattan.html">plot_selection_manhattan()</a></code>.</p><div class="section">
-<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">plot_selection_manhattan</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="plot_selection_manhattan.html">plot_selection_manhattan()</a></code>.</p></dd>
 
@@ -443,10 +465,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-plot_ibd_tugofwar"></a><div class="section">
 <h3 id="ibdresults-plot-ibd-tugofwar-"><code>IbdResults$plot_ibd_tugofwar()</code><a class="anchor" aria-label="anchor" href="#ibdresults-plot-ibd-tugofwar-"></a></h3>
 <p>Selection/IBD "tug-of-war" mirror. See <code><a href="plot_ibd_tugofwar.html">plot_ibd_tugofwar()</a></code>.</p><div class="section">
-<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
+<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">plot_ibd_tugofwar</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="plot_ibd_tugofwar.html">plot_ibd_tugofwar()</a></code>.</p></dd>
 
@@ -459,10 +481,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-plot_ibd_pairwise_group_heatmap"></a><div class="section">
 <h3 id="ibdresults-plot-ibd-pairwise-group-heatmap-"><code>IbdResults$plot_ibd_pairwise_group_heatmap()</code><a class="anchor" aria-label="anchor" href="#ibdresults-plot-ibd-pairwise-group-heatmap-"></a></h3>
 <p>Group x group IBD heatmap along the genome. See <code><a href="plot_ibd_pairwise_group_heatmap.html">plot_ibd_pairwise_group_heatmap()</a></code>.</p><div class="section">
-<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
+<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">plot_ibd_pairwise_group_heatmap</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="plot_ibd_pairwise_group_heatmap.html">plot_ibd_pairwise_group_heatmap()</a></code>.</p></dd>
 
@@ -475,10 +497,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-plot_pairwise_ibd_for_genes"></a><div class="section">
 <h3 id="ibdresults-plot-pairwise-ibd-for-genes-"><code>IbdResults$plot_pairwise_ibd_for_genes()</code><a class="anchor" aria-label="anchor" href="#ibdresults-plot-pairwise-ibd-for-genes-"></a></h3>
 <p>Per-gene (or per-SNP) group x group IBD triangles. See <code><a href="plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes()</a></code>.</p><div class="section">
-<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
+<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">plot_pairwise_ibd_for_genes</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes()</a></code>.</p></dd>
 
@@ -491,10 +513,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-gene_ibd_overlap"></a><div class="section">
 <h3 id="ibdresults-gene-ibd-overlap-"><code>IbdResults$gene_ibd_overlap()</code><a class="anchor" aria-label="anchor" href="#ibdresults-gene-ibd-overlap-"></a></h3>
 <p>Per-gene IBD-block overlap between groups (see <code><a href="gene_ibd_overlap.html">gene_ibd_overlap()</a></code>).</p><div class="section">
-<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
+<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">gene_ibd_overlap</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="gene_ibd_overlap.html">gene_ibd_overlap()</a></code>.</p></dd>
 
@@ -507,12 +529,28 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-gene_ibd_pairs"></a><div class="section">
 <h3 id="ibdresults-gene-ibd-pairs-"><code>IbdResults$gene_ibd_pairs()</code><a class="anchor" aria-label="anchor" href="#ibdresults-gene-ibd-pairs-"></a></h3>
 <p>Sample pairs sharing IBD over each gene (see <code><a href="gene_ibd_pairs.html">gene_ibd_pairs()</a></code>).</p><div class="section">
-<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
+<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">gene_ibd_pairs</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="gene_ibd_pairs.html">gene_ibd_pairs()</a></code>.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-IbdResults-add_ibd_clusters"></a><div class="section">
+<h3 id="ibdresults-add-ibd-clusters-"><code>IbdResults$add_ibd_clusters()</code><a class="anchor" aria-label="anchor" href="#ibdresults-add-ibd-clusters-"></a></h3>
+<p>Add single-linkage IBD cluster ids to the metadata.</p><div class="section">
+<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">add_ibd_clusters</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>...</code></dt>
+<dd><p>Passed to <code><a href="add_ibd_clusters.html">add_ibd_clusters()</a></code>.</p></dd>
 
 
 </dl><p></p></div>
@@ -523,10 +561,10 @@ the usual "everything except these" form.</p></dd>
 <p></p><hr><a id="method-IbdResults-plot_ibd_network"></a><div class="section">
 <h3 id="ibdresults-plot-ibd-network-"><code>IbdResults$plot_ibd_network()</code><a class="anchor" aria-label="anchor" href="#ibdresults-plot-ibd-network-"></a></h3>
 <p>Sample-level IBD network at a gene / locus (see <code><a href="plot_ibd_network.html">plot_ibd_network()</a></code>).</p><div class="section">
-<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
+<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">plot_ibd_network</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="plot_ibd_network.html">plot_ibd_network()</a></code>.</p></dd>
 
@@ -540,10 +578,10 @@ the usual "everything except these" form.</p></dd>
 <h3 id="ibdresults-pos-selection-genes-"><code>IbdResults$pos_selection_genes()</code><a class="anchor" aria-label="anchor" href="#ibdresults-pos-selection-genes-"></a></h3>
 <p>Genes overlapping (or within <code>within</code> bp of) above-threshold
 selection SNPs. See <code><a href="pos_selection_genes.html">pos_selection_genes()</a></code>.</p><div class="section">
-<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
+<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">pos_selection_genes</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Passed to <code><a href="pos_selection_genes.html">pos_selection_genes()</a></code>.</p></dd>
 
@@ -556,10 +594,10 @@ selection SNPs. See <code><a href="pos_selection_genes.html">pos_selection_genes
 <p></p><hr><a id="method-IbdResults-clone"></a><div class="section">
 <h3 id="ibdresults-clone-"><code>IbdResults$clone()</code><a class="anchor" aria-label="anchor" href="#ibdresults-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
+<h4 id="usage-29">Usage<a class="anchor" aria-label="anchor" href="#usage-29"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">IbdResults</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
+<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

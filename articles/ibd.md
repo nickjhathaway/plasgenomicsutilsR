@@ -210,7 +210,51 @@ plot_selection_manhattan(ibd, chroms = c("7", "13"),
                          highlight_genes = c("pfcrt", "pfkelch13"), label_genes = TRUE)
 ```
 
+![](ibd_files/figure-html/chroms-1.png)
+
+## Zooming in
+
+`zoom` crops the same plot to one interval without changing the data
+behind it, so a locus sits at the same coordinate in the zoomed and the
+genome-wide figure. It takes a chromosome, a range, a gene name from the
+object’s track, or a data frame with chr/start/end, and every gene in
+the window is drawn and named in a track underneath:
+
+``` r
+
+plot_selection_manhattan(ibd, zoom = "7:340,000-470,000")
+```
+
 ![](ibd_files/figure-html/zoom-1.png)
+
+`zoom_pad` adds context around the interval – a fraction of its span
+below 1, base pairs at or above it – which is what makes a single gene a
+usable window:
+
+``` r
+
+plot_ibd_sharing_manhattan(ibd, zoom = "pfcrt", zoom_pad = 100000)
+```
+
+![](ibd_files/figure-html/zoom-gene-1.png)
+
+Two values pad the left and the right separately, in that order or
+named, so a window can follow a signal that runs off one side of a gene:
+
+``` r
+
+plot_ibd_sharing_manhattan(ibd, zoom = "pfcrt",
+                           zoom_pad = c(left = 20000, right = 120000))
+```
+
+![](ibd_files/figure-html/zoom-asym-1.png)
+
+`zoom` works the same way on
+[`plot_ibd_tugofwar()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_tugofwar.md)
+and on the scan plots
+([`plot_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ihs.md),
+[`plot_beta()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_beta.md),
+[`plot_diversity()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_diversity.md)).
 
 ## Which genes are under selection?
 
@@ -313,13 +357,13 @@ measures panel density:
 ``` r
 
 selection_peaks(ibd, criterion = "bonferroni", genes = PF3D7_GENES, min_snps = 2)
-#> # A tibble: 2 × 13
+#> # A tibble: 2 × 14
 #>   group chr    start    end width n_snps peak_pos peak_value mean_value
 #>   <chr> <chr>  <dbl>  <dbl> <dbl>  <int>    <dbl>      <dbl>      <dbl>
 #> 1 DRC   7     417012 435119 18107      2   417012       9.45       7.88
 #> 2 Sudan 4     631781 655067 23286      3   631781       7.47       6.34
-#> # ℹ 4 more variables: peak_genes <chr>, nearest_gene <chr>,
-#> #   distance_to_gene <dbl>, n_genes <int>
+#> # ℹ 5 more variables: peak_interval_genes <list>, gene_at_peak <chr>,
+#> #   nearest_gene <chr>, distance_to_gene <dbl>, n_genes <int>
 ```
 
 With a `--permute` run the same call takes `criterion = "permutation"`
@@ -343,6 +387,61 @@ plot_ibd_tugofwar(ibd, highlight_genes = c("pfcrt", "pfdhps"), label_genes = TRU
 ```
 
 ![](ibd_files/figure-html/tugofwar-1.png)
+
+`top` replaces the upper track with any per-SNP scan, which is how you
+ask whether the IBD signal coincides with a haplotype signal rather than
+with the statistic derived from the same segments. The scan needs a
+`group` column matching the IBD groups; two-population scans
+([`run_rsb()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_rsb.md),
+[`run_xpehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_xpehh.md))
+are indexed by population pair and cannot be mirrored against per-group
+IBD.
+
+``` r
+
+# hap <- parasite_haplotypes(ps, maf = 0.05)
+plot_ibd_tugofwar(ibd, top = run_ihs(hap, group = "region"), top_label = "iHS")
+```
+
+## One locus in detail
+
+[`plot_ibd_locus()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_locus.md)
+puts the two signals on two axes over a single window: IBD sharing as a
+step curve on the left, the scan as points on the right, genes
+underneath. The axes carry different units, so read shapes and positions
+rather than comparing heights.
+
+``` r
+
+plot_ibd_locus(ibd, "pfcrt", pad = 50000)
+```
+
+![](ibd_files/figure-html/locus-1.png)
+
+`size_by` and `shape_by` map extra scan columns onto the points when the
+scan has them – `shape_by` picks up a mutation-class column
+(`mutation_type`, `mutation_class`, `effect`, `consequence`) on its own,
+and `NA` turns either off.
+
+### Showing every gene in the window
+
+The gene track and the marks inside the panel can come from different
+tables. `genes_for_track` fills the track from a full annotation so the
+whole neighbourhood is visible, while the object’s own short track still
+decides what gets marked – without it the only way to see the neighbours
+is to attach the whole annotation, which draws a reference line per
+gene. Systematic ids are much wider than the genes they sit under, so
+`gene_label_angle` turns them out of each other’s way:
+
+``` r
+
+plot_ibd_locus(ibd, "pfcrt", pad = 50000,
+               genes_for_track = PF3D7_GENES, gene_label_angle = 45)
+```
+
+![](ibd_files/figure-html/locus-all-genes-1.png)
+
+Both arguments work on any zoomed plot, including the scan plots.
 
 ## Region-by-group sharing
 

@@ -8,7 +8,7 @@ groups: **Jost’s D**
 **full, unpruned** genotypes (LD-pruning throws away the differentiating
 SNPs); a `PopStructure` holds a *pruned* matrix for PCA/UMAP, so pass a
 full set through the `genotype` override,
-`genotype = run_ld_prune(vcf, prune = FALSE)`.
+`genotype = load_genotypes(vcf, prune = FALSE)`.
 
 ``` r
 

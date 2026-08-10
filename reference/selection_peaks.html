@@ -13,7 +13,7 @@ in a result.'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,7 @@ in a result.'></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Merge a selection scan's significant SNPs into peaks</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/selection_peaks.R" class="external-link"><code>R/selection_peaks.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/selection_peaks.R" class="external-link"><code>R/selection_peaks.R</code></a></small>
       <div class="d-none name"><code>selection_peaks.Rd</code></div>
     </div>
 
@@ -135,23 +135,27 @@ each peak with the genes it overlaps; <a href="PF3D7_GENES.html">PF3D7_GENES</a>
     <p>A tibble with one row per peak: the grouping column, <code>chr</code>, <code>start</code>, <code>end</code>,
 <code>width</code>, <code>n_snps</code> (significant SNPs in the peak), <code>peak_pos</code> (the single
 highest-scoring SNP), <code>peak_value</code>, <code>mean_value</code>, and – when a gene table was given
-– four annotation columns. Sorted by <code>peak_value</code>.</p>
+– five annotation columns. Sorted by <code>peak_value</code>.</p>
 <p>Everything is anchored on <code>peak_pos</code>, not the interval's midpoint: the midpoint is an
-artefact of where merging started and stopped, and can land in a gap between genes.</p><ul><li><p><code>peak_genes</code> — the gene(s) whose span <strong>contains</strong> the peak SNP, comma-separated.
+artefact of where merging started and stopped, and can land in a gap between genes.</p><ul><li><p><code>peak_interval_genes</code> — a <strong>list-column</strong> of every gene the interval spans, in
+genomic order. A peak of a few hundred kb, as real IBD sharing regions are, can
+cross dozens, so this is the set to take into a follow-up rather than something to
+read off the screen. Unnest it for one row per peak x gene:
+<code>tidyr::unnest(pk, peak_interval_genes)</code>; <code><a href="https://rdrr.io/r/base/lengths.html" class="external-link">lengths()</a></code> of it is <code>n_genes</code>.</p></li>
+<li><p><code>gene_at_peak</code> — the gene(s) whose span <strong>contains</strong> the peak SNP, comma-separated.
 Usually one, since gene spans rarely overlap, and <strong>empty when the peak SNP is
 intergenic</strong> — about a third of peaks on a real cohort.</p></li>
 <li><p><code>nearest_gene</code>, <code>distance_to_gene</code> — of the genes the peak <strong>covers</strong>, the closest
 one to the peak SNP and the gap to it in bp, <code>0</code> when the SNP is inside it. This is
-what to read when <code>peak_genes</code> is empty; those intergenic peaks are typically within
-a kb or two of a gene in the same peak. Candidates are restricted to the interval,
-so a peak that covers no gene reports none rather than pointing at something far
-outside it — which matters when <code>genes</code> is a short list, where most peaks cover
-nothing from it.</p></li>
-<li><p><code>n_genes</code> — how many genes the interval spans. A peak of a few hundred kb, as real
-IBD sharing regions are, can cross dozens; naming them all helps nobody, so this
-counts them. Narrow <code>gap</code> if the intervals are wider than you want.</p></li>
-</ul><p>The three agree by construction: <code>n_genes == 0</code> implies both name columns are empty,
-and a non-empty <code>peak_genes</code> implies <code>distance_to_gene == 0</code>.</p>
+what to read when <code>gene_at_peak</code> is empty; those intergenic peaks are typically
+within a kb or two of a gene in the same peak. Candidates are restricted to the
+interval, so a peak that covers no gene reports none rather than pointing at
+something far outside it — which matters when <code>genes</code> is a short list, where most
+peaks cover nothing from it.</p></li>
+<li><p><code>n_genes</code> — how many genes the interval spans, i.e. <code>lengths(peak_interval_genes)</code>.</p></li>
+</ul><p>They agree by construction: <code>n_genes == 0</code> implies an empty <code>peak_interval_genes</code> and
+empty name columns, <code>n_genes == lengths(peak_interval_genes)</code>, and a non-empty
+<code>gene_at_peak</code> implies <code>distance_to_gene == 0</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -169,7 +173,7 @@ one, which does not need a gene to exist where the signal is.</p></div>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span>umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="beta_score.html">beta_score</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, window <span class="op">=</span> <span class="fl">300000</span>, min_window_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">selection_peaks</span><span class="op">(</span><span class="va">b</span>, criterion <span class="op">=</span> <span class="st">"top"</span>, top <span class="op">=</span> <span class="fl">0.2</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 5 × 13</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 5 × 14</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   group    chr          start    end width n_snps peak_pos peak_value mean_value</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Cambodia Pf3D7_01_v3 5.31<span style="color: #949494;">e</span>5 5.31<span style="color: #949494;">e</span>5     1      1   <span style="text-decoration: underline;">531</span>105      0.536      0.536</span>
@@ -177,8 +181,8 @@ one, which does not need a gene to exist where the signal is.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Ghana    Pf3D7_07_v3 5.99<span style="color: #949494;">e</span>5 5.99<span style="color: #949494;">e</span>5     1      1   <span style="text-decoration: underline;">598</span>578      0.275      0.275</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> Ghana    Pf3D7_09_v3 1.48<span style="color: #949494;">e</span>6 1.48<span style="color: #949494;">e</span>6     1      1  1<span style="text-decoration: underline;">475</span>529      0.169      0.169</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Ghana    Pf3D7_07_v3 5.37<span style="color: #949494;">e</span>5 5.37<span style="color: #949494;">e</span>5     1      1   <span style="text-decoration: underline;">536</span>889      0.142      0.142</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 4 more variables: peak_genes &lt;chr&gt;, nearest_gene &lt;chr&gt;,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   distance_to_gene &lt;dbl&gt;, n_genes &lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 5 more variables: peak_interval_genes &lt;list&gt;, gene_at_peak &lt;chr&gt;,</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   nearest_gene &lt;chr&gt;, distance_to_gene &lt;dbl&gt;, n_genes &lt;int&gt;</span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -13,7 +13,7 @@ for a cleaner picture – or keeps them so the total sample count is visible."><
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,7 @@ for a cleaner picture – or keeps them so the total sample count is visible."><
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>IBD network at a gene or locus</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/plot_ibd_network.R" class="external-link"><code>R/plot_ibd_network.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/plot_ibd_network.R" class="external-link"><code>R/plot_ibd_network.R</code></a></small>
       <div class="d-none name"><code>plot_ibd_network.Rd</code></div>
     </div>
 
@@ -102,7 +102,9 @@ is the single base at 0-based 1000.</p></dd>
 
 
 <dt id="arg-color-group">color_group<a class="anchor" aria-label="anchor" href="#arg-color-group"></a></dt>
-<dd><p>Optional metadata column to colour nodes by (needs <code>meta</code>).</p></dd>
+<dd><p>Optional metadata column to colour nodes by (needs <code>meta</code>). To colour
+by the graph's own connected components, add them to the metadata first with
+<code><a href="add_ibd_clusters.html">add_ibd_clusters()</a></code> and name the column it creates.</p></dd>
 
 
 <dt id="arg-colors">colors<a class="anchor" aria-label="anchor" href="#arg-colors"></a></dt>

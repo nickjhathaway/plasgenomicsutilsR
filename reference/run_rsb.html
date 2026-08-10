@@ -11,7 +11,7 @@ against the other population rather than against the other allele."></head><body
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,7 +42,7 @@ against the other population rather than against the other allele."></head><body
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Cross-population extended haplotype homozygosity (Rsb)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>run_rsb.Rd</code></div>
     </div>
 
@@ -102,6 +102,23 @@ two groups to compare).</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A tibble with <code>pair</code>, <code>pop1</code>, <code>pop2</code>, <code>chr</code>, <code>pos</code>, <code>snp_id</code>, <code>value</code> (Rsb)
 and <code>neg_log10_p</code>.</p>
+<p><strong>Reading <code>value</code>.</strong> Rsb is a log ratio of site-specific extended haplotype
+homozygosity between the two populations, standardised to roughly a standard normal
+under neutrality. So it is a z-score, and its <strong>sign says which population</strong>:
+positive means haplotype homozygosity extends further in <code>pop1</code> than <code>pop2</code>, i.e. the
+sweep is in <code>pop1</code>; negative points at <code>pop2</code>. Swapping the pair flips the sign.</p>
+<p>Magnitude reads like any z: |Rsb| above ~2 is unremarkable in a genome scan, above ~4
+is worth a look, and real sweeps in <em>P. falciparum</em> run higher still. Rather than
+picking a cutoff by eye, use <code>neg_log10_p</code> – the two-sided normal p-value rehh derives
+from <code>value</code> – and correct it: at ~20k SNPs a Bonferroni line sits near 5.6, which is
+the convention in the literature. <code><a href="selection_peaks.html">selection_peaks()</a></code> will merge the survivors into
+loci, since one sweep spans many SNPs, and <code><a href="annotate_snps.html">annotate_snps()</a></code> says which genes they are
+in.</p>
+<p>Two cautions. The standardisation assumes most of the genome is neutral, so a
+genome-wide p-value is relative to <em>this</em> comparison and not comparable across pairs
+with different sample sizes. And Rsb contrasts two populations, so a high score means
+they differ – it cannot by itself tell a sweep in one from a loss of variation in the
+other; that is what the EHH decay curves are for.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

@@ -59,11 +59,12 @@ pop_diff(
 - genotype:
 
   Optional genotype matrix (samples x SNPs) or
-  [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
   list to use **instead** of a `PopStructure`'s stored matrix – pass the
-  **full, unpruned** set here (e.g. `run_ld_prune(vcf, prune = FALSE)`)
-  so differentiation is measured on every SNP while PCA/UMAP keep using
-  the pruned matrix. Ignored when `x` is a matrix.
+  **full, unpruned** set here (e.g.
+  `load_genotypes(vcf, prune = FALSE)`) so differentiation is measured
+  on every SNP while PCA/UMAP keep using the pruned matrix. Ignored when
+  `x` is a matrix.
 
 ## Value
 

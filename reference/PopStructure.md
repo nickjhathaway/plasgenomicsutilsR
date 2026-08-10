@@ -15,6 +15,10 @@ set of samples (or a metadata match) for output.
 
 - [`PopStructure$new()`](#method-PopStructure-initialize)
 
+- [`PopStructure$add_panel()`](#method-PopStructure-add_panel)
+
+- [`PopStructure$panels()`](#method-PopStructure-panels)
+
 - [`PopStructure$add_meta()`](#method-PopStructure-add_meta)
 
 - [`PopStructure$set_colors()`](#method-PopStructure-set_colors)
@@ -55,6 +59,10 @@ set of samples (or a metadata match) for output.
 
 - [`PopStructure$get_colors()`](#method-PopStructure-get_colors)
 
+- [`PopStructure$allele()`](#method-PopStructure-allele)
+
+- [`PopStructure$pruned()`](#method-PopStructure-pruned)
+
 - [`PopStructure$get_samples()`](#method-PopStructure-get_samples)
 
 - [`PopStructure$as_ps()`](#method-PopStructure-as_ps)
@@ -89,6 +97,8 @@ set of samples (or a metadata match) for output.
 
 - [`PopStructure$haplotypes()`](#method-PopStructure-haplotypes)
 
+- [`PopStructure$plot_region_haplotypes()`](#method-PopStructure-plot_region_haplotypes)
+
 - [`PopStructure$ihs()`](#method-PopStructure-ihs)
 
 - [`PopStructure$save()`](#method-PopStructure-save)
@@ -102,19 +112,28 @@ set of samples (or a metadata match) for output.
 ### `PopStructure$new()`
 
 Build from a genotype matrix (or a
-[`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
+[`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
 list).
 
 #### Usage
 
-    PopStructure$new(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL)
+    PopStructure$new(
+      geno,
+      samples = NULL,
+      meta = NULL,
+      n_pcs = 50,
+      colors = NULL,
+      allele = NULL,
+      pruned = NULL,
+      full = NULL
+    )
 
 #### Arguments
 
 - `geno`:
 
   Genotype matrix (samples x SNPs, 0/1/2, `NA`) or
-  [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
   list.
 
 - `samples`:
@@ -133,6 +152,63 @@ list).
 
   Optional named list of colour maps (see
   [`meta_colors()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.md)).
+
+- `allele`:
+
+  Which allele the dosages count, `"alt"` or `"ref"`. Taken from a
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+  list when it says so; a bare matrix cannot say, and the two codings
+  are indistinguishable afterwards, so anything that names the calls has
+  to be told.
+
+- `pruned`:
+
+  Whether the SNPs were LD-pruned. Taken from a
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+  list when it says so. Pruning is right for PCA / admixture and wrong
+  for looking at haplotypes, since it drops SNPs precisely for being
+  correlated with a neighbour.
+
+------------------------------------------------------------------------
+
+### `PopStructure$add_panel()`
+
+Register another genotype panel under a name, so one object can hold the
+pruned SNPs for PCA / admixture and the full set for the analyses where
+the correlation between neighbouring SNPs is the signal.
+
+#### Usage
+
+    PopStructure$add_panel(name, geno, allele = NULL, pruned = NULL)
+
+#### Arguments
+
+- `name`:
+
+  Panel name (`"full"` and `"pruned"` are the ones other functions ask
+  for).
+
+- `geno`:
+
+  Genotype matrix, or a
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+  list.
+
+- `allele, pruned`:
+
+  What this panel is; taken from a
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+  list when it says so.
+
+------------------------------------------------------------------------
+
+### `PopStructure$panels()`
+
+The panels this object holds, primary first.
+
+#### Usage
+
+    PopStructure$panels()
 
 ------------------------------------------------------------------------
 
@@ -400,7 +476,18 @@ The genotype matrix for the active samples (samples x SNPs).
 
 #### Usage
 
-    PopStructure$genotype()
+    PopStructure$genotype(panel = NULL, prefer = NULL)
+
+#### Arguments
+
+- `panel`:
+
+  Panel to return by name; the primary one when `NULL`.
+
+- `prefer`:
+
+  Panel to use *if the object has it*, falling back to the primary one –
+  how an analysis asks for the panel it wants without requiring it.
 
 ------------------------------------------------------------------------
 
@@ -462,6 +549,41 @@ The shared colour maps.
 #### Usage
 
     PopStructure$get_colors()
+
+------------------------------------------------------------------------
+
+### `PopStructure$allele()`
+
+Which allele the dosages count (`"alt"` / `"ref"`), or `NULL` when the
+object does not record it (built from a bare matrix, or saved by an
+older version).
+
+#### Usage
+
+    PopStructure$allele(panel = NULL)
+
+#### Arguments
+
+- `panel`:
+
+  Which panel to report on; the primary one when `NULL`.
+
+------------------------------------------------------------------------
+
+### `PopStructure$pruned()`
+
+Whether the SNPs were LD-pruned (`TRUE` / `FALSE`), or `NULL` when the
+object does not record it.
+
+#### Usage
+
+    PopStructure$pruned(panel = NULL)
+
+#### Arguments
+
+- `panel`:
+
+  Which panel to report on; the primary one when `NULL`.
 
 ------------------------------------------------------------------------
 
@@ -605,7 +727,7 @@ Per-SNP population differentiation between the levels of a metadata
 column (see
 [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md));
 uses the object's genotype matrix (pass
-`genotype = run_ld_prune(vcf, prune = FALSE)` to run on the full
+`genotype = load_genotypes(vcf, prune = FALSE)` to run on the full
 unpruned set).
 
 #### Usage
@@ -850,6 +972,29 @@ Phased haplotypes for a haplotype-homozygosity scan (see
   Passed to
   [`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
   (e.g. `fws = `, `maf = `).
+
+------------------------------------------------------------------------
+
+### `PopStructure$plot_region_haplotypes()`
+
+Genotype heatmap over one region, samples clustered (see
+[`plot_region_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_region_haplotypes.md)).
+
+#### Usage
+
+    PopStructure$plot_region_haplotypes(region, ...)
+
+#### Arguments
+
+- `region`:
+
+  The interval to draw.
+
+- `...`:
+
+  Passed to
+  [`plot_region_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_region_haplotypes.md)
+  (e.g. `split = `, `spacing = `).
 
 ------------------------------------------------------------------------
 

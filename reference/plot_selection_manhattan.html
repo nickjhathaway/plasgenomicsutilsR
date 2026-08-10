@@ -9,7 +9,7 @@ as a dashed line when plotting neg_log10_p and thresholds are available."></head
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,7 +40,7 @@ as a dashed line when plotting neg_log10_p and thresholds are available."></head
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>IBD selection-statistic Manhattan plot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
       <div class="d-none name"><code>plot_selection_manhattan.Rd</code></div>
     </div>
 
@@ -57,6 +57,10 @@ as a dashed line when plotting <code>neg_log10_p</code> and thresholds are avail
 <span>  groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chroms <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  skip_chr <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  zoom <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  zoom_pad <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  genes_for_track <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gene_label_angle <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  highlight_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  label_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  draw_threshold <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -90,6 +94,36 @@ the remaining ones re-laid-out contiguously.</p></dd>
 
 <dt id="arg-skip-chr">skip_chr<a class="anchor" aria-label="anchor" href="#arg-skip-chr"></a></dt>
 <dd><p>Optional chromosomes to drop (complement of <code>chroms</code>).</p></dd>
+
+
+<dt id="arg-zoom">zoom<a class="anchor" aria-label="anchor" href="#arg-zoom"></a></dt>
+<dd><p>Optional single interval to crop to, keeping the same data and the same
+coordinates as the genome-wide plot: a chromosome (<code>"7"</code>), a range
+(<code>"7:728,081-988,719"</code>), a gene name from the object's track, or a one-row data frame
+with chr/start/end. Every gene in the window is drawn and named unless
+<code>label_genes = FALSE</code>.</p></dd>
+
+
+<dt id="arg-zoom-pad">zoom_pad<a class="anchor" aria-label="anchor" href="#arg-zoom-pad"></a></dt>
+<dd><p>Context to add around <code>zoom</code>, clamped to the chromosome. One value pads
+both sides (default 5%); two pad the left and the right, either in that order or named
+– <code>c(left = 5000, right = 40000)</code>, and naming only one side pads only that side. Each
+side is read on its own: below 1 it is a fraction of the interval's span, at or above 1
+it is base pairs, so <code>c(0.1, 20000)</code> is legal.</p></dd>
+
+
+<dt id="arg-genes-for-track">genes_for_track<a class="anchor" aria-label="anchor" href="#arg-genes-for-track"></a></dt>
+<dd><p>Optional gene table for the track drawn beneath a zoomed plot
+(e.g. <a href="PF3D7_GENES.html">PF3D7_GENES</a>), so every gene in the window is shown and named while the plot's
+own short track still supplies the marked positions inside the panel. Without it the
+track and the marks come from the same genes, which means marking a whole annotation
+just to see the neighbours.</p></dd>
+
+
+<dt id="arg-gene-label-angle">gene_label_angle<a class="anchor" aria-label="anchor" href="#arg-gene-label-angle"></a></dt>
+<dd><p>Rotation for the gene names in that track, in degrees. <code>0</code>
+(default) centres each name under its gene; <code>45</code> or <code>90</code> runs it down to the left,
+which is what keeps long systematic ids from colliding over a dense annotation.</p></dd>
 
 
 <dt id="arg-highlight-genes">highlight_genes<a class="anchor" aria-label="anchor" href="#arg-highlight-genes"></a></dt>

@@ -51,6 +51,8 @@ Expected columns (superset; extras are kept):
 
 - [`IbdResults$get_meta()`](#method-IbdResults-get_meta)
 
+- [`IbdResults$set_meta()`](#method-IbdResults-set_meta)
+
 - [`IbdResults$get_gene_overlap()`](#method-IbdResults-get_gene_overlap)
 
 - [`IbdResults$chrom_layout()`](#method-IbdResults-chrom_layout)
@@ -72,6 +74,8 @@ Expected columns (superset; extras are kept):
 - [`IbdResults$gene_ibd_overlap()`](#method-IbdResults-gene_ibd_overlap)
 
 - [`IbdResults$gene_ibd_pairs()`](#method-IbdResults-gene_ibd_pairs)
+
+- [`IbdResults$add_ibd_clusters()`](#method-IbdResults-add_ibd_clusters)
 
 - [`IbdResults$plot_ibd_network()`](#method-IbdResults-plot_ibd_network)
 
@@ -369,6 +373,28 @@ Sample metadata data frame, or `NULL`.
 
 ------------------------------------------------------------------------
 
+### `IbdResults$set_meta()`
+
+Replace the metadata, keeping the declared group order applied. Used by
+[`add_ibd_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.md)
+to add derived columns; the `sample` column must survive.
+
+#### Usage
+
+    IbdResults$set_meta(meta)
+
+#### Arguments
+
+- `meta`:
+
+  The new metadata data frame.
+
+#### Returns
+
+Invisibly self.
+
+------------------------------------------------------------------------
+
 ### `IbdResults$get_gene_overlap()`
 
 Precomputed per-gene block-overlap table, or `NULL`.
@@ -539,6 +565,23 @@ Sample pairs sharing IBD over each gene (see
 
   Passed to
   [`gene_ibd_pairs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_pairs.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$add_ibd_clusters()`
+
+Add single-linkage IBD cluster ids to the metadata.
+
+#### Usage
+
+    IbdResults$add_ibd_clusters(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`add_ibd_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.md).
 
 ------------------------------------------------------------------------
 

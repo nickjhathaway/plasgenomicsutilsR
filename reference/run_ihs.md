@@ -13,7 +13,7 @@ run_ihs(
   group = NULL,
   meta = NULL,
   polarized = FALSE,
-  freqbin = 0.05,
+  freqbin = NULL,
   min_maf = 0.05,
   min_samples = 4,
   threads = 1
@@ -43,7 +43,17 @@ run_ihs(
 
 - freqbin:
 
-  Width of the allele-frequency bins used for standardisation.
+  Width of the allele-frequency bins iHS is standardised within, or
+  `NULL` (default) to pick one from `polarized`: **1** (a single bin)
+  when unpolarized, `0.05` when polarized. The binning exists to control
+  for *derived* allele frequency, and an unpolarized scan has no
+  ancestral state – only `FREQ_MAJ`/`FREQ_MIN` – so major/minor is not
+  derived/ancestral and binning by it controls nothing. rehh warns about
+  this and about the resulting sparse bins above 0.5; a single bin
+  silences both because it is the right answer, not because the warning
+  was noise. Not cosmetic: on a real 249-sample cohort the two settings
+  share only 25 of their top 50 \|iHS\| hits, and 4-12% of SNPs change
+  sign (most in the 0.05-0.1 and \>0.3 MAF bands).
 
 - min_maf:
 
@@ -95,56 +105,18 @@ haplotype structure. *Molecular Ecology Resources* 17, 78-90.
 ps <- example_pop_structure(umap = FALSE)
 hap <- parasite_haplotypes(ps, maf = 0.05)
 run_ihs(hap, group = "country")
-#> Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).
-#> Warning: The number of markers with allele frequencies in bin [0.05,0.1) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.1,0.15) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.15,0.2) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.2,0.25) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.25,0.3) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.3,0.35) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.35,0.4) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.4,0.45) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.45,0.5) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.5,0.55) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.55,0.6) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.6,0.65) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.65,0.7) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.7,0.75) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.75,0.8) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.8,0.85) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.85,0.9) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.9,0.95) is less than 10: you should probably increase bin width.
-#> Warning: If alleles are unpolarized, 'freqbin' should be set to 1 (one bin).
-#> Warning: The number of markers with allele frequencies in bin [0.05,0.1) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.1,0.15) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.15,0.2) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.2,0.25) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.25,0.3) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.3,0.35) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.35,0.4) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.4,0.45) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.45,0.5) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.5,0.55) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.55,0.6) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.6,0.65) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.65,0.7) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.7,0.75) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.75,0.8) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.8,0.85) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.85,0.9) is less than 10: you should probably increase bin width.
-#> Warning: The number of markers with allele frequencies in bin [0.9,0.95) is less than 10: you should probably increase bin width.
 #> # A tibble: 24 × 7
-#>    group    chr             pos snp_id             freq_minor    ihs neg_log10_p
-#>    <fct>    <chr>         <dbl> <chr>                   <dbl>  <dbl>       <dbl>
-#>  1 Cambodia Pf3D7_04_v3   92597 Pf3D7_04_v3:92597      0.1    -1.20       0.639 
-#>  2 Cambodia Pf3D7_04_v3  544673 Pf3D7_04_v3:544673     0.467  NA         NA     
-#>  3 Cambodia Pf3D7_04_v3  898668 Pf3D7_04_v3:898668     0.0667 NA         NA     
-#>  4 Cambodia Pf3D7_04_v3 1006055 Pf3D7_04_v3:10060…     0.133  -0.133      0.0486
-#>  5 Cambodia Pf3D7_08_v3 1271193 Pf3D7_08_v3:12711…     0.233   0.707      0.319 
-#>  6 Cambodia Pf3D7_08_v3 1356248 Pf3D7_08_v3:13562…     0.167  -0.707      0.319 
-#>  7 Cambodia Pf3D7_13_v3  173108 Pf3D7_13_v3:173108     0.167   0.707      0.319 
-#>  8 Cambodia Pf3D7_13_v3 1523439 Pf3D7_13_v3:15234…     0.1     0.491      0.205 
-#>  9 Cambodia Pf3D7_13_v3 1872427 Pf3D7_13_v3:18724…     0.1     1.41       0.797 
-#> 10 Cambodia Pf3D7_14_v3  524416 Pf3D7_14_v3:524416     0.233  -0.707      0.319 
+#>    group    chr             pos snp_id            freq_minor     ihs neg_log10_p
+#>    <fct>    <chr>         <dbl> <chr>                  <dbl>   <dbl>       <dbl>
+#>  1 Cambodia Pf3D7_04_v3   92597 Pf3D7_04_v3:92597     0.1    -1.50        0.878 
+#>  2 Cambodia Pf3D7_04_v3  544673 Pf3D7_04_v3:5446…     0.467  -0.0946      0.0340
+#>  3 Cambodia Pf3D7_04_v3  898668 Pf3D7_04_v3:8986…     0.0667 -1.38        0.775 
+#>  4 Cambodia Pf3D7_04_v3 1006055 Pf3D7_04_v3:1006…     0.133  -0.105       0.0381
+#>  5 Cambodia Pf3D7_08_v3 1271193 Pf3D7_08_v3:1271…     0.233   0.279       0.108 
+#>  6 Cambodia Pf3D7_08_v3 1356248 Pf3D7_08_v3:1356…     0.167   0.355       0.141 
+#>  7 Cambodia Pf3D7_13_v3  173108 Pf3D7_13_v3:1731…     0.167   0.916       0.444 
+#>  8 Cambodia Pf3D7_13_v3 1523439 Pf3D7_13_v3:1523…     0.1     0.711       0.321 
+#>  9 Cambodia Pf3D7_13_v3 1872427 Pf3D7_13_v3:1872…     0.1     1.91        1.25  
+#> 10 Cambodia Pf3D7_14_v3  524416 Pf3D7_14_v3:5244…     0.233  -0.420       0.171 
 #> # ℹ 14 more rows
 ```

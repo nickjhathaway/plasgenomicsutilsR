@@ -68,6 +68,17 @@ A tibble with one row per pair x block x gene:
   the covered portion of the gene – the gene's own bounds when
   `coverage` is `"complete"`.
 
+- `gene_cluster_id`, `gene_cluster_size`:
+
+  single-linkage cluster of samples sharing at this gene, and how many
+  samples are in it. A sample joins a cluster if it shares with **any**
+  member, so a chain of pairs is one cluster even where its ends never
+  share directly – which is what
+  [`plot_ibd_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_network.md)
+  draws as a connected component. Ids run largest first, so `1` is the
+  biggest group at that gene; they are per gene, so cluster 1 at `pfcrt`
+  and cluster 1 at `pfdhps` are unrelated.
+
 - `covered_bp`, `percent_covered`:
 
   width of that portion, and it as a percentage of the gene's length.

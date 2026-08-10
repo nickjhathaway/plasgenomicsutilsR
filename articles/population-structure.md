@@ -141,18 +141,43 @@ identical ancestry distinct; `legend_point_size`,
 
 ## From your own data
 
-Build from a genotype matrix, or LD-prune a VCF first with
-[`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
+Build from a genotype matrix, or read a VCF with
+[`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
 (SNPRelate), then attach metadata — colours are auto-assigned per column
 and reused across every plot:
 
 ``` r
 
-geno <- run_ld_prune("clean.snps.vcf.gz")             # SNPRelate LD-pruned genotypes
+geno <- load_genotypes("clean.snps.vcf.gz")           # LD-pruned by default
 ps <- PopStructure$new(geno, meta = sample_meta)      # sample, region, country, ...
 ps$run_umap(pca_components = 10)
 ps$run_snmf(K = 1:8, cache_dir = "snmf_cache")        # persistent cache survives sessions
 ```
+
+### Both SNP panels in one object
+
+LD pruning keeps one SNP out of each correlated run. That is what you
+want for PCA, UMAP and admixture, where a correlated block would
+otherwise dominate the structure — and the opposite of what you want
+wherever that correlation *is* the signal: differentiation, diversity,
+LD, haplotype scans, haplotype plots. Rather than juggling two objects,
+register both panels and let each analysis take the one it needs:
+
+``` r
+
+ps$add_panel("full", load_genotypes("clean.snps.vcf.gz", prune = FALSE))
+ps$panels()            # "pruned" "full"
+
+ps$plot_pca()          # the pruned panel, as before
+pop_diff(ps)           # the full panel, automatically
+ps$genotype("full")    # or ask for one by name
+```
+
+The GDS is reused between the two calls, so the second is only a read.
+Any other panel works the same way (`ps$add_panel("core", ...)`), and
+`genotype =` still overrides everything. Without a full panel, the
+analyses that want one say so once rather than quietly using pruned
+SNPs.
 
 ## Ordering the groups
 

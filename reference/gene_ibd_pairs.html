@@ -13,7 +13,7 @@ denominator (all pairs compared) rather than just the sharing ones."></head><bod
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,7 @@ denominator (all pairs compared) rather than just the sharing ones."></head><bod
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Sample pairs sharing IBD over each gene</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/gene_ibd_pairs.R" class="external-link"><code>R/gene_ibd_pairs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/gene_ibd_pairs.R" class="external-link"><code>R/gene_ibd_pairs.R</code></a></small>
       <div class="d-none name"><code>gene_ibd_pairs.Rd</code></div>
     </div>
 
@@ -104,6 +104,15 @@ gene's own span, so a block that reaches only into the padding covers <code>0</c
 <dt><code>covered_start</code>, <code>covered_end</code></dt>
 <dd><p>the covered portion of the gene – the gene's
 own bounds when <code>coverage</code> is <code>"complete"</code>.</p></dd>
+
+<dt><code>gene_cluster_id</code>, <code>gene_cluster_size</code></dt>
+<dd><p>single-linkage cluster of samples
+sharing at this gene, and how many samples are in it. A sample joins a cluster if
+it shares with <strong>any</strong> member, so a chain of pairs is one cluster even where its
+ends never share directly – which is what <code><a href="plot_ibd_network.html">plot_ibd_network()</a></code> draws as a
+connected component. Ids run largest first, so <code>1</code> is the biggest group at that
+gene; they are per gene, so cluster 1 at <code>pfcrt</code> and cluster 1 at <code>pfdhps</code> are
+unrelated.</p></dd>
 
 <dt><code>covered_bp</code>, <code>percent_covered</code></dt>
 <dd><p>width of that portion, and it as a percentage

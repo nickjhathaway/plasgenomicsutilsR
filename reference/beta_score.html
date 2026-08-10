@@ -15,7 +15,7 @@ selection, and in P. falciparum typically an antigen rather than a drug target."
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,7 +46,7 @@ selection, and in P. falciparum typically an antigen rather than a drug target."
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Beta: balancing selection from clustered allele frequencies</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/develop/R/beta_score.R" class="external-link"><code>R/beta_score.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.0/R/beta_score.R" class="external-link"><code>R/beta_score.R</code></a></small>
       <div class="d-none name"><code>beta_score.Rd</code></div>
     </div>
 
@@ -121,6 +121,26 @@ each side (default 1000).</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A tibble with <code>group</code>, <code>chr</code>, <code>pos</code>, <code>snp_id</code>, <code>freq</code>, <code>n_called</code>,
 <code>n_window_snps</code> and <code>beta</code>, one row per core SNP per group.</p>
+<p><strong>Reading <code>beta</code>.</strong> This is Siewert &amp; Voight's folded Beta1: how much more the SNPs
+around this one share its allele frequency than drift alone would produce. Long-term
+balancing selection holds a variant at intermediate frequency for many generations, and
+its neighbours hitch-hike to <em>similar</em> frequencies – so a cluster of matched
+frequencies is the signature, which is what beta measures.</p>
+<p>The scale is not a z-score and has no p-value here: it depends on the window, the SNP
+density and the sample size, so a value meaningful in one scan is not comparable to
+another. <strong>Rank rather than threshold.</strong> Larger is more evidence of balancing
+selection; around zero is what neutrality gives; negative means the neighbourhood is
+<em>less</em> frequency-matched than expected, which is a directional-sweep pattern, not
+balancing selection – for that read <code><a href="run_ihs.html">run_ihs()</a></code> instead.</p>
+<p>In practice take the top tail –
+<code>selection_peaks(b, criterion = "top", top = 0.01, metric = "beta")</code> – and annotate it
+with <code><a href="annotate_snps.html">annotate_snps()</a></code>. In <em>P. falciparum</em> the expected hits are the antigens under
+long-term frequency-dependent selection from host immunity – on a real 249-sample
+cohort the top 1% is led by <em>pfama1</em> and <em>pfdblmsp</em>, which is the positive control to
+look for; a scan that surfaces none of them is a reason to check the input before
+believing anything else in it. Note the classic examples <em>var</em> and <em>rifin</em> will
+<strong>not</strong> appear: they are subtelomeric, so a core-genome filter removes them before the
+scan ever sees them.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

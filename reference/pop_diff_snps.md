@@ -22,7 +22,7 @@ pop_diff_snps(pd)
   /
   [`jost_d()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/jost_d.md)
   result (its SNPs must be `chr:pos` ids, as from
-  [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)).
+  [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)).
 
 ## Value
 
