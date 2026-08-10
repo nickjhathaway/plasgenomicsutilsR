@@ -50,6 +50,7 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
     \item \href{#method-IbdResults-get_blocks}{\code{IbdResults$get_blocks()}}
     \item \href{#method-IbdResults-get_analyzed_samples}{\code{IbdResults$get_analyzed_samples()}}
     \item \href{#method-IbdResults-get_meta}{\code{IbdResults$get_meta()}}
+    \item \href{#method-IbdResults-set_meta}{\code{IbdResults$set_meta()}}
     \item \href{#method-IbdResults-get_gene_overlap}{\code{IbdResults$get_gene_overlap()}}
     \item \href{#method-IbdResults-chrom_layout}{\code{IbdResults$chrom_layout()}}
     \item \href{#method-IbdResults-reference_id}{\code{IbdResults$reference_id()}}
@@ -61,6 +62,7 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
     \item \href{#method-IbdResults-plot_pairwise_ibd_for_genes}{\code{IbdResults$plot_pairwise_ibd_for_genes()}}
     \item \href{#method-IbdResults-gene_ibd_overlap}{\code{IbdResults$gene_ibd_overlap()}}
     \item \href{#method-IbdResults-gene_ibd_pairs}{\code{IbdResults$gene_ibd_pairs()}}
+    \item \href{#method-IbdResults-add_ibd_clusters}{\code{IbdResults$add_ibd_clusters()}}
     \item \href{#method-IbdResults-plot_ibd_network}{\code{IbdResults$plot_ibd_network()}}
     \item \href{#method-IbdResults-pos_selection_genes}{\code{IbdResults$pos_selection_genes()}}
     \item \href{#method-IbdResults-clone}{\code{IbdResults$clone()}}
@@ -333,6 +335,29 @@ the usual "everything except these" form.}
 }
 
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-set_meta"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-set_meta}{}}}
+\subsection{\code{IbdResults$set_meta()}}{
+  Replace the metadata, keeping the declared group order applied. Used by
+\code{\link[=add_ibd_clusters]{add_ibd_clusters()}} to add derived columns; the \code{sample} column must survive.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$set_meta(meta)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{meta}}{The new metadata data frame.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly self.
+  }
+}
+
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-IbdResults-get_gene_overlap"></a>}}
 \if{latex}{\out{\hypertarget{method-IbdResults-get_gene_overlap}{}}}
 \subsection{\code{IbdResults$get_gene_overlap()}}{
@@ -515,6 +540,25 @@ the usual "everything except these" form.}
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{...}}{Passed to \code{\link[=gene_ibd_pairs]{gene_ibd_pairs()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-add_ibd_clusters"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-add_ibd_clusters}{}}}
+\subsection{\code{IbdResults$add_ibd_clusters()}}{
+  Add single-linkage IBD cluster ids to the metadata.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$add_ibd_clusters(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=add_ibd_clusters]{add_ibd_clusters()}}.}
     }
     \if{html}{\out{</div>}}
   }

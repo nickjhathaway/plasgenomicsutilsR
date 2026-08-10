@@ -198,11 +198,25 @@ save_plot <- function(filename, plot = ggplot2::last_plot(), device = NULL,
 
 .side_legend_height <- function(gt) .guide_box_height(gt)
 
+# Measuring a gtable resolves grob and string widths, which asks the graphics device for
+# font metrics -- and if no device is open, R opens the DEFAULT one to answer. In a script
+# that is `pdf`, which leaves a stray Rplots.pdf in the working directory; inside a knitr /
+# Quarto chunk it is the chunk's own device, where the measurement surfaces as an extra
+# empty figure under the block. Measuring on a throwaway null device avoids both: it
+# produces no file and is not the device anything is being captured from.
+.with_null_device <- function(expr) {
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  force(expr)
+}
+
 # Measure a built plot: the space its fixed furniture needs (titles, legends, axes,
 # margins), the height any side legend needs, and, when the panel has a locked aspect
 # ratio, that ratio. `null` units convert to zero in absolute terms, so summing the
 # gtable's widths/heights leaves exactly the non-panel inches.
-.plot_metrics <- function(p) {
+.plot_metrics <- function(p) .with_null_device(.plot_metrics_here(p))
+
+.plot_metrics_here <- function(p) {
   out <- list(fixed_w = NA_real_, fixed_h = NA_real_, aspect = NULL, n_row = 1L, n_col = 1L,
               legend_h = 0)
   gt <- try(ggplot2::ggplotGrob(p), silent = TRUE)

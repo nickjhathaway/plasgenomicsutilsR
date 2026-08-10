@@ -191,6 +191,75 @@ contrast against, so iHS is blind to it. That is what the cross-population scans
 plot_ihs(ihs, genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
+`zoom` crops any of these plots to one interval -- a chromosome, a `"chr:start-end"` range,
+or a gene name from `genes` -- and names every gene in the window in a track underneath:
+
+```{r, fig.width = 7, fig.height = 4}
+plot_ihs(ihs, genes = PF_EXAMPLE_DRUG_GENES, zoom = "7", zoom_pad = 0)
+```
+
+### EHH around one SNP
+
+A scan point says a locus looks selected; the EHH decay says what the haplotype is doing
+there. `plot_ehh()` draws one curve per allele **at the focal SNP** -- so it is the
+mutant-versus-reference comparison without needing the SNPs annotated -- and a sweep shows as
+one allele holding EHH near 1 far past where the other has decayed:
+
+```{r, fig.width = 7, fig.height = 3.5}
+plot_ehh(hap, hap$map$snp_id[which.max(abs(ihs$ihs))], span = 3e5)
+```
+
+`focal` also takes a bare position or a gene name from `genes`; a gene holding several SNPs
+resolves to the most balanced one and says which, since EHH from a near-singleton is a flat
+line. `group` gives a panel per metadata group -- worth doing after the pooled view, because
+EHH knows nothing about population structure and a group with few carriers gives a ragged
+curve, which is why `min_haplotypes` drops the smallest ones. `span` crops the window, one
+value or two (`c(left =, right =)`).
+
+### The genotypes behind a signal
+
+A scan says a locus looks selected; the genotypes say what the haplotypes actually are.
+`plot_region_haplotypes()` draws one row per sample and one column per SNP over a window,
+clusters the samples and puts the dendrogram beside them, with the gene track underneath:
+
+```{r, fig.width = 8, fig.height = 6}
+plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+`split` blocks the rows by a metadata column and clusters *within* each block, so a haplotype
+shared across a group reads as a solid band instead of being scattered by one global
+ordering (this is what `ComplexHeatmap`'s `row_split` does). `mark_snps` puts a line on the
+SNPs worth pointing at:
+
+```{r, fig.width = 8, fig.height = 6}
+plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES,
+                       mark_snps = "pfcrt")
+```
+
+`annotations` adds coloured strips down the right, one column per metadata variable, each
+with its own legend and taking its colours from the object's shared maps -- so a level keeps
+the colour it has in the UMAP or the admixture bars:
+
+```{r, fig.width = 8, fig.height = 6}
+plot_region_haplotypes(ps, "7", split = "country", annotations = "country",
+                       genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+`spacing` decides what the horizontal axis means, and the two answers show different things.
+`"even"` (the default) gives every SNP the same width, which is how the haplotype structure
+is easiest to read but says nothing about distance. `"genomic"` keeps every mark the same
+width and moves it to its real coordinate, so the gaps between SNPs are what you see:
+
+```{r, fig.width = 8, fig.height = 6}
+plot_region_haplotypes(ps, "7", split = "country", spacing = "genomic",
+                       genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+One thing to be sure of before reading the colours: `allele` says whether a dosage of 2 means
+two alternate alleles or two reference ones. The plot asks the object, which knows when it
+came from [load_genotypes()]; an object built from a bare matrix cannot say, and the two codings
+are indistinguishable afterwards, so it assumes alt dosage and tells you it did.
+
 Rsb and XP-EHH compare two populations rather than two alleles, so they see exactly those
 completed sweeps:
 

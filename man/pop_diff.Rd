@@ -30,9 +30,9 @@ genome-wide in \emph{P. falciparum}); its standardized form G'st is provided ins
 
 \item{clamp}{Clamp small negative estimates to 0 (default \code{TRUE}).}
 
-\item{genotype}{Optional genotype matrix (samples x SNPs) or \code{\link[=run_ld_prune]{run_ld_prune()}} list to
+\item{genotype}{Optional genotype matrix (samples x SNPs) or \code{\link[=load_genotypes]{load_genotypes()}} list to
 use \strong{instead} of a \code{PopStructure}'s stored matrix -- pass the \strong{full, unpruned}
-set here (e.g. \code{run_ld_prune(vcf, prune = FALSE)}) so differentiation is measured on
+set here (e.g. \code{load_genotypes(vcf, prune = FALSE)}) so differentiation is measured on
 every SNP while PCA/UMAP keep using the pruned matrix. Ignored when \code{x} is a matrix.}
 }
 \value{

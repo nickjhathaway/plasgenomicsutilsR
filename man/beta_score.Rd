@@ -42,6 +42,29 @@ each side (default 1000).}
 \value{
 A tibble with \code{group}, \code{chr}, \code{pos}, \code{snp_id}, \code{freq}, \code{n_called},
 \code{n_window_snps} and \code{beta}, one row per core SNP per group.
+
+\strong{Reading \code{beta}.} This is Siewert & Voight's folded Beta1: how much more the SNPs
+around this one share its allele frequency than drift alone would produce. Long-term
+balancing selection holds a variant at intermediate frequency for many generations, and
+its neighbours hitch-hike to \emph{similar} frequencies -- so a cluster of matched
+frequencies is the signature, which is what beta measures.
+
+The scale is not a z-score and has no p-value here: it depends on the window, the SNP
+density and the sample size, so a value meaningful in one scan is not comparable to
+another. \strong{Rank rather than threshold.} Larger is more evidence of balancing
+selection; around zero is what neutrality gives; negative means the neighbourhood is
+\emph{less} frequency-matched than expected, which is a directional-sweep pattern, not
+balancing selection -- for that read \code{\link[=run_ihs]{run_ihs()}} instead.
+
+In practice take the top tail --
+\code{selection_peaks(b, criterion = "top", top = 0.01, metric = "beta")} -- and annotate it
+with \code{\link[=annotate_snps]{annotate_snps()}}. In \emph{P. falciparum} the expected hits are the antigens under
+long-term frequency-dependent selection from host immunity -- on a real 249-sample
+cohort the top 1\% is led by \emph{pfama1} and \emph{pfdblmsp}, which is the positive control to
+look for; a scan that surfaces none of them is a reason to check the input before
+believing anything else in it. Note the classic examples \emph{var} and \emph{rifin} will
+\strong{not} appear: they are subtelomeric, so a core-genome filter removes them before the
+scan ever sees them.
 }
 \description{
 For each core SNP, compares an estimate of theta weighted towards neighbours whose

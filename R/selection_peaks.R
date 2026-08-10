@@ -106,27 +106,31 @@ PEAK_GAP_BP <- 20000L
 #' @return A tibble with one row per peak: the grouping column, `chr`, `start`, `end`,
 #'   `width`, `n_snps` (significant SNPs in the peak), `peak_pos` (the single
 #'   highest-scoring SNP), `peak_value`, `mean_value`, and -- when a gene table was given
-#'   -- four annotation columns. Sorted by `peak_value`.
+#'   -- five annotation columns. Sorted by `peak_value`.
 #'
 #'   Everything is anchored on `peak_pos`, not the interval's midpoint: the midpoint is an
 #'   artefact of where merging started and stopped, and can land in a gap between genes.
 #'
-#'   * `peak_genes` — the gene(s) whose span **contains** the peak SNP, comma-separated.
+#'   * `peak_interval_genes` — a **list-column** of every gene the interval spans, in
+#'     genomic order. A peak of a few hundred kb, as real IBD sharing regions are, can
+#'     cross dozens, so this is the set to take into a follow-up rather than something to
+#'     read off the screen. Unnest it for one row per peak x gene:
+#'     `tidyr::unnest(pk, peak_interval_genes)`; `lengths()` of it is `n_genes`.
+#'   * `gene_at_peak` — the gene(s) whose span **contains** the peak SNP, comma-separated.
 #'     Usually one, since gene spans rarely overlap, and **empty when the peak SNP is
 #'     intergenic** — about a third of peaks on a real cohort.
 #'   * `nearest_gene`, `distance_to_gene` — of the genes the peak **covers**, the closest
 #'     one to the peak SNP and the gap to it in bp, `0` when the SNP is inside it. This is
-#'     what to read when `peak_genes` is empty; those intergenic peaks are typically within
-#'     a kb or two of a gene in the same peak. Candidates are restricted to the interval,
-#'     so a peak that covers no gene reports none rather than pointing at something far
-#'     outside it — which matters when `genes` is a short list, where most peaks cover
-#'     nothing from it.
-#'   * `n_genes` — how many genes the interval spans. A peak of a few hundred kb, as real
-#'     IBD sharing regions are, can cross dozens; naming them all helps nobody, so this
-#'     counts them. Narrow `gap` if the intervals are wider than you want.
+#'     what to read when `gene_at_peak` is empty; those intergenic peaks are typically
+#'     within a kb or two of a gene in the same peak. Candidates are restricted to the
+#'     interval, so a peak that covers no gene reports none rather than pointing at
+#'     something far outside it — which matters when `genes` is a short list, where most
+#'     peaks cover nothing from it.
+#'   * `n_genes` — how many genes the interval spans, i.e. `lengths(peak_interval_genes)`.
 #'
-#'   The three agree by construction: `n_genes == 0` implies both name columns are empty,
-#'   and a non-empty `peak_genes` implies `distance_to_gene == 0`.
+#'   They agree by construction: `n_genes == 0` implies an empty `peak_interval_genes` and
+#'   empty name columns, `n_genes == lengths(peak_interval_genes)`, and a non-empty
+#'   `gene_at_peak` implies `distance_to_gene == 0`.
 #' @seealso [ihs_genes()] and [beta_genes()] for the per-gene view; this is the per-locus
 #'   one, which does not need a gene to exist where the signal is.
 #' @examples
@@ -198,7 +202,8 @@ selection_peaks <- function(x,
   names(out)[1] <- if (is.na(by)) "group" else by
   if (!is.null(genes)) {
     ann <- .annotate_peaks(out, genes)
-    out$peak_genes <- ann$peak_genes
+    out$peak_interval_genes <- ann$peak_interval_genes
+    out$gene_at_peak <- ann$gene_at_peak
     out$nearest_gene <- ann$nearest_gene
     out$distance_to_gene <- ann$distance_to_gene
     out$n_genes <- ann$n_genes
@@ -227,13 +232,16 @@ selection_peaks <- function(x,
 #
 # The peak SNP is often intergenic (about a third of the time on a real cohort, usually
 # within a kb or two of something), so the nearest gene *within the peak* is reported
-# alongside. `peak_genes` and `nearest_gene` are kept apart on purpose: "the SNP is in this
+# alongside. `gene_at_peak` and `nearest_gene` are kept apart on purpose: "the SNP is in this
 # gene" and "the SNP is near this gene" are different claims and collapsing them would
-# quietly overstate one. Both stay inside the peak, so all three columns describe the same
-# interval and a peak covering no gene says so in every one of them.
+# quietly overstate one. `peak_interval_genes` is a third thing again -- every gene the interval
+# spans, as a list-column, since a wide peak crosses dozens and the whole set is what a
+# follow-up needs. All of them stay inside the peak, so every column describes the same
+# interval and a peak covering no gene says so in each one.
 .annotate_peaks <- function(peaks, genes) {
   g <- .gene_track(genes)
   key <- normalise_chr(peaks$chr)
+  spanned <- vector("list", nrow(peaks))
   at_peak <- character(nrow(peaks))
   nearest <- character(nrow(peaks))
   dist <- rep(NA_real_, nrow(peaks))
@@ -241,6 +249,7 @@ selection_peaks <- function(x,
 
   for (i in seq_len(nrow(peaks))) {
     same <- which(g$chr == key[i])
+    spanned[[i]] <- character(0)
     at_peak[i] <- ""
     # Only genes the peak actually covers are candidates. Searching the whole chromosome
     # would name a gene the peak has nothing to do with -- with a short gene list that is
@@ -250,6 +259,9 @@ selection_peaks <- function(x,
     n_genes[i] <- length(within)
     if (!length(within)) next
 
+    # every gene the interval spans, in genomic order -- the list to hand to a follow-up,
+    # and what `n_genes` counts
+    spanned[[i]] <- unique(g$name[within[order(g$start[within])]])
     p <- peaks$peak_pos[i]
     inside <- within[g$start[within] <= p & g$end[within] > p]
     at_peak[i] <- paste(sort(unique(g$name[inside])), collapse = ",")
@@ -259,6 +271,6 @@ selection_peaks <- function(x,
     nearest[i] <- paste(sort(unique(g$name[within][best])), collapse = ",")
     dist[i] <- min(d)
   }
-  list(peak_genes = at_peak, nearest_gene = nearest, distance_to_gene = dist,
-       n_genes = n_genes)
+  list(peak_interval_genes = spanned, gene_at_peak = at_peak, nearest_gene = nearest,
+       distance_to_gene = dist, n_genes = n_genes)
 }

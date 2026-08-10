@@ -33,6 +33,26 @@ two groups to compare).}
 \value{
 A tibble with \code{pair}, \code{pop1}, \code{pop2}, \code{chr}, \code{pos}, \code{snp_id}, \code{value} (Rsb)
 and \code{neg_log10_p}.
+
+\strong{Reading \code{value}.} Rsb is a log ratio of site-specific extended haplotype
+homozygosity between the two populations, standardised to roughly a standard normal
+under neutrality. So it is a z-score, and its \strong{sign says which population}:
+positive means haplotype homozygosity extends further in \code{pop1} than \code{pop2}, i.e. the
+sweep is in \code{pop1}; negative points at \code{pop2}. Swapping the pair flips the sign.
+
+Magnitude reads like any z: |Rsb| above ~2 is unremarkable in a genome scan, above ~4
+is worth a look, and real sweeps in \emph{P. falciparum} run higher still. Rather than
+picking a cutoff by eye, use \code{neg_log10_p} -- the two-sided normal p-value rehh derives
+from \code{value} -- and correct it: at ~20k SNPs a Bonferroni line sits near 5.6, which is
+the convention in the literature. \code{\link[=selection_peaks]{selection_peaks()}} will merge the survivors into
+loci, since one sweep spans many SNPs, and \code{\link[=annotate_snps]{annotate_snps()}} says which genes they are
+in.
+
+Two cautions. The standardisation assumes most of the genome is neutral, so a
+genome-wide p-value is relative to \emph{this} comparison and not comparable across pairs
+with different sample sizes. And Rsb contrasts two populations, so a high score means
+they differ -- it cannot by itself tell a sweep in one from a loss of variation in the
+other; that is what the EHH decay curves are for.
 }
 \description{
 Compares the site-specific integrated EHH of two groups. Unlike \code{\link[=run_ihs]{run_ihs()}}, Rsb finds

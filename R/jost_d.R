@@ -10,7 +10,18 @@
 STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
                       fst = "Hudson's Fst")
 
-# coerce a genotype override (a run_ld_prune() list or a matrix) to a labelled matrix
+# coerce a genotype override (a load_genotypes() list or a matrix) to a labelled matrix
+# The genotypes an analysis should read. LD pruning keeps one SNP out of each correlated run,
+# so it is right for PCA / UMAP / admixture (where a correlated block would otherwise dominate
+# the structure) and wrong wherever that correlation IS the signal: differentiation, diversity,
+# LD, haplotype scans, haplotype plots. Those ask for the "full" panel and get it when the
+# object holds one, falling back to whatever it has -- with one note from the object saying so.
+.geno_for <- function(x, genotype = NULL, prefer = "full") {
+  if (!is.null(genotype)) return(.coerce_geno(genotype))
+  if (inherits(x, "PopStructure")) return(x$genotype(prefer = prefer))
+  .coerce_geno(x)
+}
+
 .coerce_geno <- function(g) {
   if (is.list(g) && !is.null(g$genotype)) {
     m <- as.matrix(g$genotype)
@@ -76,9 +87,9 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
 #' @param meta When `x` is a matrix, an optional data frame with a `sample` column plus
 #'   `group`; otherwise `group` is a vector aligned to the matrix rows.
 #' @param clamp Clamp small negative estimates to 0 (default `TRUE`).
-#' @param genotype Optional genotype matrix (samples x SNPs) or [run_ld_prune()] list to
+#' @param genotype Optional genotype matrix (samples x SNPs) or [load_genotypes()] list to
 #'   use **instead** of a `PopStructure`'s stored matrix -- pass the **full, unpruned**
-#'   set here (e.g. `run_ld_prune(vcf, prune = FALSE)`) so differentiation is measured on
+#'   set here (e.g. `load_genotypes(vcf, prune = FALSE)`) so differentiation is measured on
 #'   every SNP while PCA/UMAP keep using the pruned matrix. Ignored when `x` is a matrix.
 #' @return A `pop_diff` object: a list with `D` (a SNP x pair matrix of the statistic),
 #'   `snp`, `groups`, `pairs`, `statistic`, and the group `freqs`.
@@ -104,7 +115,7 @@ pop_diff <- function(x, group = NULL,
                      meta = NULL, clamp = TRUE, genotype = NULL) {
   statistic <- match.arg(statistic)
   if (inherits(x, "PopStructure")) {
-    G <- if (is.null(genotype)) x$genotype() else .coerce_geno(genotype)
+    G <- .geno_for(x, genotype)
     meta <- x$get_meta()
     if (is.null(group)) group <- setdiff(names(meta), "sample")[1]
     grp <- as.character(meta[[group]])[match(rownames(G), meta$sample)]
@@ -328,7 +339,7 @@ pop_diff_table <- function(x, group = NULL,
 #' SNP or feed it to [plot_diff_manhattan()].
 #'
 #' @param pd A [pop_diff()] / [jost_d()] result (its SNPs must be `chr:pos` ids, as from
-#'   [run_ld_prune()]).
+#'   [load_genotypes()]).
 #' @return A tibble with `snp`, `chr`, `pos`, `a`, `b`, `pair`, `statistic`, and `value`
 #'   (one row per SNP x pair).
 #' @export

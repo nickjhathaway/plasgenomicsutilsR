@@ -18,7 +18,7 @@ pop_structure(
 }
 \arguments{
 \item{geno}{A genotype matrix (samples x SNPs, 0/1/2, \code{NA} allowed) or the list
-returned by \code{\link[=run_ld_prune]{run_ld_prune()}}.}
+returned by \code{\link[=load_genotypes]{load_genotypes()}}.}
 
 \item{samples}{Sample ids (defaults to the genotype list's \code{sample.id}, or matrix
 row names).}

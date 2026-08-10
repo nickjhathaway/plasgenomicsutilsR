@@ -8,7 +8,7 @@ pop_diff_snps(pd)
 }
 \arguments{
 \item{pd}{A \code{\link[=pop_diff]{pop_diff()}} / \code{\link[=jost_d]{jost_d()}} result (its SNPs must be \code{chr:pos} ids, as from
-\code{\link[=run_ld_prune]{run_ld_prune()}}).}
+\code{\link[=load_genotypes]{load_genotypes()}}).}
 }
 \value{
 A tibble with \code{snp}, \code{chr}, \code{pos}, \code{a}, \code{b}, \code{pair}, \code{statistic}, and \code{value}

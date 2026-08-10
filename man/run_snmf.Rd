@@ -19,7 +19,7 @@ run_snmf(
 }
 \arguments{
 \item{geno}{A genotype matrix (samples x SNPs, 0/1/2, \code{NA} allowed) or the list
-from \code{\link[=run_ld_prune]{run_ld_prune()}}.}
+from \code{\link[=load_genotypes]{load_genotypes()}}.}
 
 \item{K}{Integer vector of ancestral-population counts to fit (default \code{1:10}).}
 

@@ -290,7 +290,7 @@ pop_diversity <- function(x, group = NULL, by = c("genome", "gene", "window"),
   accessible <- .as_regions(accessible)
 
   if (inherits(x, "PopStructure")) {
-    G <- if (is.null(genotype)) x$genotype() else .coerce_geno(genotype)
+    G <- .geno_for(x, genotype)
     if (is.null(meta)) meta <- x$get_meta()
     G <- G[rownames(G) %in% x$get_samples(), , drop = FALSE]
   } else {

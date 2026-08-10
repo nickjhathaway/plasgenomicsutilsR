@@ -9,7 +9,7 @@ run_ihs(
   group = NULL,
   meta = NULL,
   polarized = FALSE,
-  freqbin = 0.05,
+  freqbin = NULL,
   min_maf = 0.05,
   min_samples = 4,
   threads = 1
@@ -25,7 +25,15 @@ rows, or \code{NULL} to scan every sample as one population.}
 
 \item{polarized}{Treat allele 1 as derived (needs a real ancestral state).}
 
-\item{freqbin}{Width of the allele-frequency bins used for standardisation.}
+\item{freqbin}{Width of the allele-frequency bins iHS is standardised within, or \code{NULL}
+(default) to pick one from \code{polarized}: \strong{1} (a single bin) when unpolarized, \code{0.05}
+when polarized. The binning exists to control for \emph{derived} allele frequency, and an
+unpolarized scan has no ancestral state -- only \code{FREQ_MAJ}/\code{FREQ_MIN} -- so major/minor
+is not derived/ancestral and binning by it controls nothing. rehh warns about this and
+about the resulting sparse bins above 0.5; a single bin silences both because it is the
+right answer, not because the warning was noise. Not cosmetic: on a real 249-sample
+cohort the two settings share only 25 of their top 50 |iHS| hits, and 4-12\% of SNPs
+change sign (most in the 0.05-0.1 and >0.3 MAF bands).}
 
 \item{min_maf}{Minor-allele frequency floor applied at standardisation.}
 

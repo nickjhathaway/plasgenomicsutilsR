@@ -40,11 +40,18 @@
   out
 }
 
-#' LD-prune a VCF and return the genotype matrix
+#' Load genotypes from a VCF, optionally LD-pruned
 #'
-#' Converts a VCF to GDS (only when needed), LD-prunes, and returns the pruned
-#' genotype matrix (samples x SNPs, coded 0/1/2, `NA` for missing) via
-#' \pkg{SNPRelate}.
+#' Converts a VCF to GDS (only when needed) and returns the genotype matrix
+#' (samples x SNPs, coded 0/1/2, `NA` for missing) via \pkg{SNPRelate}, LD-pruned by
+#' default.
+#'
+#' Which you want depends on the question. Pruning is right for PCA, UMAP and admixture,
+#' where correlated SNPs would let one locus dominate the structure. It is wrong wherever
+#' the correlation between neighbouring SNPs *is* the signal -- differentiation
+#' ([pop_diff()]) and haplotypes ([plot_region_haplotypes()]) -- because it keeps one SNP out
+#' of each correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a
+#' second call with `prune = FALSE` only re-reads it.
 #'
 #' @param vcf Path to a (bgzipped) VCF, or a **BCF** -- SNPRelate reads VCF text only, so
 #'   a BCF is converted first with `bcftools`, reusing any VCF already sitting next to it
@@ -67,14 +74,17 @@
 #'   arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
 #'   and selection statistic here is symmetric in `p` and `1 - p`.
 #' @return A list with `genotype` (matrix; sample row names and `chr:pos` column names),
-#'   `sample.id`, and `snp.id`.
+#'   `sample.id`, `snp.id`, and the two facts the matrix itself cannot carry: `allele` (which
+#'   allele the dosages count) and `pruned`. [PopStructure] keeps both, so anything that names
+#'   a call or warns about pruning can ask instead of assuming.
+#' @seealso [PopStructure], [pop_structure()]
 #' @export
-run_ld_prune <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
+load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
                          slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
                          maf = NaN, missing_rate = NaN, seed = 42, vcf_dir = NULL,
                          allele = c("alt", "ref")) {
-  .need_package("SNPRelate", "run_ld_prune()")
-  .need_package("gdsfmt", "run_ld_prune()")
+  .need_package("SNPRelate", "load_genotypes()")
+  .need_package("gdsfmt", "load_genotypes()")
   allele <- match.arg(allele)
   if (!file.exists(vcf)) stop(sprintf("no such file: %s", vcf), call. = FALSE)
   vcf <- .as_text_vcf(vcf, vcf_dir)
@@ -106,7 +116,25 @@ run_ld_prune <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
   # allele frequencies and the arbitrary sign of a PCA axis, never a differentiation,
   # diversity, LD or selection value.
   if (identical(allele, "alt")) geno$genotype <- 2L - geno$genotype
-  list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id)
+  # Carried through so downstream code never has to guess which allele a 2 means. Nothing in
+  # a bare matrix says whether it counts reference or alternate alleles, and the two are
+  # indistinguishable after the fact, so a plot that names the calls has to be told.
+  list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id,
+       allele = allele, pruned = prune)
+}
+
+#' Deprecated name for load_genotypes()
+#'
+#' `run_ld_prune()` was renamed to [load_genotypes()]: the old name reads oddly for what it
+#' mostly does, and reads as a contradiction with `prune = FALSE`. Kept so existing scripts
+#' keep working.
+#'
+#' @param ... Passed to [load_genotypes()].
+#' @return See [load_genotypes()].
+#' @export
+run_ld_prune <- function(...) {
+  warning("`run_ld_prune()` has been renamed to `load_genotypes()`", call. = FALSE)
+  load_genotypes(...)
 }
 
 # mean-impute missing genotypes per SNP; drop all-missing columns
@@ -130,7 +158,7 @@ run_ld_prune <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
 #' object the `plot_*()` functions read.
 #'
 #' @param geno A genotype matrix (samples x SNPs, 0/1/2, `NA` allowed) or the list
-#'   returned by [run_ld_prune()].
+#'   returned by [load_genotypes()].
 #' @param samples Sample ids (defaults to the genotype list's `sample.id`, or matrix
 #'   row names).
 #' @param meta Optional per-sample metadata: a data frame with a `sample` column
@@ -305,7 +333,7 @@ plot_umap <- function(x, colour = NULL, colors = NULL, point_size = 1.6,
 #' pick `K`.
 #'
 #' @param geno A genotype matrix (samples x SNPs, 0/1/2, `NA` allowed) or the list
-#'   from [run_ld_prune()].
+#'   from [load_genotypes()].
 #' @param K Integer vector of ancestral-population counts to fit (default `1:10`).
 #' @param rep Repetitions per `K`.
 #' @param alpha Regularisation.
@@ -772,9 +800,12 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
   # Height has to clear a side legend as well, or a large K clips its own keys -- measure
   # the built legend rather than estimating from the key count, since key size, text size
   # and how many columns the guide wrapped into all contribute.
-  gt <- try(ggplot2::ggplotGrob(p), silent = TRUE)
+  # Measured on a throwaway device: measuring on the current one leaves a stray Rplots.pdf
+  # in a script and an empty figure in a notebook chunk (see .with_null_device()).
   panel_h <- 4
-  height <- if (inherits(gt, "try-error")) panel_h
+  height <- .with_null_device({
+    gt <- try(ggplot2::ggplotGrob(p), silent = TRUE)
+    if (inherits(gt, "try-error")) panel_h
     else if (legend_position %in% c("right", "left")) {
       # a side legend spans the canvas, so the canvas has to be at least that tall
       max(panel_h, .guide_box_height(gt, c("guide-box-right", "guide-box-left")) + 0.25)
@@ -783,6 +814,7 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
       # competing with it, so give the panel its space on top of the legend's
       panel_h + .guide_box_height(gt, c("guide-box-bottom", "guide-box-top"))
     }
+  })
   attr(p, "plasgenomics_dims") <- c(
     width = round(max(6, min(24, nrow(q) * 0.06 + n_groups * 0.3)), 1),
     height = round(height, 1))
@@ -811,17 +843,29 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
 #' @export
 PopStructure <- R6::R6Class("PopStructure",
   public = list(
-    #' @description Build from a genotype matrix (or a [run_ld_prune()] list).
-    #' @param geno Genotype matrix (samples x SNPs, 0/1/2, `NA`) or `run_ld_prune()` list.
+    #' @description Build from a genotype matrix (or a [load_genotypes()] list).
+    #' @param geno Genotype matrix (samples x SNPs, 0/1/2, `NA`) or `load_genotypes()` list.
     #' @param samples Sample ids (default row names / the list's `sample.id`).
     #' @param meta Optional metadata (data frame with a `sample` column).
     #' @param n_pcs Number of PCs to summarise.
     #' @param colors Optional named list of colour maps (see [meta_colors()]).
-    initialize = function(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL) {
+    #' @param pruned Whether the SNPs were LD-pruned. Taken from a [load_genotypes()] list
+    #'   when it says so. Pruning is right for PCA / admixture and wrong for looking at
+    #'   haplotypes, since it drops SNPs precisely for being correlated with a neighbour.
+    #' @param allele Which allele the dosages count, `"alt"` or `"ref"`. Taken from a
+    #'   [load_genotypes()] list when it says so; a bare matrix cannot say, and the two codings
+    #'   are indistinguishable afterwards, so anything that names the calls has to be told.
+    initialize = function(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL,
+                          allele = NULL, pruned = NULL, full = NULL) {
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(samples)) samples <- geno$sample.id
+        if (is.null(allele)) allele <- geno$allele
+        if (is.null(pruned)) pruned <- geno$pruned
         geno <- geno$genotype
       }
+      private$was_pruned <- if (is.null(pruned)) NULL else isTRUE(pruned)
+      private$allele_counted <- if (is.null(allele)) NULL else
+        match.arg(allele, c("alt", "ref"))
       mat <- as.matrix(geno)
       if (is.null(samples)) samples <- rownames(mat)
       if (is.null(samples)) samples <- as.character(seq_len(nrow(mat)))
@@ -829,11 +873,57 @@ PopStructure <- R6::R6Class("PopStructure",
       private$geno_mat <- mat
       private$sample_ids <- samples
       private$active_ids <- samples
+      # The primary panel is named for what it is, so `$genotype("full")` finds it when the
+      # object was built unpruned and nothing else has to know which call made it.
+      private$primary <- if (isTRUE(pruned)) "pruned" else
+        if (isFALSE(pruned)) "full" else "genotypes"
+      private$panel_list <- stats::setNames(
+        list(list(genotype = mat, allele = private$allele_counted,
+                  pruned = private$was_pruned)), private$primary)
       private$n_pcs <- n_pcs
       private$ps <- pop_structure(mat, samples = samples, n_pcs = n_pcs, umap = FALSE)
       private$colors <- if (is.null(colors)) list() else colors
+      if (!is.null(full)) self$add_panel("full", full, pruned = FALSE)
       if (!is.null(meta)) self$add_meta(meta)
       invisible(self)
+    },
+
+    #' @description Register another genotype panel under a name, so one object can hold the
+    #'   pruned SNPs for PCA / admixture and the full set for the analyses where the
+    #'   correlation between neighbouring SNPs is the signal.
+    #' @param name Panel name (`"full"` and `"pruned"` are the ones other functions ask for).
+    #' @param geno Genotype matrix, or a [load_genotypes()] list.
+    #' @param allele,pruned What this panel is; taken from a `load_genotypes()` list when it
+    #'   says so.
+    add_panel = function(name, geno, allele = NULL, pruned = NULL) {
+      private$ensure_panels()
+      if (!is.character(name) || length(name) != 1 || !nzchar(name))
+        stop("`name` must be a single non-empty string", call. = FALSE)
+      if (is.list(geno) && !is.null(geno$genotype)) {
+        if (is.null(allele)) allele <- geno$allele
+        if (is.null(pruned)) pruned <- geno$pruned
+        if (is.null(rownames(geno$genotype)) && !is.null(geno$sample.id))
+          rownames(geno$genotype) <- geno$sample.id
+        geno <- geno$genotype
+      }
+      mat <- as.matrix(geno)
+      if (is.null(rownames(mat)) || is.null(colnames(mat)))
+        stop("a panel needs sample row names and `chr:pos` column names", call. = FALSE)
+      gone <- setdiff(private$sample_ids, rownames(mat))
+      if (length(gone))
+        stop("panel \"", name, "\" is missing ", length(gone), " of this object's ",
+             length(private$sample_ids), " samples", call. = FALSE)
+      private$panel_list[[name]] <- list(
+        genotype = mat[private$sample_ids, , drop = FALSE],
+        allele = if (is.null(allele)) NULL else match.arg(allele, c("alt", "ref")),
+        pruned = if (is.null(pruned)) NULL else isTRUE(pruned))
+      invisible(self)
+    },
+
+    #' @description The panels this object holds, primary first.
+    panels = function() {
+      private$ensure_panels()
+      unique(c(private$primary, names(private$panel_list)))
     },
 
     #' @description Attach/replace metadata; auto-assigns colours for new columns.
@@ -971,7 +1061,13 @@ PopStructure <- R6::R6Class("PopStructure",
     },
 
     #' @description The genotype matrix for the active samples (samples x SNPs).
-    genotype = function() private$geno_mat[private$active_ids, , drop = FALSE],
+    #' @param panel Panel to return by name; the primary one when `NULL`.
+    #' @param prefer Panel to use *if the object has it*, falling back to the primary one --
+    #'   how an analysis asks for the panel it wants without requiring it.
+    genotype = function(panel = NULL, prefer = NULL) {
+      nm <- private$pick_panel(panel, prefer)
+      private$panel_list[[nm]]$genotype[private$active_ids, , drop = FALSE]
+    },
     #' @description PCA scores for the active samples.
     pca_scores = function() private$ps$pca[private$idx(), , drop = FALSE],
     #' @description PCA variance-explained table.
@@ -986,6 +1082,14 @@ PopStructure <- R6::R6Class("PopStructure",
       private$meta_df[private$meta_df$sample %in% private$active_ids, , drop = FALSE],
     #' @description The shared colour maps.
     get_colors = function() private$colors,
+    #' @description Which allele the dosages count (`"alt"` / `"ref"`), or `NULL` when the
+    #'   object does not record it (built from a bare matrix, or saved by an older version).
+    #' @param panel Which panel to report on; the primary one when `NULL`.
+    allele = function(panel = NULL) private$panel_list[[private$pick_panel(panel)]]$allele,
+    #' @description Whether the SNPs were LD-pruned (`TRUE` / `FALSE`), or `NULL` when the
+    #'   object does not record it.
+    #' @param panel Which panel to report on; the primary one when `NULL`.
+    pruned = function(panel = NULL) private$panel_list[[private$pick_panel(panel)]]$pruned,
     #' @description Active sample ids.
     get_samples = function() private$active_ids,
 
@@ -1036,7 +1140,7 @@ PopStructure <- R6::R6Class("PopStructure",
 
     #' @description Per-SNP population differentiation between the levels of a metadata
     #'   column (see [pop_diff()]); uses the object's genotype matrix (pass
-    #'   `genotype = run_ld_prune(vcf, prune = FALSE)` to run on the full unpruned set).
+    #'   `genotype = load_genotypes(vcf, prune = FALSE)` to run on the full unpruned set).
     #' @param group Metadata column defining the groups.
     #' @param ... Passed to [pop_diff()] (e.g. `statistic = "fst"`, `genotype = `).
     pop_diff = function(group = NULL, ...) pop_diff(self, group = group, ...),
@@ -1113,6 +1217,13 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param ... Passed to [parasite_haplotypes()] (e.g. `fws = `, `maf = `).
     haplotypes = function(...) parasite_haplotypes(self, ...),
 
+    #' @description Genotype heatmap over one region, samples clustered
+    #'   (see [plot_region_haplotypes()]).
+    #' @param region The interval to draw.
+    #' @param ... Passed to [plot_region_haplotypes()] (e.g. `split = `, `spacing = `).
+    plot_region_haplotypes = function(region, ...)
+      plot_region_haplotypes(self, region, ...),
+
     #' @description Integrated haplotype score (see [run_ihs()]); builds the haplotypes
     #'   first unless one is supplied.
     #' @param group Metadata column defining the groups.
@@ -1149,6 +1260,44 @@ PopStructure <- R6::R6Class("PopStructure",
   ),
   private = list(
     geno_mat = NULL, sample_ids = NULL, active_ids = NULL, meta_df = NULL,
+    allele_counted = NULL, was_pruned = NULL, panel_list = NULL, primary = NULL,
+    told = character(0),
+
+    # Resolve a panel name. `panel` is a requirement (absent -> error); `prefer` is a wish
+    # (absent -> the primary panel, with one note when that means handing pruned SNPs to an
+    # analysis that asked for the full set).
+    # An object saved before panels existed has `geno_mat` but no panel list, so build one on
+    # first use rather than letting every accessor fail on a loaded object.
+    ensure_panels = function() {
+      if (is.null(private$panel_list) || !length(private$panel_list)) {
+        private$primary <- if (isTRUE(private$was_pruned)) "pruned" else
+          if (isFALSE(private$was_pruned)) "full" else "genotypes"
+        private$panel_list <- stats::setNames(
+          list(list(genotype = private$geno_mat, allele = private$allele_counted,
+                    pruned = private$was_pruned)), private$primary)
+      }
+      invisible(TRUE)
+    },
+
+    pick_panel = function(panel = NULL, prefer = NULL) {
+      private$ensure_panels()
+      if (!is.null(panel)) {
+        if (!panel %in% names(private$panel_list))
+          stop("no panel called \"", panel, "\"; this object has: ",
+               paste(names(private$panel_list), collapse = ", "), call. = FALSE)
+        return(panel)
+      }
+      if (!is.null(prefer) && prefer %in% names(private$panel_list)) return(prefer)
+      if (identical(prefer, "full") &&
+          isTRUE(private$panel_list[[private$primary]]$pruned) &&
+          !"full" %in% private$told) {
+        private$told <- c(private$told, "full")
+        message("this reads best on the full SNP set, but the object only holds a pruned ",
+                "panel; add one with ",
+                "`$add_panel(\"full\", load_genotypes(vcf, prune = FALSE))`")
+      }
+      private$primary
+    },
     colors = NULL, ps = NULL, snmf_fit = NULL, n_pcs = NULL,
     idx = function() match(private$active_ids, private$sample_ids),
     require_snmf = function() {
@@ -1171,6 +1320,10 @@ PopStructure <- R6::R6Class("PopStructure",
     v <- old[[nm]]
     if (!is.null(v)) new[[nm]] <- v
   }
+  # Only non-NULL fields are copied, so an object saved before panels existed would keep the
+  # placeholder's panel list -- which describes the two-sample dummy, not the genotypes just
+  # copied over. Drop it and let it be rebuilt from those on first use.
+  if (is.null(old$panel_list)) { new$panel_list <- NULL; new$primary <- NULL }
   fresh
 }
 
@@ -1223,7 +1376,8 @@ example_pop_structure <- function(dataset = c("ghana_cambodia", "africa"),
   if (!nzchar(f)) stop("example genotype data not found in the installed package",
                        call. = FALSE)
   d <- readRDS(f)
-  ps <- PopStructure$new(d$genotype, meta = d$meta)
+  # the shipped fixtures were pruned through load_genotypes()'s default, i.e. alt dosage
+  ps <- PopStructure$new(d$genotype, meta = d$meta, allele = d$allele %||% "alt")
   if (umap) {
     if (requireNamespace("uwot", quietly = TRUE)) {
       # params that spread each dataset nicely out of the box

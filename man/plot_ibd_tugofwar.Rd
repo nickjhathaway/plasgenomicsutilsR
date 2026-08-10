@@ -7,10 +7,17 @@
 plot_ibd_tugofwar(
   x,
   group = NULL,
+  top = NULL,
+  top_label = NULL,
   metric = "neg_log10_p",
+  scan_abs = NULL,
   scale = c("common", "free"),
   chroms = NULL,
   skip_chr = NULL,
+  zoom = NULL,
+  zoom_pad = 0.05,
+  genes_for_track = NULL,
+  gene_label_angle = 0,
   highlight_genes = NULL,
   label_genes = NULL,
   draw_threshold = TRUE,
@@ -19,12 +26,28 @@ plot_ibd_tugofwar(
 )
 }
 \arguments{
-\item{x}{An \link{IbdResults} object (needs both selection and per_snp_group tables).}
+\item{x}{An \link{IbdResults} object (needs a per_snp_group table, and a selection table
+unless \code{top} supplies the upper track).}
 
 \item{group}{Group(s) to plot. \code{NULL} (default) plots every group, faceted one
 per row; a single group gives one panel; a vector facets those groups.}
 
+\item{top}{Optional per-SNP scan to hang from the top instead of the object's own IBD
+selection statistic: a \code{\link[=run_ihs]{run_ihs()}} result, a \code{\link[=beta_score]{beta_score()}} table, or any table with
+chr, pos, the \code{metric} column and (to face the IBD groups) a matching \code{group} column.
+Two-population scans (\code{\link[=run_rsb]{run_rsb()}}, \code{\link[=run_xpehh]{run_xpehh()}}) are indexed by population pair
+rather than group and cannot be mirrored against per-group IBD.}
+
+\item{top_label}{Name for the upper track on the shared axis; defaults to
+\code{"selection"} for the object's statistic and \code{"scan"} for a \code{top} table.}
+
 \item{metric}{Selection metric for the top track (default \code{"neg_log10_p"}).}
+
+\item{scan_abs}{Plot the magnitude of a signed \code{metric} (iHS, Rsb, a z-score). \code{NULL}
+(default) does so whenever the metric has negative values, labelling the axis
+\verb{|metric|}. The mirror cannot show the sign -- its top half only spans zero to the
+maximum -- so \code{FALSE} on signed values is an error rather than a silently clipped plot;
+use \code{\link[=plot_ibd_locus]{plot_ibd_locus()}} when the sign matters.}
 
 \item{scale}{\code{"common"} (default) scales every panel to a shared maximum so they
 are directly comparable; \code{"free"} scales each group to its own maximum for more
@@ -34,6 +57,28 @@ per-group detail (the axis then reads as within-group percentages).}
 the rest re-laid-out contiguously.}
 
 \item{skip_chr}{Optional chromosomes to drop (complement of \code{chroms}).}
+
+\item{zoom}{Optional single interval to crop to, keeping the same data and the same
+coordinates as the genome-wide plot: a chromosome (\code{"7"}), a range
+(\code{"7:728,081-988,719"}), a gene name from the object's track, or a one-row data frame
+with chr/start/end. Every gene in the window is drawn and named unless
+\code{label_genes = FALSE}.}
+
+\item{zoom_pad}{Context to add around \code{zoom}, clamped to the chromosome. One value pads
+both sides (default 5\%); two pad the left and the right, either in that order or named
+-- \code{c(left = 5000, right = 40000)}, and naming only one side pads only that side. Each
+side is read on its own: below 1 it is a fraction of the interval's span, at or above 1
+it is base pairs, so \code{c(0.1, 20000)} is legal.}
+
+\item{genes_for_track}{Optional gene table for the track drawn beneath a zoomed plot
+(e.g. \link{PF3D7_GENES}), so every gene in the window is shown and named while the plot's
+own short track still supplies the marked positions inside the panel. Without it the
+track and the marks come from the same genes, which means marking a whole annotation
+just to see the neighbours.}
+
+\item{gene_label_angle}{Rotation for the gene names in that track, in degrees. \code{0}
+(default) centres each name under its gene; \code{45} or \code{90} runs it down to the left,
+which is what keeps long systematic ids from colliding over a dense annotation.}
 
 \item{highlight_genes}{Optional gene names from the \code{genes} track to mark with lines;
 requesting a name not in the track is an error.}

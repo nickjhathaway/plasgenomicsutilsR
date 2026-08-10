@@ -124,3 +124,39 @@ test_that("output is still written when cairo claims to exist but cannot open", 
   suppressMessages(save_plot(multi, list(p, p)))
   expect_true(file.exists(multi) && file.size(multi) > 0)
 })
+
+test_that("sizing a plot leaves no device open and writes no stray Rplots.pdf", {
+  skip_if_not_installed("ggplot2")
+  # Measuring a gtable asks the device for font metrics; with no device open R opens the
+  # default one, which in a script is `pdf` (leaving Rplots.pdf behind) and in a notebook
+  # chunk is the chunk's own device (surfacing as an empty figure under the block).
+  dir <- tempfile("devcheck"); dir.create(dir)
+  old <- setwd(dir); on.exit(setwd(old), add = TRUE)
+  before <- length(grDevices::dev.list())
+
+  x <- example_ibd_results()
+  p <- plot_selection_manhattan(x)
+  m <- .plot_metrics(p)
+  expect_true(is.finite(m$fixed_w))
+  expect_length(grDevices::dev.list(), before)
+  expect_false(file.exists("Rplots.pdf"))
+
+  save_plot("out.pdf", p)
+  expect_true(file.exists("out.pdf"))
+  expect_length(grDevices::dev.list(), before)
+  expect_false(file.exists("Rplots.pdf"))
+})
+
+test_that("plot_admixture sizes itself without touching the current device", {
+  skip_if_not_installed("ggplot2")
+  dir <- tempfile("devcheck2"); dir.create(dir)
+  old <- setwd(dir); on.exit(setwd(old), add = TRUE)
+  before <- length(grDevices::dev.list())
+
+  q <- matrix(c(0.7, 0.3, 0.2, 0.8, 0.5, 0.5), ncol = 2, byrow = TRUE,
+              dimnames = list(c("a", "b", "c"), NULL))
+  p <- plot_admixture(q)
+  expect_s3_class(p, "ggplot")
+  expect_length(grDevices::dev.list(), before)
+  expect_false(file.exists("Rplots.pdf"))
+})

@@ -5,7 +5,7 @@
 [![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-> **Version 0.2.0** — early development; APIs, defaults, and outputs may change
+> **Version 0.3.0** — early development; APIs, defaults, and outputs may change
 > between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** — the
@@ -71,7 +71,12 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
     `draw_threshold =` line: `"bonferroni"`, `"fdr"`, `"permutation"`, `"empirical"`
     (whichever the Python side wrote), or `"all"`
   - `plot_ibd_pairwise_group_heatmap()` — group × group IBD as tiles along the genome
-  - `plot_ibd_tugofwar()` — selection (top) vs IBD (bottom) mirror for one group
+  - `plot_ibd_tugofwar()` — selection (top) vs IBD (bottom) mirror for one group. `top =`
+    hangs a different per-SNP scan from the upper half (an `run_ihs()` result, say), so the
+    mirror can ask whether the IBD signal coincides with a *haplotype* signal rather than
+    with a statistic derived from the same segments
+  - `plot_ibd_locus()` — one window on two axes: IBD sharing as a step curve on the left, a
+    selection scan as points on the right, genes underneath
   - `plot_pairwise_ibd_for_genes()` — group × group IBD-sharing triangles, per gene. With
     IBD blocks loaded (`ibd_results(blocks=, meta=)`) or a precomputed overlap table
     (`gene_overlap=`, from `plasgenomicsutils ibd_gene_overlap`), a gene's cell is the
@@ -120,6 +125,21 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   are optional (Suggests); each plot returns a ggplot object. Every `plot_*()` and
   `pos_selection_genes()` is also a method, so `ibd$plot_selection_manhattan()` and
   `plot_selection_manhattan(ibd)` are interchangeable.
+- **`zoom =` on every genome-wide plot** (both Manhattans, the tug-of-war, `plot_ihs()`,
+  `plot_beta()`, `plot_diversity()`) crops to one interval — a chromosome, a
+  `"chr:start-end"` range, a gene name, or a data frame — keeping the same data and the same
+  coordinates, so a locus sits at the same x as in the whole-genome figure. `zoom_pad` adds
+  context, one value for both sides or two for the left and the right. Inside a window every
+  gene in view is drawn at its real extent and named in a track underneath;
+  `genes_for_track =` fills that track from a separate table (e.g. `PF3D7_GENES`) while the
+  plot's own short track still supplies the marked positions, and `gene_label_angle` turns
+  long systematic ids out of each other's way.
+- **`add_ibd_clusters()`** writes the single-linkage IBD clusters at a gene or locus into the
+  object's metadata as `<gene>_cluster_id`, so any plot that colours or shapes by a metadata
+  column can name the blobs `plot_ibd_network()` draws.
+- **`annotate_snps()`** labels any table with a `snp_id` (or chr/pos) with the intervals it
+  falls in — genes, core regions, anything BED-shaped — with `within =` for a flanking
+  window.
 - **Population structure** — `PopStructure` is an R6 workspace bundling a genotype
   matrix, its PCA (full `prcomp`), an optional UMAP, per-sample metadata, a **shared
   colour map**, and an sNMF admixture fit, so PCA / UMAP / admixture colour and order
@@ -139,9 +159,19 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   the suggested canvas grows to hold it, so a K of 15 keys does not run off the page.
   `set_levels()` fixes a metadata column's
   order once and it flows through every legend, facet, and strip; `save()` /
-  `load_pop_structure()` persist the whole workspace. `run_ld_prune()` builds the genotype
-  matrix from a VCF (SNPRelate LD-pruning). SNPRelate / uwot / LEA / ggnewscale / patchwork
-  are optional (Suggests).
+  `load_pop_structure()` persist the whole workspace. `load_genotypes()` builds the genotype
+  matrix from a VCF (SNPRelate, LD-pruned by default), and records the two facts a matrix
+  cannot carry: which allele its dosages count and whether it was pruned. SNPRelate / uwot /
+  LEA / ggnewscale / patchwork are optional (Suggests).
+- **Both SNP panels in one object** — LD pruning keeps one SNP out of each correlated run,
+  which is right for PCA / UMAP / admixture and the opposite of what you want wherever that
+  correlation *is* the signal: differentiation, diversity, LD, haplotype scans, haplotype
+  plots. Register both with `ps$add_panel("full", load_genotypes(vcf, prune = FALSE))` and
+  each analysis takes the one it needs — `ps$plot_pca()` the pruned SNPs, `pop_diff(ps)` the
+  full set — instead of building a second object each time. `$genotype(panel =)` requires a
+  panel by name, `$genotype(prefer =)` takes one if it exists, and any other name works too.
+  Without a full panel the analyses that want one say so once rather than quietly using
+  pruned SNPs.
 - **`plot_structure_figure()`** — the UMAP and sNMF admixture as **one** figure: a shared
   theme (matching fonts), one region colour map (UMAP points match the admixture colour
   strips), collected legends, region-faceted bars (colour strip, no text) laid out over
@@ -151,9 +181,10 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
 - **Population differentiation** — `pop_diff()` computes a per-SNP differentiation
   statistic for every pair of metadata groups: **Jost's D** (`jost_d()`), **Hedrick's
   standardized G′st**, and **Hudson's Fst**. It wants the **full, unpruned** genotypes
-  (LD-pruning removes the differentiating SNPs), so on a `PopStructure` — whose stored
-  matrix is pruned for PCA/UMAP — pass `genotype = run_ld_prune(vcf, prune = FALSE)` to
-  measure differentiation on every SNP. Only one Gst is offered: plain Nei's Gst is
+  (LD-pruning removes the differentiating SNPs), which a `PopStructure` supplies when it
+  holds a full panel alongside the pruned one — `ps$add_panel("full", load_genotypes(vcf,
+  prune = FALSE))` — and every analysis whose signal is SNP-to-SNP correlation then reads it
+  automatically. Only one Gst is offered: plain Nei's Gst is
   strongly deflated when within-group diversity is high (typical in *P. falciparum*), so
   its standardized form G′st is kept. `pop_diff_matrix()` collapses to a group × group
   summary; `plot_diff_heatmap()` draws a triangle heatmap (legend in the empty corner,
@@ -195,6 +226,22 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   sign. `beta_score()` covers the other half: long-term **balancing** selection from allele
   frequencies clustered around an intermediate-frequency core (Siewert & Voight's folded
   Beta1), with `beta_genes()` and `plot_beta()` — the antigen counterpart to iHS's sweeps.
+  `plot_ehh()` is the picture behind one point on a scan: the haplotype homozygosity decaying
+  either side of a focal SNP, one curve per allele **at that SNP** — the mutant-versus-
+  reference comparison without needing the SNPs annotated.
+- **`selection_peaks()`** turns any per-SNP scan into a peak list: contiguous runs of
+  above-threshold SNPs, with every gene the peak interval covers (`peak_interval_genes`, a
+  list-column in genomic order), the gene at the peak SNP itself, and the nearest gene and its
+  distance for a peak in an intergenic stretch. `criterion` picks the bar —
+  `"bonferroni"`, `"fdr"`, `"permutation"`, `"empirical"`, `"top"` or `"value"` — so the list
+  is built at a threshold the run actually supports.
+- **`plot_region_haplotypes()`** shows the genotypes themselves over a window: one row per
+  sample, one column per SNP, samples clustered with a dendrogram beside them, coloured
+  metadata strips down the right and a gene track underneath. `split =` blocks the rows by a
+  metadata column and clusters *within* each block (`ComplexHeatmap`'s `row_split` semantics),
+  so a haplotype shared across a group reads as a solid band rather than being scattered by
+  one global ordering. `spacing = "genomic"` moves every mark to its real coordinate, keeping
+  them all the same width, so the gaps between SNPs are what you see.
 - **Coverage QC** — `read_coverage()`, `coverage_qc()`, `plot_coverage_summary()`,
   `plot_coverage_by_chrom()` and `plot_coverage_dropout()` read and plot the depth tables
   from `plasgenomicsutils coverage_depth_stats` / `coverage_dropout_regions`. Breadth

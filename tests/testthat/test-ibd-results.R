@@ -116,3 +116,102 @@ test_that("subsetting sees groups that only `meta` carries", {
   expect_setequal(sub$get_analyzed_samples(), c("a", "b", "c"))
   expect_warning(ibd$subset_groups(drop = "Nowhere"), "not in these results")
 })
+
+test_that("gene_ibd_pairs labels single-linkage clusters, matching the network's components", {
+  # a-b-c is one chain (a and c never share directly), d-e is separate, and f-g is a third
+  blocks <- data.frame(
+    sample1 = c("a", "b", "d", "f"), sample2 = c("b", "c", "e", "g"),
+    chr = "Pf3D7_07_v3", start = 400000, end = 460000,
+    Nsnp = 40L, different = 0L, stringsAsFactors = FALSE)
+  genes <- data.frame(name = "g1", chr = "Pf3D7_07_v3", start = 403000, end = 406000,
+                      gene_id = "X", stringsAsFactors = FALSE)
+  r <- gene_ibd_pairs(ibd_results(blocks = blocks, genes = genes,
+                                  min_block_snp = 0, min_block_kb = 0))
+  cl <- setNames(r$gene_cluster_id, paste(r$sample1, r$sample2))
+
+  # single linkage: the a-b-c chain is ONE cluster even though a and c never share
+  expect_equal(unname(cl["a b"]), unname(cl["b c"]))
+  expect_false(cl["a b"] == cl["d e"])
+  expect_false(cl["a b"] == cl["f g"])
+  expect_equal(length(unique(r$gene_cluster_id)), 3L)
+
+  # ids run largest first, and the size is the sample count
+  expect_equal(unname(cl["a b"]), 1L)                      # the 3-sample chain
+  expect_equal(unname(r$gene_cluster_size[r$sample1 == "a"]), 3L)
+  expect_true(all(r$gene_cluster_size[r$gene_cluster_id > 1] == 2))
+
+  # bridging the chain to d-e must merge them into one cluster
+  bridged <- rbind(blocks, data.frame(
+    sample1 = "c", sample2 = "d", chr = "Pf3D7_07_v3", start = 400000, end = 460000,
+    Nsnp = 40L, different = 0L, stringsAsFactors = FALSE))
+  r2 <- gene_ibd_pairs(ibd_results(blocks = bridged, genes = genes,
+                                   min_block_snp = 0, min_block_kb = 0))
+  expect_equal(length(unique(r2$gene_cluster_id)), 2L)
+  expect_equal(max(r2$gene_cluster_size), 5L)
+})
+
+test_that("add_ibd_clusters writes cluster ids into meta and overwrites on re-run", {
+  blocks <- data.frame(
+    sample1 = c("a", "b", "d"), sample2 = c("b", "c", "e"),
+    chr = "Pf3D7_07_v3", start = 400000, end = 460000,
+    Nsnp = 40L, different = 0L, stringsAsFactors = FALSE)
+  meta <- data.frame(sample = letters[1:6], region = "N", stringsAsFactors = FALSE)
+  genes <- data.frame(name = "g1", chr = "Pf3D7_07_v3", start = 403000, end = 406000,
+                      stringsAsFactors = FALSE)
+  mk <- function() ibd_results(blocks = blocks, meta = meta, genes = genes,
+                               min_block_snp = 0, min_block_kb = 0)
+
+  ibd <- mk()
+  expect_message(add_ibd_clusters(ibd, size = TRUE), "added")
+  m <- ibd$get_meta()
+  expect_true(all(c("g1_cluster_id", "g1_cluster_size") %in% names(m)))
+  id <- stats::setNames(as.integer(as.character(m$g1_cluster_id)), m$sample)
+
+  # single linkage: the a-b-c chain is one cluster, d-e another, f shares with nobody
+  expect_equal(id[["a"]], id[["b"]]); expect_equal(id[["b"]], id[["c"]])
+  expect_false(id[["a"]] == id[["d"]])
+  expect_true(is.na(id[["f"]]))
+  expect_equal(id[["a"]], 1L)                             # largest cluster first
+  expect_equal(m$g1_cluster_size[m$sample == "a"], 3L)
+
+  # the ids are the same numbers gene_ibd_pairs() reports
+  t <- gene_ibd_pairs(ibd)
+  tid <- c(stats::setNames(t$gene_cluster_id, t$sample1),
+           stats::setNames(t$gene_cluster_id, t$sample2))
+  sh <- intersect(names(tid), names(id))
+  expect_true(all(id[sh] == tid[sh]))
+
+  # levels are numeric order, not alphabetical, so a legend reads 1, 2, ... not 1, 10, 2
+  expect_equal(levels(m$g1_cluster_id), as.character(sort(unique(stats::na.omit(id)))))
+
+  # re-running replaces rather than accumulating, whatever the settings
+  n <- ncol(ibd$get_meta())
+  expect_message(add_ibd_clusters(ibd, size = TRUE), "updated")
+  expect_equal(ncol(ibd$get_meta()), n)
+  add_ibd_clusters(ibd, size = TRUE, sharing = "complete")
+  expect_equal(ncol(ibd$get_meta()), n)
+  # ...unless a prefix asks for a second set
+  add_ibd_clusters(ibd, sharing = "complete", prefix = "complete_")
+  expect_true("complete_g1_cluster_id" %in% names(ibd$get_meta()))
+
+  expect_error(add_ibd_clusters(ibd_results(blocks = blocks, genes = genes,
+                                           min_block_snp = 0, min_block_kb = 0)),
+               "writes into the metadata")
+})
+
+test_that("a network can colour by an added cluster column", {
+  skip_if_not_installed("ggplot2"); skip_if_not_installed("igraph")
+  skip_if_not_installed("ggraph")
+  blocks <- data.frame(
+    sample1 = c("a", "b", "d"), sample2 = c("b", "c", "e"),
+    chr = "Pf3D7_07_v3", start = 400000, end = 460000,
+    Nsnp = 40L, different = 0L, stringsAsFactors = FALSE)
+  meta <- data.frame(sample = letters[1:6], region = "N", stringsAsFactors = FALSE)
+  genes <- data.frame(name = "g1", chr = "Pf3D7_07_v3", start = 403000, end = 406000,
+                      stringsAsFactors = FALSE)
+  ibd <- ibd_results(blocks = blocks, meta = meta, genes = genes,
+                     min_block_snp = 0, min_block_kb = 0)
+  add_ibd_clusters(ibd)
+  expect_s3_class(plot_ibd_network(ibd, gene = "g1",
+                                  color_group = "g1_cluster_id"), "ggplot")
+})

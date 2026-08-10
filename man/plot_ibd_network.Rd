@@ -38,7 +38,9 @@ are 0-based half-open (see \link{plasgenomicsutilsR-coordinates}), so \code{"chr
 the 1000 bases from 0-based 1000 up to but not including 2000, and a bare \code{"chr:1000"}
 is the single base at 0-based 1000.}
 
-\item{color_group}{Optional metadata column to colour nodes by (needs \code{meta}).}
+\item{color_group}{Optional metadata column to colour nodes by (needs \code{meta}). To colour
+by the graph's own connected components, add them to the metadata first with
+\code{\link[=add_ibd_clusters]{add_ibd_clusters()}} and name the column it creates.}
 
 \item{colors}{Colours for \code{color_group}. A \strong{named} \code{level -> colour} vector maps by
 name and may cover only some levels (the rest keep their automatic colour); an

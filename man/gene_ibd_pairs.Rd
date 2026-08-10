@@ -29,6 +29,13 @@ A tibble with one row per pair x block x gene:
 \code{"partial"}.}
 \item{\code{covered_start}, \code{covered_end}}{the covered portion of the gene -- the gene's
 own bounds when \code{coverage} is \code{"complete"}.}
+\item{\code{gene_cluster_id}, \code{gene_cluster_size}}{single-linkage cluster of samples
+sharing at this gene, and how many samples are in it. A sample joins a cluster if
+it shares with \strong{any} member, so a chain of pairs is one cluster even where its
+ends never share directly -- which is what \code{\link[=plot_ibd_network]{plot_ibd_network()}} draws as a
+connected component. Ids run largest first, so \code{1} is the biggest group at that
+gene; they are per gene, so cluster 1 at \code{pfcrt} and cluster 1 at \code{pfdhps} are
+unrelated.}
 \item{\code{covered_bp}, \code{percent_covered}}{width of that portion, and it as a percentage
 of the gene's length.}
 }
