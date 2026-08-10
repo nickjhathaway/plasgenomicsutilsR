@@ -206,7 +206,7 @@ mutant-versus-reference comparison without needing the SNPs annotated -- and a s
 one allele holding EHH near 1 far past where the other has decayed:
 
 ```{r, fig.width = 7, fig.height = 3.5}
-plot_ehh(hap, hap$map$snp_id[which.max(abs(ihs$ihs))], span = 3e5)
+plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
 ```
 
 `focal` also takes a bare position or a gene name from `genes`; a gene holding several SNPs
@@ -223,7 +223,7 @@ A scan says a locus looks selected; the genotypes say what the haplotypes actual
 clusters the samples and puts the dendrogram beside them, with the gene track underneath:
 
 ```{r, fig.width = 8, fig.height = 6}
-plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfcrt", pad = 20000, genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
 `split` blocks the rows by a metadata column and clusters *within* each block, so a haplotype
@@ -232,8 +232,8 @@ ordering (this is what `ComplexHeatmap`'s `row_split` does). `mark_snps` puts a 
 SNPs worth pointing at:
 
 ```{r, fig.width = 8, fig.height = 6}
-plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES,
-                       mark_snps = "pfcrt")
+plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
+                       genes = PF_EXAMPLE_DRUG_GENES, annotations = "country")
 ```
 
 `annotations` adds coloured strips down the right, one column per metadata variable, each
@@ -241,8 +241,8 @@ with its own legend and taking its colours from the object's shared maps -- so a
 the colour it has in the UMAP or the admixture bars:
 
 ```{r, fig.width = 8, fig.height = 6}
-plot_region_haplotypes(ps, "7", split = "country", annotations = "country",
-                       genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfdhps", pad = 20000, split = "country",
+                       annotations = "country", genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
 `spacing` decides what the horizontal axis means, and the two answers show different things.
@@ -251,8 +251,8 @@ is easiest to read but says nothing about distance. `"genomic"` keeps every mark
 width and moves it to its real coordinate, so the gaps between SNPs are what you see:
 
 ```{r, fig.width = 8, fig.height = 6}
-plot_region_haplotypes(ps, "7", split = "country", spacing = "genomic",
-                       genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
+                       spacing = "genomic", genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
 One thing to be sure of before reading the colours: `allele` says whether a dosage of 2 means

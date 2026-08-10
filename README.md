@@ -5,7 +5,7 @@
 [![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-> **Version 0.3.0** — early development; APIs, defaults, and outputs may change
+> **Version 0.3.1** — early development; APIs, defaults, and outputs may change
 > between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** — the
@@ -140,6 +140,14 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
 - **`annotate_snps()`** labels any table with a `snp_id` (or chr/pos) with the intervals it
   falls in — genes, core regions, anything BED-shaped — with `within =` for a flanking
   window.
+- **`aa_intervals()`** turns "codon 76 of *pfcrt*" into a genomic interval, walking the protein
+  back through the transcript's coding exons from a GFF (`read_gff_cds()` parses it once).
+  Resistance markers are named by amino acid while every plot here works in genomic
+  coordinates, and the conversion depends on the exon structure, the strand and the CDS
+  phase — so it is not something to do by eye. The result is shaped like the package's other
+  interval tables (`chr`, `start`, `end`, `name = <transcript>-AA<pos>`), so it drops straight
+  into `genes =`, `mark_snps =`, `annotate_snps()` or `bed_intersect()`. A codon straddling an
+  intron is flagged (`spans_intron`) since its interval then spans the intron too.
 - **Population structure** — `PopStructure` is an R6 workspace bundling a genotype
   matrix, its PCA (full `prcomp`), an optional UMAP, per-sample metadata, a **shared
   colour map**, and an sNMF admixture fit, so PCA / UMAP / admixture colour and order

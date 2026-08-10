@@ -134,5 +134,6 @@ stretches become wide empty bands.
 }
 \examples{
 ps <- example_pop_structure(umap = FALSE)
-plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES)
+plot_region_haplotypes(ps, "pfcrt", split = "country", pad = 20000,
+                       genes = PF_EXAMPLE_DRUG_GENES)
 }

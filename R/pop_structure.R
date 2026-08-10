@@ -1376,8 +1376,12 @@ example_pop_structure <- function(dataset = c("ghana_cambodia", "africa"),
   if (!nzchar(f)) stop("example genotype data not found in the installed package",
                        call. = FALSE)
   d <- readRDS(f)
-  # the shipped fixtures were pruned through load_genotypes()'s default, i.e. alt dosage
-  ps <- PopStructure$new(d$genotype, meta = d$meta, allele = d$allele %||% "alt")
+  # The shipped fixtures are alt dosage (load_genotypes()'s default). `ghana_cambodia` also
+  # carries a `full` panel: the same sparse genome-wide SNPs plus every biallelic SNP around
+  # pfcrt / pfdhps / pfkelch13, so the locus, haplotype and EHH examples have real density
+  # while PCA / UMAP / admixture keep reading the thinned set they were tuned on.
+  ps <- PopStructure$new(d$genotype, meta = d$meta, allele = d$allele %||% "alt",
+                         pruned = d$pruned, full = d$full)
   if (umap) {
     if (requireNamespace("uwot", quietly = TRUE)) {
       # params that spread each dataset nicely out of the box

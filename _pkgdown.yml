@@ -127,10 +127,13 @@ reference:
   - plot_dims
 - title: Genomic intervals
   desc: >
-    Overlap two BED-style interval tables (genes vs. core / paralog regions, ...). All
+    Overlap two BED-style interval tables (genes vs. core / paralog regions, ...), label SNPs
+    with what they fall in, and turn amino-acid positions into genomic intervals. All
     coordinates in the package follow one convention.
   contents:
   - annotate_snps
+  - aa_intervals
+  - read_gff_cds
   - bed_intersect
   - plasgenomicsutilsR-coordinates
 - title: Example & reference data

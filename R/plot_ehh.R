@@ -106,8 +106,7 @@
 #' @examples
 #' ps <- example_pop_structure(umap = FALSE)
 #' hap <- parasite_haplotypes(ps, maf = 0.05)
-#' # the example panel is sparse, so measure from a SNP it actually has
-#' plot_ehh(hap, hap$map$snp_id[10], span = 5e5)
+#' plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
 #' @export
 plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
                      polarized = FALSE, limehh = 0.05, genes = NULL, gene_track = NULL,

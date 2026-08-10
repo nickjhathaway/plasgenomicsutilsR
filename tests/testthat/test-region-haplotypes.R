@@ -26,9 +26,12 @@ test_that("plot_region_haplotypes draws a heatmap over the window", {
   # one row per sample, one column per SNP in the window
   hm <- hap_panel(p)
   expect_length(unique(hm$data$sample), length(ps$get_samples()))
-  loci <- .parse_snp_ids(colnames(ps$genotype()))
+  # every SNP of the FULL panel on that chromosome -- this plot prefers it, since pruning
+  # removes the correlated SNPs a haplotype block is made of
+  loci <- .parse_snp_ids(colnames(ps$genotype(prefer = "full")))
   in_win <- sum(normalise_chr(loci$chr) == "7")
   expect_length(unique(hm$data$snp_id), in_win)
+  expect_gt(in_win, ncol(ps$genotype()) / 2)   # the dense windows are actually being read
   expect_true(all(levels(hm$data$call) == c("reference", "mixed", "alternate")))
 })
 
@@ -77,9 +80,12 @@ test_that("spacing decides what the x axis means", {
   }
   even <- xr(spacing = "even")
   genomic <- xr(spacing = "genomic")
-  # even counts SNPs; genomic is in base pairs, so it spans the region itself
-  expect_lt(even[2], 100)
+  # even counts SNP columns, so its axis tops out at the number of them; genomic is in base
+  # pairs, so it spans the region itself
+  n_snp <- length(unique(hap_panel(plot_region_haplotypes(ps, "7"))$data$snp_id))
+  expect_equal(even[2], n_snp + 0.5)
   expect_gt(genomic[2], 1e5)
+  expect_gt(genomic[2], even[2] * 100)
 })
 
 test_that("mark_snps takes an id, a position or a gene", {
@@ -97,11 +103,12 @@ test_that("mark_snps takes an id, a position or a gene", {
   }
   expect_gt(n_marks(mark_snps = id), 0)
   expect_gt(n_marks(mark_snps = on7$pos[1]), 0)
-  # a gene resolves, but marking it only draws lines where there are genotyped SNPs -- and
-  # says so when there are none, rather than looking like the argument was ignored
-  expect_message(plot_region_haplotypes(ps, "7", mark_snps = "pfcrt",
-                                        genes = PF_EXAMPLE_DRUG_GENES),
-                 "no genotyped SNP inside pfcrt")
+  # a gene with SNPs in it marks them all
+  expect_gt(n_marks(mark_snps = "pfcrt", genes = PF_EXAMPLE_DRUG_GENES), 0)
+  # one with none says so, rather than looking like the argument was ignored
+  empty <- data.frame(name = "nosnps", chr = "7", start = 1, end = 2)
+  expect_message(plot_region_haplotypes(ps, "7", mark_snps = "nosnps", genes = empty),
+                 "no genotyped SNP inside nosnps")
   expect_error(plot_region_haplotypes(ps, "7", mark_snps = "not-a-thing"),
                "not a SNP in the window")
 })

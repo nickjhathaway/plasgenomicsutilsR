@@ -28,14 +28,31 @@ position, matching the package convention (`?plasgenomicsutilsR-coordinates`):
 `pop_structure_ghana_cambodia.rds`, loaded by `example_pop_structure()`, is a small
 **public** genotype matrix for the PCA / UMAP / sNMF-admixture tools.
 
-**Provenance.** 60 publicly available *P. falciparum* samples (30 Ghana, 30 Cambodia)
-at 49 biallelic SNPs, extracted from the Pf7 example BCF that also ships with the
-companion Python package (`plasgenomicsutils/tests/data/ghana_cambodia.pf7.tiny.bcf`).
-Genotypes are real alt-allele dosages (`0`/`1`/`2`, `NA` where uncalled); the two
-countries are strongly differentiated, so they separate on PC1 and sNMF picks K = 2.
+**Provenance.** 60 publicly available *P. falciparum* samples (30 Ghana, 30 Cambodia).
+Genotypes are real alt-allele dosages (`0`/`1`/`2`, `NA` where uncalled); the two countries
+are strongly differentiated, so they separate on PC1 and sNMF picks K = 2.
 
-Contents: a list with `genotype` (a 60 × 49 samples-by-SNP integer matrix, sample ids
-as row names) and `meta` (a data frame of `sample`, `country`).
+**Two SNP panels**, because the two kinds of plot want opposite things:
+
+- `genotype` — 49 biallelic SNPs thinned genome-wide, extracted from the Pf7 example BCF that
+  also ships with the companion Python package
+  (`plasgenomicsutils/tests/data/ghana_cambodia.pf7.tiny.bcf`). This is what PCA / UMAP /
+  admixture read, and the panel those demos were tuned on.
+- `full` — the same 49 plus **670** biallelic SNPs (MAF ≥ 2%) covering **pfcrt**, **pfdhps**
+  and **pfkelch13** ±30 kb, pulled from the same public Ghana/Cambodia Pf7 callset. 719 SNPs
+  in total. Locus-scale plots — `plot_ibd_locus()`, `zoom =`, `plot_region_haplotypes()`,
+  `plot_ehh()` — need SNPs *close together* to show anything, and a genome-wide thinning at
+  one SNP per few kb leaves 0–2 in a 50 kb window. Registered as the object's `"full"` panel,
+  so those plots pick it up on their own while the thinned set stays the primary.
+
+Ids are `chr:pos` with **1-based** VCF positions (SNPRelate's convention, which
+`load_genotypes()` follows). Multiallelic sites split by `bcftools norm -m-` can leave two
+biallelic records at one position; only the commonest ALT is kept, since a `chr:pos` id can
+name just one SNP.
+
+Contents: a list with `genotype` (60 × 49), `full` (60 × 719), `meta` (`sample`, `country`),
+and `allele` / `pruned` recording what the dosages count and that the primary panel is
+thinned.
 
 `pop_structure_africa.rds` (`example_pop_structure("africa")`) is a richer, multi-region
 **public** dataset for the combined UMAP + admixture figure (`plot_structure_figure()`):

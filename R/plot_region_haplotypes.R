@@ -159,7 +159,8 @@
 #'   neither of those two is drawn.
 #' @examples
 #' ps <- example_pop_structure(umap = FALSE)
-#' plot_region_haplotypes(ps, "7", split = "country", genes = PF_EXAMPLE_DRUG_GENES)
+#' plot_region_haplotypes(ps, "pfcrt", split = "country", pad = 20000,
+#'                        genes = PF_EXAMPLE_DRUG_GENES)
 #' @export
 plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                                    genotypes = NULL, samples = NULL,

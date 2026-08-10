@@ -6,7 +6,8 @@ test_that("jost_d computes per-SNP pairwise D in [0, 1]", {
   jd <- jost_d(ps, group = "country")
   expect_s3_class(jd, "jost_d")
   expect_equal(ncol(jd$D), 1)                             # one pair for two groups
-  expect_equal(nrow(jd$D), ncol(ps$genotype()))
+  # differentiation reads the full panel: pruning removes the differentiating SNPs
+  expect_equal(nrow(jd$D), ncol(ps$genotype(prefer = "full")))
   v <- jd$D[is.finite(jd$D)]
   expect_true(all(v >= 0 & v <= 1))
   # strongly differentiated countries -> some clearly informative SNPs
