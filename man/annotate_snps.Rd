@@ -10,7 +10,8 @@ annotate_snps(
   within = 0,
   keep = c("all", "hits"),
   collapse = FALSE,
-  prefix = ""
+  prefix = "",
+  one_based_snps = FALSE
 )
 }
 \arguments{
@@ -30,6 +31,11 @@ in \code{n_intervals}, instead of one row per SNP x interval (default \code{FALS
 
 \item{prefix}{Prepend this to the added column names, to keep two annotations side by
 side (e.g. \code{prefix = "core_"}).}
+
+\item{one_based_snps}{The positions in \code{scan} are 1-based (VCF \code{POS}), so shift them before
+testing. Genotype-matrix column names from \code{\link[=load_genotypes]{load_genotypes()}} are 1-based, and joining
+those against these 0-based intervals without saying so moves every SNP one base and can
+turn a near-miss into a hit. Default \code{FALSE}, the package convention.}
 }
 \value{
 \code{scan} with \code{name}, \code{interval_start}, \code{interval_end}, \code{distance_to_midpoint} and

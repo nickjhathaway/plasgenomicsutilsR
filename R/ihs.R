@@ -173,6 +173,10 @@ print.parasite_haplotypes <- function(x, ...) {
   cat("\n")
   cat("  samples dropped :", r$n_dropped_sample_missing, "missing\n")
   cat("  imputed calls   :", r$n_imputed, " seed:", x$seed, "\n")
+  # a subset is easy to lose track of, and it changes what every scan off this object means
+  if (!is.null(x$subset))
+    cat("  subset          :", nrow(x$hap), "of", x$subset$from, "haplotypes",
+        if (length(x$subset$by)) paste0("(", paste(x$subset$by, collapse = "; "), ")"), "\n")
   invisible(x)
 }
 
@@ -477,4 +481,89 @@ ihs_genes <- function(scan, genes = NULL, within = 0, min_snps = 1) {
   out <- out[order(out[[by]], -out$max_neg_log10_p), , drop = FALSE]
   rownames(out) <- NULL
   tibble::as_tibble(out)
+}
+
+#' Keep only some of the haplotypes
+#'
+#' A [parasite_haplotypes()] object restricted to certain samples or metadata groups, for when a
+#' scan or an EHH curve is only worth reading within one part of the cohort -- a mutation that
+#' segregates in a single region, say, where pooling everything buries it.
+#'
+#' Metadata columns are matched the way [PopStructure]'s `$subset()` does, `column = values`,
+#' and a column takes several values:
+#'
+#' ```
+#' subset_haplotypes(hap, region = c("North", "Southwest"))
+#' ```
+#'
+#' The **SNP panel is left alone**: the same columns, the same MAF and missingness filtering that
+#' built them. That is deliberate, so two subsets stay comparable to each other and to the whole
+#' -- and it costs nothing for haplotype work, since a SNP that is monomorphic within the subset
+#' is dropped when the scan or curve is computed anyway. Rebuild with `parasite_haplotypes()` on
+#' a subset [PopStructure] instead when you want the filtering itself redone within the group.
+#'
+#' @param x A [parasite_haplotypes()] object.
+#' @param samples Optional sample ids to keep.
+#' @param meta Metadata to match `...` against; defaults to the object's own.
+#' @param ... Metadata filters as `column = values`, e.g. `region = "Southwest"`. A value that
+#'   no sample has is an error rather than a silently empty result.
+#' @return `x` with fewer haplotypes; `print()` reports the restriction.
+#' @seealso [parasite_haplotypes()], [plot_ehh()], [run_ihs()]
+#' @examples
+#' ps <- example_pop_structure(umap = FALSE)
+#' hap <- parasite_haplotypes(ps, maf = 0.05)
+#' subset_haplotypes(hap, country = "Ghana")
+#' @export
+subset_haplotypes <- function(x, samples = NULL, meta = NULL, ...) {
+  if (!inherits(x, "parasite_haplotypes"))
+    stop("`x` must be a parasite_haplotypes() object", call. = FALSE)
+  ids <- rownames(x$hap)
+  keep <- ids
+  note <- character(0)
+
+  if (!is.null(samples)) {
+    samples <- as.character(samples)
+    unknown <- setdiff(samples, ids)
+    if (length(unknown) == length(samples))
+      stop("none of `samples` are in these haplotypes", call. = FALSE)
+    if (length(unknown))
+      warning(length(unknown), " of ", length(samples), " `samples` are not in these ",
+              "haplotypes and are ignored", call. = FALSE)
+    keep <- intersect(keep, samples)
+    note <- c(note, paste0("samples: ", length(samples)))
+  }
+
+  filt <- list(...)
+  if (length(filt)) {
+    m <- meta %||% x$meta
+    if (is.null(m)) stop("no metadata on these haplotypes to match `...` against; pass `meta`",
+                         call. = FALSE)
+    m <- as.data.frame(m)
+    if (!"sample" %in% names(m)) stop("`meta` needs a `sample` column", call. = FALSE)
+    bad <- setdiff(names(filt), names(m))
+    if (length(bad))
+      stop("not a metadata column: ", paste(bad, collapse = ", "), call. = FALSE)
+    ok <- rep(TRUE, nrow(m))
+    for (nm in names(filt)) {
+      want <- as.character(filt[[nm]])
+      have <- as.character(m[[nm]])
+      missing <- setdiff(want, unique(have))
+      # a typo'd level would otherwise just return nothing, which reads as "no data"
+      if (length(missing))
+        stop("no sample has ", nm, " = ", paste(missing, collapse = ", "), "; available: ",
+             paste(sort(unique(have)), collapse = ", "), call. = FALSE)
+      ok <- ok & have %in% want
+      note <- c(note, paste0(nm, ": ", paste(want, collapse = ", ")))
+    }
+    keep <- intersect(keep, as.character(m$sample[ok]))
+  }
+
+  if (!length(keep))
+    stop("no haplotype satisfies every filter at once", call. = FALSE)
+  out <- x
+  out$hap <- x$hap[keep, , drop = FALSE]
+  if (!is.null(out$meta) && "sample" %in% names(out$meta))
+    out$meta <- out$meta[as.character(out$meta$sample) %in% keep, , drop = FALSE]
+  out$subset <- list(from = nrow(x$hap), by = note)
+  out
 }

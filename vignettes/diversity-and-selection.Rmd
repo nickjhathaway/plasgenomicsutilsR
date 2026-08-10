@@ -209,6 +209,20 @@ one allele holding EHH near 1 far past where the other has decayed:
 plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
 ```
 
+A marker that only segregates in one part of the cohort is buried by pooling, so restrict the
+haplotypes to where it varies. `subset_haplotypes()` matches metadata the way
+`PopStructure$subset()` does, `column = values`, and takes several values:
+
+```{r, fig.width = 7, fig.height = 3.5}
+gh <- subset_haplotypes(hap, country = "Ghana")
+plot_ehh(gh, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
+```
+
+The SNP panel is left exactly as `parasite_haplotypes()` built it, so two subsets remain
+comparable to each other and to the whole; a SNP that is monomorphic within the subset is
+dropped when the curve is computed anyway. `print()` reports the restriction, since it changes
+what every scan off that object means.
+
 `focal` also takes a bare position or a gene name from `genes`; a gene holding several SNPs
 resolves to the most balanced one and says which, since EHH from a near-singleton is a flat
 line. `group` gives a panel per metadata group -- worth doing after the pooled view, because
@@ -249,6 +263,12 @@ plot_region_haplotypes(ps, "pfdhps", pad = 20000, split = "country",
 `"even"` (the default) gives every SNP the same width, which is how the haplotype structure
 is easiest to read but says nothing about distance. `"genomic"` keeps every mark the same
 width and moves it to its real coordinate, so the gaps between SNPs are what you see:
+
+Either way a SNP is only ever drawn over the genes it really falls in. Under `"even"` the axis
+counts SNPs, so a gene's box is exactly the columns it holds — its width is how many SNPs are in
+it, *not* how long the gene is — and a gene with no genotyped SNP in the window has no width at
+all and is left off the track with a message. Under `"genomic"` the boxes are true extents and
+the marks are clipped at gene edges instead.
 
 ```{r, fig.width = 8, fig.height = 6}
 plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",

@@ -7,7 +7,9 @@
 aa_intervals(positions, gff, genes = PF3D7_GENES, one_based_output = FALSE)
 }
 \arguments{
-\item{positions}{A data frame with \code{transcript_id} and \code{aa_position}. \code{transcript_id} may
+\item{positions}{A data frame with \code{transcript_id} and \code{aa_position}. \code{aa_position} is
+\strong{1-based}, counting the initiator methionine as 1, matching how residues are numbered in
+the literature -- so \code{76} is the residue everyone calls 76. \code{transcript_id} may
 be a transcript id (\code{"PF3D7_0709000.1"}), a gene id (\code{"PF3D7_0709000"} -- every
 transcript of it is returned), or a gene symbol when \code{genes} is given (\code{"pfcrt"}).}
 
@@ -21,7 +23,7 @@ be a symbol; defaults to \link{PF3D7_GENES}.}
 be used as an interval table directly.}
 }
 \value{
-A data frame with \code{chr} (normalised), \code{chrom} (as the GFF spells it), \code{start},
+A tibble with \code{chr} (normalised), \code{chrom} (as the GFF spells it), \code{start},
 \code{end}, \code{name}, \code{transcript_id}, \code{gene_id}, \code{aa_position}, \code{strand}, \code{codon_positions}
 (a comma-separated list of the three base positions, always 1-based as coordinates are
 usually quoted), \code{n_exons} and \code{spans_intron}. Positions past the end of a protein, and
@@ -37,7 +39,10 @@ and the CDS phase.
 \details{
 The result is shaped like the package's other interval tables -- \code{chr}, \code{start}, \code{end},
 \code{name} -- so it drops straight into \verb{genes =}, \verb{mark_snps =}, \code{\link[=annotate_snps]{annotate_snps()}} or
-\code{\link[=bed_intersect]{bed_intersect()}}. \code{name} is \verb{<transcript_id>-AA<aa_position>}.
+\code{\link[=bed_intersect]{bed_intersect()}}. \code{name} is \verb{<transcript_id>-AA<aa_position>}. Those genomic bounds are
+0-based half-open like every other interval here, while the amino-acid position itself is
+1-based and \code{codon_positions} lists 1-based bases -- the deliberate exception described in
+\code{?"plasgenomicsutilsR-coordinates"}.
 
 A codon can straddle an intron, in which case its three bases are not contiguous: \code{start}
 and \code{end} then span the intron as well, and \code{spans_intron} flags it so the width is not

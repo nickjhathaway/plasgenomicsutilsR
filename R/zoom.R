@@ -224,17 +224,24 @@
 .CHAR_IN <- 2.845 / 72 * 0.5    # per point of text size: pt -> in, ~half-em per character
 
 .gene_track_panel <- function(genes, xlim, height = 0.9, fill = "#4d4d4d", angle = 0,
-                              width_in = 9, size = .GENE_LABEL_SIZE) {
+                              width_in = 9, size = .GENE_LABEL_SIZE, min_width = TRUE) {
   .need_package("ggplot2", "the zoomed gene track")
   if (is.null(genes) || !nrow(genes)) return(NULL)
   g <- genes[order(genes$.gene_xmin), , drop = FALSE]
   span <- diff(xlim)
-  # a small gene in a wide window would draw a hairline, so give every box a floor width
-  short <- (g$.gene_xmax - g$.gene_xmin) < span * 0.004
+  # A small gene in a wide window would draw a hairline, so give every box a floor width --
+  # but never widen it past a neighbouring box, and never at all when the boxes were already
+  # snapped to the SNP columns they own (`min_width = FALSE`), since growing one there would put
+  # it back over a SNP it does not contain, which is the thing the snapping avoids.
+  short <- min_width & (g$.gene_xmax - g$.gene_xmin) < span * 0.004
   if (any(short)) {
-    mid <- (g$.gene_xmin[short] + g$.gene_xmax[short]) / 2
-    g$.gene_xmin[short] <- mid - span * 0.002
-    g$.gene_xmax[short] <- mid + span * 0.002
+    ord <- order(g$.gene_xmin)
+    lo_lim <- rep(-Inf, nrow(g)); hi_lim <- rep(Inf, nrow(g))
+    lo_lim[ord][-1] <- g$.gene_xmax[ord][-nrow(g)]
+    hi_lim[ord][-nrow(g)] <- g$.gene_xmin[ord][-1]
+    mid <- (g$.gene_xmin + g$.gene_xmax) / 2
+    g$.gene_xmin[short] <- pmax(mid[short] - span * 0.002, lo_lim[short])
+    g$.gene_xmax[short] <- pmin(mid[short] + span * 0.002, hi_lim[short])
   }
   # Anchor on the middle of the VISIBLE part of the gene: a gene straddling the edge of the
   # window has its true mid outside the panel, so a label placed there is cut off entirely.
@@ -295,9 +302,13 @@
     ord <- order(lab_lo)
     g <- g[ord, , drop = FALSE]
     lo_o <- lab_lo[ord]; hi_o <- lab_hi[ord]
-    # a real gap between names on a tier, not merely "not overlapping": two labels ending a
-    # couple of hundred base pairs apart read as one run of text
-    gap <- 1.5 * char_in * cos(rad) * bp_per_in
+    # A real gap between names on a tier, not merely "not overlapping": two labels ending a
+    # couple of hundred base pairs apart read as one run of text. The clearance cannot be
+    # scaled by cos(angle) alone -- at 90 degrees that is zero, so labels would never tier
+    # however close together they are (four codons of one gene, say). A rotated name still
+    # needs about a line's height of horizontal room from its neighbour.
+    line_in <- size * 2.845 / 72 * 1.2
+    gap <- max(1.5 * char_in * cos(rad), line_in * sin(rad)) * bp_per_in
     g$.tier <- 0L
     last <- numeric(0)
     for (k in seq_len(nrow(g))) {
@@ -345,9 +356,9 @@
 
 # Stack the gene track under a zoomed plot, sharing the x axis: the main panel keeps the
 # tick labels, the track just carries the boxes and names.
-.stack_gene_track <- function(p, z, layout, n_panels = 1L, angle = 0) {
+.stack_gene_track <- function(p, z, layout, n_panels = 1L, angle = 0, min_width = TRUE) {
   track <- .gene_track_panel(.zoom_gene_boxes(z$track, layout), z$xlim, angle = angle,
-                             width_in = .ZOOM_WIDTH_IN)
+                             width_in = .ZOOM_WIDTH_IN, min_width = min_width)
   if (is.null(track)) return(p)
   .need_package("patchwork", "the zoomed gene track")
   track_in <- attr(track, "track_in")

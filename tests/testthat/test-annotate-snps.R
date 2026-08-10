@@ -48,3 +48,22 @@ test_that("gene_id rides along when the interval table has one", {
   expect_equal(a$gene_id, "PF3D7_0709000")
   expect_true(a$interval_start <= 403500 && 403500 < a$interval_end)
 })
+
+test_that("1-based SNP positions can be annotated without shifting them by hand", {
+  # a 3 bp interval, 0-based half-open: covers 1-based positions 101, 102, 103
+  iv <- data.frame(name = "codon", chr = "1", start = 100, end = 103)
+  snps <- data.frame(snp_id = c("1:100", "1:101", "1:103", "1:104"))
+
+  # the package convention: positions are 0-based, so 100/101/102 are inside
+  zero <- annotate_snps(snps, iv, keep = "hits")
+  expect_setequal(zero$snp_id, c("1:100", "1:101"))
+
+  # 1-based (a genotype-matrix id from load_genotypes()): 101/102/103 are inside, and 100 is
+  # not -- without saying so, every SNP shifts a base and a near-miss reads as a hit
+  one <- annotate_snps(snps, iv, keep = "hits", one_based_snps = TRUE)
+  expect_setequal(one$snp_id, c("1:101", "1:103"))
+  expect_false("1:100" %in% one$snp_id)
+  # the reported interval bounds are untouched; only the test position moves
+  expect_equal(unique(one$interval_start), 100)
+  expect_equal(unique(one$interval_end), 103)
+})

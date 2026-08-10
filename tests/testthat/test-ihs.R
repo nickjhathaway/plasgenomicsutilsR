@@ -236,3 +236,59 @@ test_that("freqbin defaults to one bin for an unpolarized scan", {
   expect_silent(rf(0.05, polarized = TRUE))
   expect_silent(rf(1, polarized = FALSE))
 })
+
+test_that("subset_haplotypes keeps samples, metadata groups, or both", {
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+  n_all <- nrow(hap$hap)
+
+  one <- subset_haplotypes(hap, country = "Ghana")
+  expect_lt(nrow(one$hap), n_all)
+  expect_setequal(unique(as.character(one$meta$country)), "Ghana")
+  # the SNP panel is deliberately untouched, so two subsets stay comparable
+  expect_identical(colnames(one$hap), colnames(hap$hap))
+  expect_identical(one$map, hap$map)
+
+  # several values for one column
+  both <- subset_haplotypes(hap, country = c("Ghana", "Cambodia"))
+  expect_equal(nrow(both$hap), n_all)
+
+  keep <- head(rownames(hap$hap), 8)
+  expect_setequal(rownames(subset_haplotypes(hap, samples = keep)$hap), keep)
+  # samples and metadata together intersect
+  gh <- rownames(one$hap)
+  mix <- subset_haplotypes(hap, samples = c(gh[1:3], setdiff(rownames(hap$hap), gh)[1:3]),
+                           country = "Ghana")
+  expect_setequal(rownames(mix$hap), gh[1:3])
+
+  # the restriction is recorded, since it changes what every scan off the object means
+  expect_match(paste(capture.output(print(one)), collapse = " "), "subset")
+  expect_equal(one$subset$from, n_all)
+})
+
+test_that("subset_haplotypes refuses filters that cannot mean anything", {
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+  # a typo'd level would otherwise come back as "no data" rather than as a mistake
+  expect_error(subset_haplotypes(hap, country = "Narnia"), "no sample has country = Narnia")
+  expect_error(subset_haplotypes(hap, nope = "x"), "not a metadata column: nope")
+  expect_error(subset_haplotypes(hap, samples = "nobody"), "none of `samples`")
+  expect_warning(subset_haplotypes(hap, samples = c(rownames(hap$hap)[1], "nobody")),
+                 "not in these haplotypes")
+  expect_error(subset_haplotypes(hap$hap), "must be a parasite_haplotypes")
+  # metadata-free haplotypes cannot match `...`
+  bare <- hap; bare$meta <- NULL
+  expect_error(subset_haplotypes(bare, country = "Ghana"), "no metadata")
+})
+
+test_that("a subset feeds the scans and the EHH curve", {
+  skip_if_not_installed("rehh")
+  skip_if_not_installed("ggplot2")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+  gh <- subset_haplotypes(hap, country = "Ghana")
+  # a scan on the subset sees only those haplotypes
+  scan <- run_ihs(gh)
+  expect_true(nrow(scan) > 0)
+  expect_s3_class(plot_ehh(gh, hap$map$snp_id[10], span = 5e5), "ggplot")
+})

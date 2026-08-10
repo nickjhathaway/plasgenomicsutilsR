@@ -73,7 +73,8 @@
 #'   rest of the package says it means. Only reported allele frequencies (and the
 #'   arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
 #'   and selection statistic here is symmetric in `p` and `1 - p`.
-#' @return A list with `genotype` (matrix; sample row names and `chr:pos` column names),
+#' @return A list with `genotype` (matrix; sample row names and `chr:pos0` column names --
+#'   0-based, like every other position in the package),
 #'   `sample.id`, `snp.id`, and the two facts the matrix itself cannot carry: `allele` (which
 #'   allele the dosages count) and `pruned`. [PopStructure] keeps both, so anything that names
 #'   a call or warns about pruning can ask instead of assuming.
@@ -109,7 +110,12 @@ load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
   geno <- SNPRelate::snpgdsGetGeno(h, snp.id = snp_ids, with.id = TRUE, verbose = FALSE)
   idx <- match(geno$snp.id, snpinfo$snp.id)
   rownames(geno$genotype) <- geno$sample.id
-  colnames(geno$genotype) <- paste0(snpinfo$chromosome[idx], ":", snpinfo$position[idx])
+  # SNPRelate reports 1-based VCF POS. Every SNP id and interval in both packages is 0-based
+  # (`?"plasgenomicsutilsR-coordinates"`), so shift here, at the one place positions enter R --
+  # otherwise a scan built from these genotypes sits one base off every IBD table and interval,
+  # which breaks exact joins and mis-assigns SNPs sitting on a gene boundary.
+  colnames(geno$genotype) <- paste0(snpinfo$chromosome[idx], ":",
+                                    as.integer(snpinfo$position[idx]) - 1L)
   # SNPRelate counts the *reference* allele, while this package documents and reports
   # alt dosage everywhere, so flip once here rather than leaving each caller to guess.
   # Every statistic downstream is symmetric in p <-> 1 - p, so this changes only reported
@@ -120,7 +126,7 @@ load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
   # a bare matrix says whether it counts reference or alternate alleles, and the two are
   # indistinguishable after the fact, so a plot that names the calls has to be told.
   list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id,
-       allele = allele, pruned = prune)
+       allele = allele, pruned = prune, positions = "0-based")
 }
 
 #' Deprecated name for load_genotypes()
@@ -849,6 +855,9 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param meta Optional metadata (data frame with a `sample` column).
     #' @param n_pcs Number of PCs to summarise.
     #' @param colors Optional named list of colour maps (see [meta_colors()]).
+    #' @param one_based The genotype column names carry 1-based VCF positions (a matrix built
+    #'   by an older `load_genotypes()`, or read straight off a VCF); shift them to the 0-based
+    #'   convention on the way in.
     #' @param pruned Whether the SNPs were LD-pruned. Taken from a [load_genotypes()] list
     #'   when it says so. Pruning is right for PCA / admixture and wrong for looking at
     #'   haplotypes, since it drops SNPs precisely for being correlated with a neighbour.
@@ -856,13 +865,24 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   [load_genotypes()] list when it says so; a bare matrix cannot say, and the two codings
     #'   are indistinguishable afterwards, so anything that names the calls has to be told.
     initialize = function(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL,
-                          allele = NULL, pruned = NULL, full = NULL) {
+                          allele = NULL, pruned = NULL, full = NULL,
+                          one_based = FALSE) {
+      positions <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(samples)) samples <- geno$sample.id
         if (is.null(allele)) allele <- geno$allele
         if (is.null(pruned)) pruned <- geno$pruned
+        positions <- geno$positions
         geno <- geno$genotype
       }
+      # A matrix built before positions were shifted (or straight off a VCF) carries 1-based
+      # ids; move them once here so nothing downstream has to ask.
+      if (isTRUE(one_based) && !is.null(colnames(geno))) {
+        ids <- .parse_snp_ids(colnames(geno))
+        colnames(geno) <- paste0(ids$chr, ":", as.integer(ids$pos) - 1L)
+        positions <- "0-based"
+      }
+      private$snp_positions <- positions %||% if (isTRUE(one_based)) "0-based" else NULL
       private$was_pruned <- if (is.null(pruned)) NULL else isTRUE(pruned)
       private$allele_counted <- if (is.null(allele)) NULL else
         match.arg(allele, c("alt", "ref"))
@@ -1086,6 +1106,9 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   object does not record it (built from a bare matrix, or saved by an older version).
     #' @param panel Which panel to report on; the primary one when `NULL`.
     allele = function(panel = NULL) private$panel_list[[private$pick_panel(panel)]]$allele,
+    #' @description Which convention the SNP positions follow, or `NULL` when the object does
+    #'   not record it (built before this was tracked -- rebuild it, or pass `one_based`).
+    positions = function() private$snp_positions,
     #' @description Whether the SNPs were LD-pruned (`TRUE` / `FALSE`), or `NULL` when the
     #'   object does not record it.
     #' @param panel Which panel to report on; the primary one when `NULL`.
@@ -1260,7 +1283,8 @@ PopStructure <- R6::R6Class("PopStructure",
   ),
   private = list(
     geno_mat = NULL, sample_ids = NULL, active_ids = NULL, meta_df = NULL,
-    allele_counted = NULL, was_pruned = NULL, panel_list = NULL, primary = NULL,
+    allele_counted = NULL, was_pruned = NULL, snp_positions = NULL,
+    panel_list = NULL, primary = NULL,
     told = character(0),
 
     # Resolve a panel name. `panel` is a requirement (absent -> error); `prefer` is a wish
@@ -1324,6 +1348,13 @@ PopStructure <- R6::R6Class("PopStructure",
   # placeholder's panel list -- which describes the two-sample dummy, not the genotypes just
   # copied over. Drop it and let it be rebuilt from those on first use.
   if (is.null(old$panel_list)) { new$panel_list <- NULL; new$primary <- NULL }
+  # Positions moved to 0-based at the one place they enter R. An object saved before that has
+  # 1-based ids, which is a silent one-base offset against every IBD table and interval rather
+  # than an error, so say so once.
+  if (is.null(new$snp_positions))
+    message("this object does not record whether its SNP positions are 0-based; objects saved ",
+            "before that change carry 1-based ids, one base off every interval and IBD table. ",
+            "Rebuild it, or reload the matrix with `PopStructure$new(..., one_based = TRUE)`")
   fresh
 }
 
@@ -1380,8 +1411,9 @@ example_pop_structure <- function(dataset = c("ghana_cambodia", "africa"),
   # carries a `full` panel: the same sparse genome-wide SNPs plus every biallelic SNP around
   # pfcrt / pfdhps / pfkelch13, so the locus, haplotype and EHH examples have real density
   # while PCA / UMAP / admixture keep reading the thinned set they were tuned on.
-  ps <- PopStructure$new(d$genotype, meta = d$meta, allele = d$allele %||% "alt",
-                         pruned = d$pruned, full = d$full)
+  ps <- PopStructure$new(list(genotype = d$genotype, allele = d$allele %||% "alt",
+                              pruned = d$pruned, positions = d$positions %||% "0-based"),
+                         meta = d$meta, full = d$full)
   if (umap) {
     if (requireNamespace("uwot", quietly = TRUE)) {
       # params that spread each dataset nicely out of the box

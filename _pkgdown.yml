@@ -93,6 +93,7 @@ reference:
     clustered allele frequencies (beta).
   contents:
   - parasite_haplotypes
+  - subset_haplotypes
   - run_ihs
   - run_rsb
   - run_xpehh
@@ -133,6 +134,7 @@ reference:
   contents:
   - annotate_snps
   - aa_intervals
+  - snp_aa_positions
   - read_gff_cds
   - bed_intersect
   - plasgenomicsutilsR-coordinates
@@ -165,3 +167,4 @@ articles:
   - population-structure
   - differentiation
   - diversity-and-selection
+  - amino-acid-coordinates

@@ -74,8 +74,10 @@ readable as cells rather than a wash of colour.}
 the object; if it does not record it, alt is assumed and a message says so. The two are
 indistinguishable from the matrix, and getting it backwards mislabels every call.}
 
-\item{mark_snps}{Optional SNPs to mark with a vertical line: \code{chr:pos} ids, bare
-positions, or a gene name from \code{genes} (marking every SNP in it).}
+\item{mark_snps}{Optional SNPs to mark with a vertical line: \code{chr:pos} ids, bare positions,
+a gene name from \code{genes}, or an interval table with \code{start}/\code{end} (and \code{chr}) -- every SNP
+inside each interval is marked, so an \code{\link[=aa_intervals]{aa_intervals()}} codon table can be passed straight
+in without converting its coordinates.}
 
 \item{mark_colour}{Colour for those lines.}
 
@@ -131,6 +133,15 @@ things. \code{"even"} gives every SNP the same width, which is how the haplotype
 easiest to read but says nothing about distance. \code{"genomic"} puts each SNP at its real
 coordinate, so a dense cluster of SNPs looks dense -- correct about position, but sparse
 stretches become wide empty bands.
+
+Either way a SNP is only ever drawn over the genes it really falls in. Under \code{"even"} the
+axis counts SNPs, so a gene's box is exactly the columns it holds: its width says how many
+SNPs are in it, \strong{not} how long it is, and a gene with no genotyped SNP in the window has no
+width at all and is left off the track with a message. (Interpolating genomic bounds onto a
+SNP-index axis instead puts each gene edge at a fractional column, and since a tile occupies a
+whole column, a SNP just outside a gene ends up drawn over it.) Under \code{"genomic"} the boxes
+are true extents and it is the fixed-width SNP marks that are clipped, so a mark near a gene
+edge stops there rather than reaching into its neighbour.
 }
 \examples{
 ps <- example_pop_structure(umap = FALSE)
