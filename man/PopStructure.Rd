@@ -277,13 +277,13 @@ follow their level (only the order changes); unlisted levels are dropped.
   Best K (cross-entropy) from the fitted sNMF.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$best_k(stat = c("mean", "min"))}
+    \preformatted{PopStructure$best_k(stat = c("min", "mean"))}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{stat}}{Combine replicates by \code{"mean"} or \code{"min"}.}
+      \item{\code{stat}}{Combine replicates by \code{"min"} or \code{"mean"}; see \code{\link[=snmf_best_k]{snmf_best_k()}}.}
     }
     \if{html}{\out{</div>}}
   }

@@ -291,21 +291,24 @@ test_that("without a factor, group order is a natural sort", {
 
 test_that("plot_snmf_cross_entropy reads an elbow table and marks the best K", {
   testthat::skip_if_not_installed("ggplot2")
+  # min and mean deliberately disagree here: min bottoms out at K = 3, mean at K = 4
   ce <- tibble::tibble(K = 1:5, n_runs = 3L,
-                       min  = c(0.70, 0.66, 0.64, 0.645, 0.65),
-                       mean = c(0.71, 0.67, 0.65, 0.655, 0.66),
-                       max  = c(0.72, 0.68, 0.66, 0.665, 0.67),
+                       min  = c(0.70, 0.66, 0.640, 0.645, 0.65),
+                       mean = c(0.71, 0.67, 0.652, 0.650, 0.66),
+                       max  = c(0.72, 0.68, 0.665, 0.663, 0.67),
                        best_run = 1L)
   p <- plot_snmf_cross_entropy(ce)                       # a table is accepted directly
   b <- ggplot2::ggplot_build(p)
-  # the line follows `min` by default -- the replicate snmf_q() actually returns
+  # the line follows `min` by default, so the marked K is the one snmf_best_k() returns
   expect_equal(p$data$.y, ce$min)
   expect_equal(p$data$K[p$data$.best], 3L)               # lowest min
   labels <- vapply(b$plot$layers,
                    function(l) paste0(l$aes_params$label %||% "", collapse = ""), character(1))
   expect_true(any(grepl("best K = 3", labels)))
-  # stat = "mean" follows the other column and can pick a different K
-  expect_equal(plot_snmf_cross_entropy(ce, stat = "mean")$data$.y, ce$mean)
+  # stat = "mean" follows the other column, and here picks a different K
+  mean_p <- plot_snmf_cross_entropy(ce, stat = "mean")
+  expect_equal(mean_p$data$.y, ce$mean)
+  expect_equal(mean_p$data$K[mean_p$data$.best], 4L)
   # best_k is overridable, and NA marks none
   expect_equal(plot_snmf_cross_entropy(ce, best_k = 5)$data$K[
     plot_snmf_cross_entropy(ce, best_k = 5)$data$.best], 5L)
@@ -315,6 +318,16 @@ test_that("plot_snmf_cross_entropy reads an elbow table and marks the best K", {
   expect_true(any(ribbons))
   expect_false(any(vapply(ggplot2::ggplot_build(plot_snmf_cross_entropy(ce, show_range = FALSE))$plot$layers,
                           function(l) inherits(l$geom, "GeomRibbon"), logical(1))))
+})
+
+test_that("every entry point summarises cross-entropy replicates the same way", {
+  # a plot marking one best K while best_k() returns another is the failure this guards.
+  # `min` is LEA's own convention and the replicate snmf_q() returns -- see snmf_best_k().
+  stat_default <- function(f) eval(formals(f)$stat)[1]
+  expect_equal(stat_default(snmf_best_k), "min")
+  expect_equal(stat_default(plot_snmf_cross_entropy), "min")
+  expect_equal(stat_default(plot_admixture_multi_k), "min")
+  expect_equal(stat_default(PopStructure$public_methods$best_k), "min")
 })
 
 test_that("snmf_cross_entropy summarises replicates per K", {

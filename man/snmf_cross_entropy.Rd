@@ -23,9 +23,11 @@ replicate, so the \code{min} column is the one that describes the ancestry actua
 trusting a K.
 }
 \details{
-Picking K is a separate judgement from picking a replicate: read the elbow of \code{min}
-across K with \code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}}. A curve that keeps falling or is flat means
-the data do not support a well-defined K, whatever \code{\link[=snmf_best_k]{snmf_best_k()}} returns.
+\code{min} is also what K is chosen on, by \code{\link[=snmf_best_k]{snmf_best_k()}} and by the
+\code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}} elbow, so the K you settle on and the ancestry you draw at it
+are scored by the same number. A curve that keeps falling or is flat means the data do not
+support a well-defined K, whatever \code{\link[=snmf_best_k]{snmf_best_k()}} returns; \code{n_runs} is worth a glance
+first, since a K whose replicates mostly failed has its minimum taken over fewer of them.
 }
 \seealso{
 \code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}}, \code{\link[=snmf_best_k]{snmf_best_k()}}, \code{\link[=snmf_q]{snmf_q()}}

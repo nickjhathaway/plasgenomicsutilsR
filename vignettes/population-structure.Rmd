@@ -61,11 +61,20 @@ ps$plot_admixture(K = ps$best_k(), group = "site", sample_order = ord)
 
 ### Choosing K
 
-sNMF fits several replicates per K and scores each by cross-entropy. `q()` and
-`plot_admixture()` use the **minimum**-cross-entropy replicate, so `min` is the column
-describing the ancestry you actually see; `mean`/`max` show how far the replicates
-disagreed. Picking K is a separate judgement — read the elbow, and treat a flat stretch or
-a wide min–max band as "the data don't pin K down", whatever `best_k()` returns:
+sNMF fits several replicates per K and scores each by cross-entropy. Two choices come out of
+that, and both are made on the **minimum** across replicates:
+
+- **Which replicate** — `q()` and `plot_admixture()` show the minimum-cross-entropy
+  replicate at the chosen K. sNMF's objective is non-convex, so replicates settle in
+  different local optima and the best-fitting one is the ancestry you draw.
+- **Which K** — `best_k()` and the elbow compare those same minima across K, so the K you
+  settle on is scored by the model you actually plot at it. This is also what LEA's own
+  `plot()` of an sNMF project shows.
+
+`stat = "mean"` averages the replicates instead, which is worth asking for when `n_runs`
+differs between K values — a minimum over more replicates is expected to be smaller whether
+or not that K fits better. Either way, treat a flat stretch or a wide min–max band as "the
+data don't pin K down", whatever `best_k()` returns:
 
 ```r
 ps$cross_entropy()        # K, n_runs, min, mean, max, best_run

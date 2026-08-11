@@ -8,7 +8,7 @@ plot_diff_manhattan(
   pd,
   pair = NULL,
   combine = c("max", "mean"),
-  reference = "pf3d7",
+  reference = DEFAULT_REFERENCE,
   chroms = NULL,
   skip_chr = NULL,
   point_size = 0.6,
@@ -25,7 +25,7 @@ combines all pairs per SNP.}
 \item{combine}{How to collapse pairs per SNP when \code{pair} is \code{NULL}: \code{"max"} (default)
 or \code{"mean"}.}
 
-\item{reference}{Reference id for the chromosome layout (default \code{"pf3d7"}).}
+\item{reference}{Reference id for the chromosome layout (default \code{DEFAULT_REFERENCE}).}
 
 \item{chroms, skip_chr}{Optional chromosomes to keep / drop (the rest re-laid-out).}
 

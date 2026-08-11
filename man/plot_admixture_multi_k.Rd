@@ -12,7 +12,7 @@ plot_admixture_multi_k(
   sample_order = NULL,
   sample_order_best_k = TRUE,
   best_k = NULL,
-  stat = c("mean", "min"),
+  stat = c("min", "mean"),
   meta = NULL,
   samples = NULL,
   ...
@@ -38,8 +38,8 @@ so bars move between pages.}
 
 \item{best_k}{The K to treat as best; \code{NULL} (default) uses \code{\link[=snmf_best_k]{snmf_best_k()}}.}
 
-\item{stat}{How \code{\link[=snmf_best_k]{snmf_best_k()}} and the elbow combine replicates: \code{"mean"} (default)
-or \code{"min"}.}
+\item{stat}{How \code{\link[=snmf_best_k]{snmf_best_k()}} and the elbow combine replicates: \code{"min"} (default)
+or \code{"mean"}.}
 
 \item{meta, samples}{Metadata and sample ids, needed only when \code{x} is a raw
 \code{\link[=run_snmf]{run_snmf()}} result.}

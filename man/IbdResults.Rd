@@ -87,7 +87,7 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
   group_col_in_meta = NULL,
   min_block_snp = IBD_MIN_BLOCK_SNP,
   min_block_kb = IBD_MIN_BLOCK_KB,
-  reference = "pf3d7"
+  reference = DEFAULT_REFERENCE
 )}
     \if{html}{\out{</div>}}
   }
@@ -123,7 +123,7 @@ pre-filtered. \code{0} disables either criterion. Only the IBD evidence is filte
 the analyzed-sample set (the denominator behind every fraction) still comes from
 every row of the blocks file, so a pair whose only segment is short still counts
 as compared. The SNP criterion needs the \code{Nsnp} column hmmibd-rs writes.}
-      \item{\code{reference}}{Reference id for chromosome lengths (default \code{"pf3d7"}).}
+      \item{\code{reference}}{Reference id for chromosome lengths (default \code{DEFAULT_REFERENCE}).}
     }
     \if{html}{\out{</div>}}
   }

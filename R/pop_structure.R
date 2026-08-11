@@ -428,12 +428,27 @@ print.snmf_fit <- function(x, ...) {
 
 #' Pick the best K from an sNMF fit by cross-entropy
 #'
+#' sNMF fits `rep` replicates at each K, so a K has a spread of cross-entropies rather than
+#' one. They are summarised by their **minimum** across replicates, which is what
+#' \pkg{LEA}'s own `plot()` of an sNMF project shows, and the criterion its vignette reads a
+#' best K off. It is also the replicate [snmf_q()] returns: sNMF's objective is non-convex,
+#' replicates land in different local optima, and the best-fitting one is the model whose
+#' ancestry you go on to plot -- so comparing minima compares the models actually used at
+#' each K.
+#'
+#' `stat = "mean"` averages the replicates instead. Reach for it when the replicate count
+#' differs between K values (`n_runs` in [snmf_cross_entropy()]), since a minimum over more
+#' replicates is expected to be smaller whether or not that K fits better; averaging is not
+#' sensitive to how many were run.
+#'
 #' @param x An [run_snmf()] result (or a raw LEA project, with `K` given).
 #' @param K Candidate K values (defaults to the fitted range from [run_snmf()]).
-#' @param stat Combine replicates by `"mean"` (default) or `"min"` cross-entropy.
+#' @param stat Combine replicates by `"min"` (default) or `"mean"` cross-entropy.
 #' @return The K minimising the summarised cross-entropy.
+#' @seealso [snmf_cross_entropy()] for the per-K spread, [plot_snmf_cross_entropy()] for the
+#'   elbow.
 #' @export
-snmf_best_k <- function(x, K = NULL, stat = c("mean", "min")) {
+snmf_best_k <- function(x, K = NULL, stat = c("min", "mean")) {
   .need_package("LEA", "snmf_best_k()")
   stat <- match.arg(stat)
   project <- .snmf_project(x)
@@ -454,9 +469,11 @@ snmf_best_k <- function(x, K = NULL, stat = c("mean", "min")) {
 #' `mean` and `max` show how much the replicates disagreed, which is worth a look before
 #' trusting a K.
 #'
-#' Picking K is a separate judgement from picking a replicate: read the elbow of `min`
-#' across K with [plot_snmf_cross_entropy()]. A curve that keeps falling or is flat means
-#' the data do not support a well-defined K, whatever [snmf_best_k()] returns.
+#' `min` is also what K is chosen on, by [snmf_best_k()] and by the
+#' [plot_snmf_cross_entropy()] elbow, so the K you settle on and the ancestry you draw at it
+#' are scored by the same number. A curve that keeps falling or is flat means the data do not
+#' support a well-defined K, whatever [snmf_best_k()] returns; `n_runs` is worth a glance
+#' first, since a K whose replicates mostly failed has its minimum taken over fewer of them.
 #'
 #' @param x An [run_snmf()] result (or a raw LEA project, with `K` given).
 #' @param K Candidate K values (defaults to the fitted range).
@@ -492,8 +509,9 @@ snmf_cross_entropy <- function(x, K = NULL) {
 #'
 #' @param x An [run_snmf()] result, or a table from [snmf_cross_entropy()].
 #' @param K Candidate K values (defaults to the fitted range).
-#' @param stat Which summary the line follows: `"min"` (default -- the replicate that
-#'   [snmf_q()] plots) or `"mean"`.
+#' @param stat Which summary the line follows, and which the red marker minimises:
+#'   `"min"` (default, as in [snmf_best_k()]) or `"mean"`. See [snmf_best_k()] for why
+#'   `"min"` is the default and when `"mean"` is worth asking for.
 #' @param show_range Draw the replicate min-max band (default `TRUE`).
 #' @param best_k K to mark in red; `NULL` (default) marks the K minimising `stat`, `NA`
 #'   marks none.
@@ -564,8 +582,8 @@ plot_snmf_cross_entropy <- function(x, K = NULL, stat = c("min", "mean"),
 #'   it on every page (default `TRUE`). `FALSE` lets each page cluster its own samples,
 #'   so bars move between pages.
 #' @param best_k The K to treat as best; `NULL` (default) uses [snmf_best_k()].
-#' @param stat How [snmf_best_k()] and the elbow combine replicates: `"mean"` (default)
-#'   or `"min"`.
+#' @param stat How [snmf_best_k()] and the elbow combine replicates: `"min"` (default)
+#'   or `"mean"`.
 #' @param meta,samples Metadata and sample ids, needed only when `x` is a raw
 #'   [run_snmf()] result.
 #' @param ... Passed to [plot_admixture()] (e.g. `group_bar`, `border`, `colours`).
@@ -582,7 +600,7 @@ plot_snmf_cross_entropy <- function(x, K = NULL, stat = c("min", "mean"),
 plot_admixture_multi_k <- function(x, K = NULL, group = NULL,
                                    cross_entropy_first = TRUE,
                                    sample_order = NULL, sample_order_best_k = TRUE,
-                                   best_k = NULL, stat = c("mean", "min"),
+                                   best_k = NULL, stat = c("min", "mean"),
                                    meta = NULL, samples = NULL, ...) {
   .need_package("ggplot2", "plot_admixture_multi_k()")
   stat <- match.arg(stat)
@@ -1013,8 +1031,8 @@ PopStructure <- R6::R6Class("PopStructure",
     },
 
     #' @description Best K (cross-entropy) from the fitted sNMF.
-    #' @param stat Combine replicates by `"mean"` or `"min"`.
-    best_k = function(stat = c("mean", "min")) snmf_best_k(private$snmf_fit, stat = match.arg(stat)),
+    #' @param stat Combine replicates by `"min"` or `"mean"`; see [snmf_best_k()].
+    best_k = function(stat = c("min", "mean")) snmf_best_k(private$snmf_fit, stat = match.arg(stat)),
 
     #' @description Per-K cross-entropy summary of the sNMF replicates
     #'   (see [snmf_cross_entropy()]).

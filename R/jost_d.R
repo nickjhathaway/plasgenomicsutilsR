@@ -373,14 +373,14 @@ pop_diff_snps <- function(pd) {
 #'   combines all pairs per SNP.
 #' @param combine How to collapse pairs per SNP when `pair` is `NULL`: `"max"` (default)
 #'   or `"mean"`.
-#' @param reference Reference id for the chromosome layout (default `"pf3d7"`).
+#' @param reference Reference id for the chromosome layout (default `DEFAULT_REFERENCE`).
 #' @param chroms,skip_chr Optional chromosomes to keep / drop (the rest re-laid-out).
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours Optional length-2 colour vector for the alternating chromosome bands.
 #' @return A ggplot object.
 #' @export
 plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
-                                reference = "pf3d7", chroms = NULL, skip_chr = NULL,
+                                reference = DEFAULT_REFERENCE, chroms = NULL, skip_chr = NULL,
                                 point_size = 0.6, point_alpha = 0.6, colours = NULL) {
   .need_package("ggplot2", "plot_diff_manhattan()")
   long <- pop_diff_snps(pd)

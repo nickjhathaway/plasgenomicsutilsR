@@ -19,8 +19,9 @@ plot_snmf_cross_entropy(
 
 \item{K}{Candidate K values (defaults to the fitted range).}
 
-\item{stat}{Which summary the line follows: \code{"min"} (default -- the replicate that
-\code{\link[=snmf_q]{snmf_q()}} plots) or \code{"mean"}.}
+\item{stat}{Which summary the line follows, and which the red marker minimises:
+\code{"min"} (default, as in \code{\link[=snmf_best_k]{snmf_best_k()}}) or \code{"mean"}. See \code{\link[=snmf_best_k]{snmf_best_k()}} for why
+\code{"min"} is the default and when \code{"mean"} is worth asking for.}
 
 \item{show_range}{Draw the replicate min-max band (default \code{TRUE}).}
 

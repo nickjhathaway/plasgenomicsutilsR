@@ -180,7 +180,7 @@ IbdResults <- R6::R6Class(
     #'   becomes the default `group` for the block-based tools, and if the column is a
     #'   factor its levels set the group order for every loaded table (equivalent to
     #'   calling `$set_group_order(levels(meta[[group_col_in_meta]]))`).
-    #' @param reference Reference id for chromosome lengths (default `"pf3d7"`).
+    #' @param reference Reference id for chromosome lengths (default `DEFAULT_REFERENCE`).
     #' @return An `IbdResults` object (invisibly self).
     initialize = function(per_snp_group = NULL, pairwise_group = NULL,
                           selection = NULL, threshold = NULL, genes = NULL,
@@ -188,7 +188,7 @@ IbdResults <- R6::R6Class(
                           group_col_in_meta = NULL,
                           min_block_snp = IBD_MIN_BLOCK_SNP,
                           min_block_kb = IBD_MIN_BLOCK_KB,
-                          reference = "pf3d7") {
+                          reference = DEFAULT_REFERENCE) {
       private$reference <- reference
       private$layout <- .chrom_layout(reference)
 
