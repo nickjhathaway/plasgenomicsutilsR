@@ -589,3 +589,65 @@ test_that("a saved object without panels rebuilds them from its genotypes", {
   expect_setequal(rownames(back$genotype()), rownames(m))
   expect_equal(unname(back$genotype()), unname(m))
 })
+
+test_that("load_genotypes drops no-ALT/indel/multiallelic records and keeps invariant sites", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  # one record of every kind that shows up in a real callset. ALT="." is the one that
+  # surprises people: `bcftools view --exclude-types indels` keeps every one of them.
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(
+    "##fileformat=VCFv4.2",
+    "##contig=<ID=Pf3D7_01_v3,length=640851>",
+    '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\ts1\ts2\ts3",
+    "Pf3D7_01_v3\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0/0\t1/1\t0/1",  # polymorphic SNV
+    "Pf3D7_01_v3\t200\t.\tT\t.\t.\tPASS\t.\tGT\t0/0\t0/0\t0/0",  # no ALT      -> skipped
+    "Pf3D7_01_v3\t300\t.\tAT\tA\t.\tPASS\t.\tGT\t0/0\t1/1\t0/0", # indel       -> skipped
+    "Pf3D7_01_v3\t400\t.\tC\tT,G\t.\tPASS\t.\tGT\t0/0\t1/1\t2/2",# multiallelic-> skipped
+    "Pf3D7_01_v3\t500\t.\tG\tA\t.\tPASS\t.\tGT\t1/1\t1/1\t1/1",  # invariant, all alt
+    "Pf3D7_01_v3\t600\t.\tG\tA\t.\tPASS\t.\tGT\t0/0\t0/0\t0/0"), # invariant, no carrier
+    vcf)
+
+  expect_message(g <- load_genotypes(vcf, gds = tempfile(fileext = ".gds"), prune = FALSE),
+                 "3 biallelic SNVs")
+  expect_equal(colnames(g$genotype),
+               c("Pf3D7_01_v3:99", "Pf3D7_01_v3:499", "Pf3D7_01_v3:599"))
+  # both invariant sites survive -- the filter is about the record's alleles, not the samples'
+  expect_true(all(g$genotype[, "Pf3D7_01_v3:499"] == 2L))   # alt dosage, every sample 1/1
+  expect_true(all(g$genotype[, "Pf3D7_01_v3:599"] == 0L))   # alt dosage, every sample 0/0
+  expect_equal(g$variants, "biallelic_snvs")
+})
+
+test_that("variants = 'all' keeps every record, warns, and does not reuse the other GDS", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(
+    "##fileformat=VCFv4.2",
+    "##contig=<ID=Pf3D7_01_v3,length=640851>",
+    '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\ts1\ts2\ts3",
+    "Pf3D7_01_v3\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0/0\t1/1\t0/1",
+    "Pf3D7_01_v3\t200\t.\tT\t.\t.\tPASS\t.\tGT\t0/0\t0/0\t0/0",
+    "Pf3D7_01_v3\t300\t.\tAT\tA\t.\tPASS\t.\tGT\t0/0\t1/1\t0/0",
+    "Pf3D7_01_v3\t400\t.\tC\tT,G\t.\tPASS\t.\tGT\t0/0\t1/1\t2/2",
+    "Pf3D7_01_v3\t500\t.\tG\tA\t.\tPASS\t.\tGT\t1/1\t1/1\t1/1"), vcf)
+  gds <- tempfile(fileext = ".gds")
+
+  bi <- load_genotypes(vcf, gds = gds, prune = FALSE)
+  expect_equal(ncol(bi$genotype), 2L)
+
+  # the same gds path must be rebuilt, not reused, or "all" would hand back the biallelic panel
+  expect_warning(all_v <- load_genotypes(vcf, gds = gds, prune = FALSE, variants = "all"),
+                 "copy number of the reference allele")
+  expect_equal(ncol(all_v$genotype), 5L)
+  expect_equal(all_v$variants, "all")
+  # the indel and the ALT="." site are there now
+  expect_true(all(c("Pf3D7_01_v3:199", "Pf3D7_01_v3:299") %in% colnames(all_v$genotype)))
+  # and the reason nothing downstream can read it: at C -> T,G, 1/1 and 2/2 collapse together
+  expect_equal(unname(all_v$genotype[c("s2", "s3"), "Pf3D7_01_v3:399"]), c(2L, 2L))
+
+  # and back again
+  expect_equal(ncol(load_genotypes(vcf, gds = gds, prune = FALSE)$genotype), 2L)
+})

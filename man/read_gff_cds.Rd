@@ -20,8 +20,13 @@ The coding exons only, with the transcript each belongs to -- what
 part, so parse once and reuse the result across calls.
 }
 \examples{
+# the CDS of six 3D7 drug-resistance genes ship with the package
+cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                package = "plasgenomicsutilsR"))
+cds
+
 \dontrun{
-# VEuPathDB / PlasmoDB, the source the bundled gene datasets were built from
+# a whole released annotation, read straight from the web
 cds <- read_gff_cds(paste0("https://plasmodb.org/common/downloads/Current_Release/",
                            "Pfalciparum3D7/gff/data/PlasmoDB-68_Pfalciparum3D7.gff"))
 # Ensembl Protists works too, despite naming its attributes differently

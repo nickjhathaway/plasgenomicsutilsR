@@ -40,6 +40,30 @@
   out
 }
 
+# Which `variants` a cached GDS was built with, recorded as a node in the file itself so a
+# reused GDS is never mistaken for one built the other way. A GDS from before this was written
+# has no node and was necessarily biallelic-only.
+.GDS_VARIANTS_NODE <- "plasgenomicsutilsR.variants"
+
+.gds_variants <- function(gds) {
+  if (!file.exists(gds)) return(NA_character_)
+  f <- try(gdsfmt::openfn.gds(gds), silent = TRUE)
+  if (inherits(f, "try-error")) return(NA_character_)
+  on.exit(gdsfmt::closefn.gds(f), add = TRUE)
+  n <- try(gdsfmt::index.gdsn(f, .GDS_VARIANTS_NODE), silent = TRUE)
+  if (inherits(n, "try-error")) "biallelic_snvs" else as.character(gdsfmt::read.gdsn(n))[1]
+}
+
+.tag_gds_variants <- function(gds, variants) {
+  f <- try(gdsfmt::openfn.gds(gds, readonly = FALSE), silent = TRUE)
+  if (inherits(f, "try-error")) return(invisible(FALSE))
+  on.exit(gdsfmt::closefn.gds(f), add = TRUE)
+  old <- try(gdsfmt::index.gdsn(f, .GDS_VARIANTS_NODE), silent = TRUE)
+  if (!inherits(old, "try-error")) gdsfmt::delete.gdsn(old)
+  gdsfmt::add.gdsn(f, .GDS_VARIANTS_NODE, variants, closezip = TRUE)
+  invisible(TRUE)
+}
+
 #' Load genotypes from a VCF, optionally LD-pruned
 #'
 #' Converts a VCF to GDS (only when needed) and returns the genotype matrix
@@ -53,14 +77,69 @@
 #' of each correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a
 #' second call with `prune = FALSE` only re-reads it.
 #'
+#' @section Which records reach the panel:
+#' `prune = FALSE` means unpruned, not every record: the panel is usually smaller than the
+#' VCF's record count whatever `prune` is, because the default `variants = "biallelic_snvs"`
+#' has \pkg{SNPRelate} read the file with `method = "biallelic.only"`. Three kinds of record
+#' are skipped, silently:
+#'
+#' * sites with **no ALT allele** (`ALT="."`) -- the reference positions an all-sites caller
+#'   emits. Usually the biggest share by far, and the easiest to miss, since nothing about them
+#'   says "variant": `bcftools view --exclude-types indels` leaves every one of them in place,
+#'   because they are not indels.
+#' * **indels** and other non-SNV records.
+#' * sites with **more than one ALT**.
+#'
+#' So a VCF of 28,927 records carrying 9,158 `ALT="."` positions and 48 multiallelic sites
+#' loads as 19,721 SNPs. When a panel comes out short, count what is actually there rather than
+#' the total, and drop the no-ALT records upstream if you would rather the two numbers agree:
+#'
+#' ```
+#' bcftools view -H -m2 -M2 -v snps file.vcf.gz | wc -l   # what will load
+#' bcftools view -e 'ALT="."' -Ob -o out.bcf in.bcf       # or --min-ac 1
+#' ```
+#'
+#' Sites that are **invariant across the loaded samples are kept**, as long as the VCF lists an
+#' ALT allele there: `"biallelic.only"` asks how many alleles the record declares, not whether
+#' these samples differ. A site every sample calls `1/1`, or every sample calls `0/0`, comes
+#' through -- which is why the functions needing variable sites ([parasite_haplotypes()],
+#' [run_ihs()]) apply their own `maf` cutoff instead of trusting the panel. SNPRelate's own help
+#' calls this "excluding monomorphic variants", which is easy to read as the stronger promise.
+#'
+#' @section Keeping every variant:
+#' `variants = "all"` reads the VCF with `method = "copy.num.of.ref"` instead, which keeps
+#' every record -- multiallelic sites, indels and `ALT="."` positions included -- and stores
+#' the **copy number of the reference allele**. Nothing in this package reads that correctly,
+#' so it warns; the switch is here to hand the matrix to something that does.
+#'
+#' What breaks is the coding, not the reading. A dosage says how many reference copies a sample
+#' has and nothing about *which* alternate allele makes up the rest, so at `C -> T,G` a sample
+#' called `1/1` and a sample called `2/2` are both 0 reference copies and land on the same
+#' number despite carrying different alleles:
+#'
+#' ```
+#' variants = "biallelic_snvs"        variants = "all"
+#'   pos  allele  s1 s2 s3              pos  allele  s1 s2 s3
+#'   100  A/G      2  0  1              100  A/G      2  0  1
+#'   500  G/A      0  0  0              200  T/.      2  2  2   <- no ALT
+#'                                      300  AT/A     2  0  2   <- indel
+#'                                      400  C/T,G    2  0  0   <- 1/1 and 2/2 both 0
+#'                                      500  G/A      0  0  0
+#' ```
+#'
+#' The allele strings themselves survive in the GDS (`SNPRelate::snpgdsSNPList()$allele` gives
+#' `"C/T,G"`), so which alleles exist is recoverable even though the dosage cannot express
+#' them. The returned list records the choice as `variants`, and the GDS is tagged with it, so
+#' the two panels never get confused for one another through a reused `.gds`.
+#'
 #' @param vcf Path to a (bgzipped) VCF, or a **BCF** -- SNPRelate reads VCF text only, so
 #'   a BCF is converted first with `bcftools`, reusing any VCF already sitting next to it
 #'   rather than making another copy.
 #' @param gds Optional GDS path; derived from `vcf` if `NULL`.
-#' @param prune LD-prune (default `TRUE`). `FALSE` returns **every** biallelic SNP,
-#'   unpruned -- use this for the genotype matrix fed to [pop_diff()] /
-#'   [pop_diff_table()], since LD-pruning removes the very SNPs that carry the
-#'   differentiation signal.
+#' @param prune LD-prune (default `TRUE`). `FALSE` returns every record `variants` admits
+#'   (see *Which records reach the panel*), unpruned -- use this for the genotype matrix fed
+#'   to [pop_diff()] / [pop_diff_table()], since LD-pruning removes the very SNPs that carry
+#'   the differentiation signal.
 #' @param ld_threshold,slide_max_bp,slide_max_n,autosome_only Passed to
 #'   [SNPRelate::snpgdsLDpruning()] (defaults 0.2 / 20000 / 200 / `FALSE`); ignored
 #'   when `prune = FALSE`.
@@ -73,30 +152,59 @@
 #'   rest of the package says it means. Only reported allele frequencies (and the
 #'   arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
 #'   and selection statistic here is symmetric in `p` and `1 - p`.
+#' @param variants Which records to read. `"biallelic_snvs"` (default) keeps biallelic SNVs
+#'   only; `"all"` keeps every record, multiallelic sites and indels included, at the cost of a
+#'   dosage that cannot say which ALT it counts. See the two sections below -- nothing in this
+#'   package handles `"all"`, and it warns.
 #' @return A list with `genotype` (matrix; sample row names and `chr:pos0` column names --
 #'   0-based, like every other position in the package),
-#'   `sample.id`, `snp.id`, and the two facts the matrix itself cannot carry: `allele` (which
-#'   allele the dosages count) and `pruned`. [PopStructure] keeps both, so anything that names
-#'   a call or warns about pruning can ask instead of assuming.
+#'   `sample.id`, `snp.id`, and the facts the matrix itself cannot carry: `allele` (which
+#'   allele the dosages count), `pruned`, `positions` and `variants`. [PopStructure] keeps
+#'   them, so anything that names a call or warns about pruning can ask instead of assuming.
 #' @seealso [PopStructure], [pop_structure()]
 #' @export
 load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
                          slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
                          maf = NaN, missing_rate = NaN, seed = 42, vcf_dir = NULL,
-                         allele = c("alt", "ref")) {
+                         allele = c("alt", "ref"),
+                         variants = c("biallelic_snvs", "all")) {
   .need_package("SNPRelate", "load_genotypes()")
   .need_package("gdsfmt", "load_genotypes()")
   allele <- match.arg(allele)
+  variants <- match.arg(variants)
+  method <- if (identical(variants, "all")) "copy.num.of.ref" else "biallelic.only"
   if (!file.exists(vcf)) stop(sprintf("no such file: %s", vcf), call. = FALSE)
   vcf <- .as_text_vcf(vcf, vcf_dir)
   if (is.null(gds)) gds <- sub("\\.vcf(\\.gz)?$", ".gds", vcf, ignore.case = TRUE)
   if (identical(gds, vcf)) gds <- paste0(vcf, ".gds")
-  if (!file.exists(gds) || file.mtime(gds) < file.mtime(vcf)) {
-    SNPRelate::snpgdsVCF2GDS(vcf, gds, method = "biallelic.only", verbose = FALSE)
+  # A GDS built one way holds a different set of records, so reuse only when it was built the
+  # same way -- otherwise asking for `variants = "all"` would silently hand back the cached
+  # biallelic panel (or the reverse).
+  stale <- !file.exists(gds) || file.mtime(gds) < file.mtime(vcf) ||
+    !identical(.gds_variants(gds), variants)
+  if (stale) {
+    # biallelic.only keeps biallelic SNVs and skips ALT="." reference positions, indels and
+    # multiallelic sites, so the panel is routinely smaller than the VCF's record count
+    SNPRelate::snpgdsVCF2GDS(vcf, gds, method = method, verbose = FALSE)
+    .tag_gds_variants(gds, variants)
   }
   h <- SNPRelate::snpgdsOpen(gds)
   on.exit(SNPRelate::snpgdsClose(h), add = TRUE)
   snpinfo <- SNPRelate::snpgdsSNPList(h)              # snp.id, chromosome, position
+  # said out loud because it is the number people go looking for when a panel is smaller
+  # than the VCF they built it from
+  if (identical(variants, "all")) {
+    message(nrow(snpinfo), " records in ", basename(vcf),
+            " (every variant, including indels and multiallelic sites)")
+    warning("`variants = \"all\"` stores the copy number of the reference allele, so at a ",
+            "multiallelic site every non-reference genotype collapses to the same dosage no ",
+            "matter which ALT it carries, and indels and ALT=\".\" records come through too. ",
+            "Nothing downstream in this package reads that correctly -- use it to hand the ",
+            "matrix to something that does.", call. = FALSE)
+  } else {
+    message(nrow(snpinfo), " biallelic SNVs in ", basename(vcf),
+            " (ALT=\".\" reference positions, indels and multiallelic sites are not read)")
+  }
   if (prune) {
     set.seed(seed)
     snpset <- SNPRelate::snpgdsLDpruning(
@@ -126,7 +234,7 @@ load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
   # a bare matrix says whether it counts reference or alternate alleles, and the two are
   # indistinguishable after the fact, so a plot that names the calls has to be told.
   list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id,
-       allele = allele, pruned = prune, positions = "0-based")
+       allele = allele, pruned = prune, positions = "0-based", variants = variants)
 }
 
 #' Deprecated name for load_genotypes()

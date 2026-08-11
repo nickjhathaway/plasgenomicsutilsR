@@ -50,11 +50,16 @@ mistaken for three bases. \code{codon_positions} always lists the three base pos
 themselves.
 }
 \examples{
-\dontrun{
-cds <- read_gff_cds("Pf3D7.gff")
+cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                package = "plasgenomicsutilsR"))
+
+# K76T and C580Y, at the positions they are reported at
 aa <- data.frame(transcript_id = c("pfcrt", "pfkelch13"), aa_position = c(76, 580))
-aa_intervals(aa, cds)
-}
+aa_intervals(aa, cds, one_based_output = TRUE)[, c("name", "chr", "start", "end", "strand")]
+
+# pfcrt has 13 coding exons, so four of its codons straddle an intron
+every_codon <- aa_intervals(data.frame(transcript_id = "pfcrt", aa_position = 1:424), cds)
+subset(every_codon, spans_intron)[, c("name", "codon_positions")]
 }
 \seealso{
 \code{\link[=read_gff_cds]{read_gff_cds()}}, \code{\link[=annotate_snps]{annotate_snps()}}

@@ -246,3 +246,199 @@ test_that("amino-acid positions are 1-based at both ends, from the initiator met
   expect_equal(zero$end, 103)
   expect_equal(zero$aa_position, 1L)
 })
+
+test_that("the shipped Pf3D7 CDS fixture gives the published marker positions", {
+  cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                  package = "plasgenomicsutilsR"))
+  expect_setequal(unique(cds$gene_id),
+                  c("PF3D7_0417200", "PF3D7_0523000", "PF3D7_0629500",
+                    "PF3D7_0709000", "PF3D7_0810800", "PF3D7_1343700"))
+
+  markers <- data.frame(
+    transcript_id = c("pfcrt", "pfdhps", "pfdhps", "pfdhps", "pfdhfr", "pfmdr1", "pfkelch13"),
+    aa_position   = c(     76,      437,      540,      581,      108,       86,         580))
+  iv <- aa_intervals(markers, cds, one_based_output = TRUE)
+  # the codon each mutation is named for, as reported in the literature
+  expect_equal(iv$codon_positions,
+               c("403624,403625,403626", "549684,549685,549686", "549993,549994,549995",
+                 "550116,550117,550118", "748409,748410,748411", "958145,958146,958147",
+                 "1725258,1725259,1725260"))
+  expect_equal(iv$strand, c("+", "+", "+", "+", "+", "+", "-"))
+
+  # pfcrt's 13 exons split four codons across an intron
+  spans <- subset(aa_intervals(data.frame(transcript_id = "pfcrt", aa_position = 1:424), cds,
+                               one_based_output = TRUE), spans_intron)
+  expect_equal(sub(".*-AA", "", spans$name), c("31", "178", "272", "400"))
+
+  # and snp_aa_positions inverts all of it, minus strand included
+  mid <- as.integer(vapply(strsplit(iv$codon_positions, ","), `[`, character(1), 2))
+  back <- snp_aa_positions(data.frame(chr = iv$chrom, pos = mid), cds, keep = "hits",
+                           one_based_snps = TRUE)
+  expect_equal(back$aa_position, as.integer(markers$aa_position))
+  expect_true(all(back$codon_base == 2L))
+})
+
+test_that("read_gff_cds reads Ensembl-style attributes to the same coordinates", {
+  rows <- grep("^#", readLines(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                           package = "plasgenomicsutilsR")),
+               invert = TRUE, value = TRUE)
+  ens <- tempfile(fileext = ".gff")
+  writeLines(sub("ID=[^;]*;Parent=([^;]*);gene_id=[^;]*.*", "Parent=transcript:\\1", rows), ens)
+
+  codon76 <- function(x) aa_intervals(data.frame(transcript_id = "PF3D7_0709000.1",
+                                                 aa_position = 76), x, genes = NULL,
+                                      one_based_output = TRUE)
+  a <- codon76(read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                        package = "plasgenomicsutilsR")))
+  b <- codon76(read_gff_cds(ens))                 # gene id derived from the transcript
+  expect_equal(a[, c("chrom", "start", "end", "gene_id")],
+               b[, c("chrom", "start", "end", "gene_id")])
+})
+
+# A synthetic genome whose reading frames are checkable by hand: each transcript below is
+# designed to translate to M K F G *.
+.demo_seqs <- function() c(
+  # plus strand, one exon at 11-25
+  fwd = "CCCCCCCCCCATGAAATTTGGGTAAC",
+  # minus strand, one exon at 11-25: the plus strand holds the reverse complement
+  rev = "CCCCCCCCCCTTACCCAAATTTCATC",
+  # plus strand in two exons, 11-14 and 21-32, so codon 2 straddles the intron
+  spl = "CCCCCCCCCCATGACCCCCCAATTTGGGTAAC")
+
+.demo_cds <- function() read_gff_cds(local({
+  f <- tempfile(fileext = ".gff")
+  writeLines(c("##gff-version 3",
+    "fwd\t.\tCDS\t11\t25\t.\t+\t0\tID=a;Parent=F.1;gene_id=F",
+    "rev\t.\tCDS\t11\t25\t.\t-\t0\tID=b;Parent=R.1;gene_id=R",
+    "spl\t.\tCDS\t11\t14\t.\t+\t0\tID=c1;Parent=S.1;gene_id=S",
+    "spl\t.\tCDS\t21\t32\t.\t+\t0\tID=c2;Parent=S.1;gene_id=S"), f)
+  f
+}))
+
+test_that("ref_codon/ref_aa translate a plus-strand transcript", {
+  r <- snp_aa_positions(data.frame(chr = "fwd", pos = c(11, 14, 17, 20, 23)), .demo_cds(),
+                        keep = "hits", one_based_snps = TRUE, fasta = .demo_seqs())
+  expect_equal(r$ref_codon, c("ATG", "AAA", "TTT", "GGG", "TAA"))
+  expect_equal(r$ref_aa, c("M", "K", "F", "G", "*"))
+})
+
+test_that("a minus-strand codon is complemented, not just reversed", {
+  r <- snp_aa_positions(data.frame(chr = "rev", pos = c(25, 22, 19, 16, 13)), .demo_cds(),
+                        keep = "hits", one_based_snps = TRUE, fasta = .demo_seqs())
+  expect_equal(r$aa_position, 1:5)
+  # plus-strand bases there are TTA CCC AAA TTT CAT read backwards; complementing gives:
+  expect_equal(r$ref_codon, c("ATG", "AAA", "TTT", "GGG", "TAA"))
+  expect_equal(r$ref_aa, c("M", "K", "F", "G", "*"))
+  # and the same codon read from any of its three bases agrees
+  three <- snp_aa_positions(data.frame(chr = "rev", pos = c(25, 24, 23)), .demo_cds(),
+                            keep = "hits", one_based_snps = TRUE, fasta = .demo_seqs())
+  expect_equal(unique(three$ref_codon), "ATG")
+  expect_equal(three$codon_base, 1:3)
+})
+
+test_that("an intron-straddling codon pulls bases from both exons", {
+  r <- snp_aa_positions(data.frame(chr = "spl", pos = c(11, 14, 21, 23)), .demo_cds(),
+                        keep = "hits", one_based_snps = TRUE, fasta = .demo_seqs())
+  expect_equal(r$aa_position, c(1L, 2L, 2L, 3L))
+  # codon 2 is base 14 (end of exon 1) plus bases 21-22 (start of exon 2)
+  expect_equal(r$ref_codon, c("ATG", "AAA", "AAA", "TTT"))
+  expect_equal(r$codon_base[r$aa_position == 2], c(1L, 2L))
+})
+
+test_that("sequence comes from a ##FASTA section in the GFF with nothing extra passed", {
+  f <- tempfile(fileext = ".gff")
+  writeLines(c("##gff-version 3",
+               "demo\t.\tCDS\t11\t25\t.\t+\t0\tID=c1;Parent=T.1;gene_id=T",
+               "##FASTA", ">demo some description here", "CCCCCCCCCCATGAAA",
+               "TTTGGGTAAC"), f)                        # wrapped sequence lines
+  expect_message(cds <- read_gff_cds(f), "##FASTA")
+  expect_equal(nrow(cds), 1L)                            # the sequence did not become a record
+  r <- snp_aa_positions(data.frame(chr = "demo", pos = c(11, 14)), cds, keep = "hits",
+                        one_based_snps = TRUE)
+  expect_equal(r$ref_aa, c("M", "K"))
+  # an explicit fasta overrides the embedded one
+  r2 <- snp_aa_positions(data.frame(chr = "demo", pos = 11), cds, keep = "hits",
+                         one_based_snps = TRUE, fasta = c(demo = strrep("A", 30)))
+  expect_equal(r2$ref_codon, "AAA")
+})
+
+test_that("without sequence the reference columns are absent, and NA for non-coding rows", {
+  cds <- .demo_cds()
+  bare <- snp_aa_positions(data.frame(chr = "fwd", pos = 11), cds, keep = "hits",
+                           one_based_snps = TRUE)
+  expect_false(any(c("ref_codon", "ref_aa") %in% names(bare)))
+
+  # keep = "all": a non-coding SNP has no codon to read
+  all_rows <- snp_aa_positions(data.frame(chr = "fwd", pos = c(11, 5)), cds,
+                               one_based_snps = TRUE, fasta = .demo_seqs())
+  expect_equal(all_rows$coding, c(TRUE, FALSE))
+  expect_equal(all_rows$ref_aa, c("M", NA))
+})
+
+test_that("a FASTA whose names do not match the GFF warns instead of going quiet", {
+  expect_warning(r <- snp_aa_positions(data.frame(chr = "fwd", pos = 11), .demo_cds(),
+                                       keep = "hits", one_based_snps = TRUE,
+                                       fasta = c(chr1 = strrep("A", 30))),
+                 "do not match")
+  expect_true(is.na(r$ref_aa))
+})
+
+test_that("keep = 'hits' returns rows in the order the SNPs were given", {
+  cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                  package = "plasgenomicsutilsR"))
+  # deliberately interleaved chromosomes: grouping by chromosome internally must not leak out,
+  # or a column carried alongside the result silently lines up with the wrong SNP
+  snps <- data.frame(
+    label = c("kelch13", "crt", "dhps", "crt2"),
+    chr = c("Pf3D7_13_v3", "Pf3D7_07_v3", "Pf3D7_08_v3", "Pf3D7_07_v3"),
+    pos = c(1725259, 403625, 549685, 404408))
+  r <- snp_aa_positions(snps, cds, keep = "hits", one_based_snps = TRUE)
+  expect_equal(r$label, snps$label)
+  expect_equal(r$pos, snps$pos)
+  expect_equal(r$aa_position, c(580L, 76L, 437L, 220L))
+})
+
+test_that("the shipped Pf3D7 region FASTA gives the published reference residues", {
+  cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                  package = "plasgenomicsutilsR"))
+  fa <- system.file("extdata", "pf3d7_drug_gene_regions.fasta.gz",
+                    package = "plasgenomicsutilsR")
+  markers <- data.frame(
+    transcript_id = c("pfcrt", "pfdhps", "pfdhps", "pfdhps", "pfdhfr", "pfmdr1",
+                      "pfkelch13", "pfaat1"),
+    aa_position = c(76, 437, 540, 581, 108, 86, 580, 258))
+  iv <- aa_intervals(markers, cds, one_based_output = TRUE)
+  mid <- as.integer(vapply(strsplit(iv$codon_positions, ","), `[`, character(1), 2))
+  r <- snp_aa_positions(data.frame(chr = iv$chrom, pos = mid), cds, keep = "hits",
+                        one_based_snps = TRUE, fasta = fa)
+  expect_equal(r$ref_codon,
+               c("AAA", "GGT", "AAA", "GCG", "AGC", "AAT", "TGT", "TCA"))
+  # the residue each marker is named for -- except pfdhps 437, where 3D7 itself carries the
+  # 437G allele, so the reference residue is G and not the A of "A437G"
+  expect_equal(r$ref_aa, c("K", "G", "K", "A", "S", "N", "C", "S"))
+
+  # every transcript starts on the initiator methionine
+  first <- aa_intervals(data.frame(transcript_id = unique(cds$transcript_id), aa_position = 1),
+                        cds, genes = NULL, one_based_output = TRUE)
+  fm <- as.integer(vapply(strsplit(first$codon_positions, ","), `[`, character(1), 2))
+  f <- snp_aa_positions(data.frame(chr = first$chrom, pos = fm), cds, keep = "hits",
+                        one_based_snps = TRUE, fasta = fa)
+  expect_equal(unique(f$ref_codon), "ATG")
+  expect_equal(unique(f$ref_aa), "M")
+
+  # and each translates end to end with no internal stop, which is what pins the frame
+  for (tx in unique(cds$transcript_id)) {
+    ex <- cds[cds$transcript_id == tx, ]
+    n <- sum(ex$end - ex$start + 1L) %/% 3
+    ivx <- aa_intervals(data.frame(transcript_id = tx, aa_position = seq_len(n)), cds,
+                        genes = NULL, one_based_output = TRUE)
+    mx <- as.integer(vapply(strsplit(ivx$codon_positions, ","), `[`, character(1), 2))
+    rx <- snp_aa_positions(data.frame(chr = ivx$chrom, pos = mx), cds, keep = "hits",
+                           one_based_snps = TRUE, fasta = fa)
+    rx <- rx[rx$transcript_id == tx, ]
+    prot <- paste(rx$ref_aa, collapse = "")
+    expect_equal(substr(prot, 1, 1), "M", info = tx)
+    expect_equal(substr(prot, nchar(prot), nchar(prot)), "*", info = tx)
+    expect_false(grepl("\\*", substr(prot, 1, nchar(prot) - 1)), info = tx)
+  }
+})
