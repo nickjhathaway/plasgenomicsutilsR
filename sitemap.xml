@@ -29,6 +29,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palette.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/coverage_qc.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ehh_candidates.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_ibd_results.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_pop_structure.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_overlap.html</loc></url>
@@ -44,6 +45,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/n_pcs_for_variance.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/normalise_chr.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pair_fraction_summary.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pdf_device.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.html</loc></url>
@@ -61,6 +63,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ehh.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_locus.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_network.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pair_network.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pairwise_group_heatmap.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_sharing_manhattan.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_tugofwar.html</loc></url>

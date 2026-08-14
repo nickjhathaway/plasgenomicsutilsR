@@ -34,9 +34,12 @@ plot_snmf_cross_entropy(
 
 - stat:
 
-  Which summary the line follows: `"min"` (default – the replicate that
-  [`snmf_q()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_q.md)
-  plots) or `"mean"`.
+  Which summary the line follows, and which the red marker minimises:
+  `"min"` (default, as in
+  [`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md))
+  or `"mean"`. See
+  [`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md)
+  for why `"min"` is the default and when `"mean"` is worth asking for.
 
 - show_range:
 

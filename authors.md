@@ -7,16 +7,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/DESCRIPTION)
 
 Hathaway N (2026). *plasgenomicsutilsR: Utilities for Visualizing
-Plasmodium Genomics Data*. R package version 0.3.1,
+Plasmodium Genomics Data*. R package version 0.3.2,
 <https://nickjhathaway.github.io/plasgenomicsutilsR/>.
 
     @Manual{,
       title = {plasgenomicsutilsR: Utilities for Visualizing Plasmodium Genomics Data},
       author = {Nicholas Hathaway},
       year = {2026},
-      note = {R package version 0.3.1},
+      note = {R package version 0.3.2},
       url = {https://nickjhathaway.github.io/plasgenomicsutilsR/},
     }

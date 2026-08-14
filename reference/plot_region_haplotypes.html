@@ -15,7 +15,7 @@ genome-wide ordering."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,7 +47,7 @@ genome-wide ordering."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Genotypes over one region, clustered by sample</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/plot_region_haplotypes.R" class="external-link"><code>R/plot_region_haplotypes.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/plot_region_haplotypes.R" class="external-link"><code>R/plot_region_haplotypes.R</code></a></small>
       <div class="d-none name"><code>plot_region_haplotypes.Rd</code></div>
     </div>
 
@@ -87,7 +87,12 @@ genome-wide ordering.</p>
 <span>  colours <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  na_colour <span class="op">=</span> <span class="st">"grey85"</span>,</span>
 <span>  show_sample_names <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  reference <span class="op">=</span> <span class="va">DEFAULT_REFERENCE</span></span>
+<span>  reference <span class="op">=</span> <span class="va">DEFAULT_REFERENCE</span>,</span>
+<span>  annotation_colours <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  border_color <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  na_color <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  annotation_colors <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -151,7 +156,7 @@ arrive, which is worth doing when the metadata order is the point.</p></dd>
 readable as cells rather than a wash of colour.</p></dd>
 
 
-<dt id="arg-border-colour">border_colour<a class="anchor" aria-label="anchor" href="#arg-border-colour"></a></dt>
+<dt id="arg-border-colour-border-color">border_colour, border_color<a class="anchor" aria-label="anchor" href="#arg-border-colour-border-color"></a></dt>
 <dd><p>Colour of that outline.</p></dd>
 
 
@@ -203,11 +208,11 @@ thousands of SNPs is unreadable as tiles; narrow it rather than have it silently
 gaps between SNPs visible.</p></dd>
 
 
-<dt id="arg-colours">colours<a class="anchor" aria-label="anchor" href="#arg-colours"></a></dt>
+<dt id="arg-colours-colors">colours, colors<a class="anchor" aria-label="anchor" href="#arg-colours-colors"></a></dt>
 <dd><p>Named fill colours for <code>reference</code> / <code>mixed</code> / <code>alternate</code>.</p></dd>
 
 
-<dt id="arg-na-colour">na_colour<a class="anchor" aria-label="anchor" href="#arg-na-colour"></a></dt>
+<dt id="arg-na-colour-na-color">na_colour, na_color<a class="anchor" aria-label="anchor" href="#arg-na-colour-na-color"></a></dt>
 <dd><p>Fill for missing calls.</p></dd>
 
 
@@ -218,6 +223,15 @@ most 40 samples.</p></dd>
 
 <dt id="arg-reference">reference<a class="anchor" aria-label="anchor" href="#arg-reference"></a></dt>
 <dd><p>Reference id, used when <code>region</code> names a whole chromosome.</p></dd>
+
+
+<dt id="arg-annotation-colours-annotation-colors">annotation_colours, annotation_colors<a class="anchor" aria-label="anchor" href="#arg-annotation-colours-annotation-colors"></a></dt>
+<dd><p>Per-annotation palettes, as a named list
+(<code>list(region = c(north = "#1B9E77", south = "grey60"))</code>). Named colours override those
+levels and leave the rest of that annotation's shared map alone, so recolouring one
+level does not mean respelling all of them; an unnamed vector is taken in level order.
+Only this plot changes – <code>PopStructure$set_colors()</code> is still the way to move a colour
+everywhere at once, which is what keeps a level looking the same across figures.</p></dd>
 
 </dl></div>
     <div class="section level2">

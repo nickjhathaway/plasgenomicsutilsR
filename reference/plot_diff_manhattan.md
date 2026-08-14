@@ -12,12 +12,13 @@ plot_diff_manhattan(
   pd,
   pair = NULL,
   combine = c("max", "mean"),
-  reference = "pf3d7",
+  reference = DEFAULT_REFERENCE,
   chroms = NULL,
   skip_chr = NULL,
   point_size = 0.6,
   point_alpha = 0.6,
-  colours = NULL
+  colours = NULL,
+  colors = NULL
 )
 ```
 
@@ -43,7 +44,7 @@ plot_diff_manhattan(
 
 - reference:
 
-  Reference id for the chromosome layout (default `"pf3d7"`).
+  Reference id for the chromosome layout (default `DEFAULT_REFERENCE`).
 
 - chroms, skip_chr:
 
@@ -53,7 +54,7 @@ plot_diff_manhattan(
 
   Point aesthetics.
 
-- colours:
+- colours, colors:
 
   Optional length-2 colour vector for the alternating chromosome bands.
 

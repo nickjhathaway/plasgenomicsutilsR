@@ -23,7 +23,8 @@ plot_pairwise_ibd_for_genes(
   trans = "identity",
   colors = NULL,
   limits = NULL,
-  fill_scale = NULL
+  fill_scale = NULL,
+  colours = NULL
 )
 ```
 
@@ -89,7 +90,7 @@ plot_pairwise_ibd_for_genes(
 
   Fill-scale transform, e.g. `"identity"` (default), `"log2"`, `"sqrt"`.
 
-- colors:
+- colors, colours:
 
   Optional colour ramp for the fill (default: the pairwise-sharing
   ramp).

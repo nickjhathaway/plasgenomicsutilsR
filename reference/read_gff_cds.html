@@ -11,7 +11,7 @@ part, so parse once and reuse the result across calls."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,7 +43,7 @@ part, so parse once and reuse the result across calls."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Read the CDS features of a GFF</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/aa_intervals.R" class="external-link"><code>R/aa_intervals.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/aa_intervals.R" class="external-link"><code>R/aa_intervals.R</code></a></small>
       <div class="d-none name"><code>read_gff_cds.Rd</code></div>
     </div>
 
@@ -79,8 +79,27 @@ inclusive, as the GFF gives them), <code>strand</code> and <code>phase</code>, o
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># VEuPathDB / PlasmoDB, the source the bundled gene datasets were built from</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># the CDS of six 3D7 drug-resistance genes ship with the package</span></span></span>
+<span class="r-in"><span><span class="va">cds</span> <span class="op">&lt;-</span> <span class="fu">read_gff_cds</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"pf3d7_drug_gene_cds.gff"</span>,</span></span>
+<span class="r-in"><span>                                package <span class="op">=</span> <span class="st">"plasgenomicsutilsR"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">cds</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 21 × 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    transcript_id   gene_id       chrom         start     end strand phase</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> PF3D7_0417200.1 PF3D7_0417200 Pf3D7_04_v3  <span style="text-decoration: underline;">748</span>088  <span style="text-decoration: underline;">749</span>914 +          0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> PF3D7_0523000.1 PF3D7_0523000 Pf3D7_05_v3  <span style="text-decoration: underline;">957</span>890  <span style="text-decoration: underline;">962</span>149 +          0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> PF3D7_0629500.1 PF3D7_0629500 Pf3D7_06_v3 1<span style="text-decoration: underline;">213</span>948 1<span style="text-decoration: underline;">214</span>092 -          1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> PF3D7_0629500.1 PF3D7_0629500 Pf3D7_06_v3 1<span style="text-decoration: underline;">214</span>330 1<span style="text-decoration: underline;">216</span>005 -          0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> PF3D7_0709000.1 PF3D7_0709000 Pf3D7_07_v3  <span style="text-decoration: underline;">403</span>222  <span style="text-decoration: underline;">403</span>312 +          0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> PF3D7_0709000.1 PF3D7_0709000 Pf3D7_07_v3  <span style="text-decoration: underline;">403</span>490  <span style="text-decoration: underline;">403</span>758 +          2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> PF3D7_0709000.1 PF3D7_0709000 Pf3D7_07_v3  <span style="text-decoration: underline;">403</span>938  <span style="text-decoration: underline;">404</span>110 +          0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> PF3D7_0709000.1 PF3D7_0709000 Pf3D7_07_v3  <span style="text-decoration: underline;">404</span>283  <span style="text-decoration: underline;">404</span>415 +          1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> PF3D7_0709000.1 PF3D7_0709000 Pf3D7_07_v3  <span style="text-decoration: underline;">404</span>569  <span style="text-decoration: underline;">404</span>640 +          0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> PF3D7_0709000.1 PF3D7_0709000 Pf3D7_07_v3  <span style="text-decoration: underline;">404</span>764  <span style="text-decoration: underline;">404</span>839 +          0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 11 more rows</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span><span class="co"># a whole released annotation, read straight from the web</span></span></span>
 <span class="r-in"><span><span class="va">cds</span> <span class="op">&lt;-</span> <span class="fu">read_gff_cds</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"https://plasmodb.org/common/downloads/Current_Release/"</span>,</span></span>
 <span class="r-in"><span>                           <span class="st">"Pfalciparum3D7/gff/data/PlasmoDB-68_Pfalciparum3D7.gff"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># Ensembl Protists works too, despite naming its attributes differently</span></span></span>

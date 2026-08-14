@@ -59,6 +59,8 @@ set of samples (or a metadata match) for output.
 
 - [`PopStructure$get_colors()`](#method-PopStructure-get_colors)
 
+- [`PopStructure$get_colours()`](#method-PopStructure-get_colours)
+
 - [`PopStructure$allele()`](#method-PopStructure-allele)
 
 - [`PopStructure$positions()`](#method-PopStructure-positions)
@@ -128,7 +130,8 @@ list).
       allele = NULL,
       pruned = NULL,
       full = NULL,
-      one_based = FALSE
+      one_based = FALSE,
+      colours = NULL
     )
 
 #### Arguments
@@ -229,7 +232,7 @@ Attach/replace metadata; auto-assigns colours for new columns.
 
 #### Usage
 
-    PopStructure$add_meta(meta, colors = NULL)
+    PopStructure$add_meta(meta, colors = NULL, colours = NULL)
 
 #### Arguments
 
@@ -249,7 +252,7 @@ Set/override colour maps for metadata columns.
 
 #### Usage
 
-    PopStructure$set_colors(colors)
+    PopStructure$set_colors(colors, colours = NULL)
 
 #### Arguments
 
@@ -347,13 +350,14 @@ Best K (cross-entropy) from the fitted sNMF.
 
 #### Usage
 
-    PopStructure$best_k(stat = c("mean", "min"))
+    PopStructure$best_k(stat = c("min", "mean"))
 
 #### Arguments
 
 - `stat`:
 
-  Combine replicates by `"mean"` or `"min"`.
+  Combine replicates by `"min"` or `"mean"`; see
+  [`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md).
 
 ------------------------------------------------------------------------
 
@@ -467,13 +471,22 @@ filtered).
 
 #### Usage
 
-    PopStructure$subset(samples = NULL, ...)
+    PopStructure$subset(samples = NULL, drop_samples = NULL, ...)
 
 #### Arguments
 
 - `samples`:
 
   Sample ids to keep.
+
+- `drop_samples`:
+
+  Sample ids to remove, applied after `samples` and the metadata
+  filters. For taking out the one or two samples an otherwise good
+  subset should not include – a contaminant, a duplicate – without
+  having to spell out the keep list. Ids that are not in the object are
+  reported rather than ignored, since a typo would otherwise look
+  exactly like a sample that was already gone.
 
 - `...`:
 
@@ -563,6 +576,16 @@ The shared colour maps.
 
 ------------------------------------------------------------------------
 
+### `PopStructure$get_colours()`
+
+Alias for `get_colors()`.
+
+#### Usage
+
+    PopStructure$get_colours()
+
+------------------------------------------------------------------------
+
 ### `PopStructure$allele()`
 
 Which allele the dosages count (`"alt"` / `"ref"`), or `NULL` when the
@@ -636,13 +659,13 @@ PCA scatter coloured by a metadata column (shared colours).
 
 #### Usage
 
-    PopStructure$plot_pca(colour = NULL, pcs = c(1, 2), ...)
+    PopStructure$plot_pca(colour = NULL, pcs = c(1, 2), ..., color = NULL)
 
 #### Arguments
 
-- `colour`:
+- `colour, color`:
 
-  Metadata column to colour by.
+  Metadata column to colour by (either spelling).
 
 - `pcs`:
 
@@ -661,13 +684,13 @@ UMAP scatter coloured by a metadata column (shared colours).
 
 #### Usage
 
-    PopStructure$plot_umap(colour = NULL, ...)
+    PopStructure$plot_umap(colour = NULL, ..., color = NULL)
 
 #### Arguments
 
-- `colour`:
+- `colour, color`:
 
-  Metadata column to colour by.
+  Metadata column to colour by (either spelling).
 
 - `...`:
 
@@ -689,7 +712,8 @@ matches the UMAP/PCA colouring.
       colour = group,
       sample_order = NULL,
       group_bar = !is.null(group),
-      ...
+      ...,
+      color = NULL
     )
 
 #### Arguments
@@ -702,9 +726,12 @@ matches the UMAP/PCA colouring.
 
   Metadata column to facet by and colour the strip with.
 
-- `colour`:
+- `colour, color`:
 
-  Metadata column for the strip colours (default `group`).
+  Metadata column for the strip colours (default `group`, either
+  spelling). To recolour the ancestry clusters themselves, pass
+  `colours` / `colors` (a palette), which goes to
+  [`plot_admixture()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.md).
 
 - `sample_order`:
 

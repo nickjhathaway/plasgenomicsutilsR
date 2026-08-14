@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -65,7 +65,7 @@
       <h1>Population structure</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/vignettes/population-structure.Rmd" class="external-link"><code>vignettes/population-structure.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/vignettes/population-structure.Rmd" class="external-link"><code>vignettes/population-structure.Rmd</code></a></small>
       <div class="d-none name"><code>population-structure.Rmd</code></div>
     </div>
 
@@ -117,13 +117,27 @@ K:</p>
 <h3 id="choosing-k">Choosing K<a class="anchor" aria-label="anchor" href="#choosing-k"></a>
 </h3>
 <p>sNMF fits several replicates per K and scores each by cross-entropy.
-<code><a href="https://rdrr.io/r/base/quit.html" class="external-link">q()</a></code> and <code><a href="../reference/plot_admixture.html">plot_admixture()</a></code> use the
-<strong>minimum</strong>-cross-entropy replicate, so <code>min</code> is
-the column describing the ancestry you actually see;
-<code>mean</code>/<code>max</code> show how far the replicates
-disagreed. Picking K is a separate judgement — read the elbow, and treat
-a flat stretch or a wide min–max band as “the data don’t pin K down”,
-whatever <code>best_k()</code> returns:</p>
+Two choices come out of that, and both are made on the
+<strong>minimum</strong> across replicates:</p>
+<ul>
+<li>
+<strong>Which replicate</strong> — <code><a href="https://rdrr.io/r/base/quit.html" class="external-link">q()</a></code> and
+<code><a href="../reference/plot_admixture.html">plot_admixture()</a></code> show the minimum-cross-entropy replicate
+at the chosen K. sNMF’s objective is non-convex, so replicates settle in
+different local optima and the best-fitting one is the ancestry you
+draw.</li>
+<li>
+<strong>Which K</strong> — <code>best_k()</code> and the elbow
+compare those same minima across K, so the K you settle on is scored by
+the model you actually plot at it. This is also what LEA’s own
+<code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> of an sNMF project shows.</li>
+</ul>
+<p><code>stat = "mean"</code> averages the replicates instead, which is
+worth asking for when <code>n_runs</code> differs between K values — a
+minimum over more replicates is expected to be smaller whether or not
+that K fits better. Either way, treat a flat stretch or a wide min–max
+band as “the data don’t pin K down”, whatever <code>best_k()</code>
+returns:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">cross_entropy</span><span class="op">(</span><span class="op">)</span>        <span class="co"># K, n_runs, min, mean, max, best_run</span></span>
 <span><span class="va">ps</span><span class="op">$</span><span class="fu">plot_cross_entropy</span><span class="op">(</span><span class="op">)</span>   <span class="co"># the elbow; best K in red, grey band = replicate spread</span></span></code></pre></div>
@@ -214,6 +228,42 @@ read. Any other panel works the same way
 still overrides everything. Without a full panel, the analyses that want
 one say so once rather than quietly using pruned SNPs.</p>
 </div>
+<div class="section level3">
+<h3 id="why-full-is-smaller-than-the-vcf">Why “full” is smaller than the VCF<a class="anchor" aria-label="anchor" href="#why-full-is-smaller-than-the-vcf"></a>
+</h3>
+<p><code>prune = FALSE</code> means unpruned, not every record.
+SNPRelate reads the VCF with <code>method = "biallelic.only"</code> and
+skips three kinds of record: sites with <strong>no ALT allele</strong>
+(<code>ALT="."</code>), <strong>indels</strong>, and sites with
+<strong>more than one ALT</strong>. So a VCF of 28,927 records carrying
+9,158 <code>ALT="."</code> positions and 48 multiallelic sites gives a
+full panel of 19,721.</p>
+<p>The no-ALT records are the ones that catch people out — the reference
+positions an all-sites caller emits, which
+<code>bcftools view --exclude-types indels</code> leaves untouched
+because they are not indels. <code><a href="../reference/load_genotypes.html">load_genotypes()</a></code> reports the
+count it read; when that comes out short, count what is really there
+rather than the total:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-m2</span> <span class="at">-M2</span> <span class="at">-v</span> snps file.vcf.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span>   <span class="co"># what will load</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="ex">bcftools</span> view <span class="at">-e</span> <span class="st">'ALT="."'</span> <span class="at">-Ob</span> <span class="at">-o</span> out.bcf in.bcf       <span class="co"># drop them upstream instead</span></span></code></pre></div>
+<p>Sites invariant <em>across your samples</em> are kept, though, as
+long as the VCF lists an ALT there. That filter asks how many alleles
+the record declares, not whether these samples differ — a site every
+sample calls <code>1/1</code> comes through — which is why
+<code><a href="../reference/parasite_haplotypes.html">parasite_haplotypes()</a></code> and <code><a href="../reference/run_ihs.html">run_ihs()</a></code> apply
+their own <code>maf</code> cutoff rather than assuming the panel is
+variable.</p>
+<p><code>variants = "all"</code> reads every record instead —
+multiallelic sites, indels and <code>ALT="."</code> included — storing
+the copy number of the reference allele. Nothing in this package reads
+that correctly, so it warns: a dosage cannot say <em>which</em> ALT it
+counts, so at <code>C -&gt; T,G</code> a sample called <code>1/1</code>
+and one called <code>2/2</code> land on the same number. It is there to
+hand the matrix to something that does handle multiallelic data. The
+choice is recorded on the returned list and tagged into the
+<code>.gds</code>, so the two panels can share a path without being
+confused for each other.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="ordering-the-groups">Ordering the groups<a class="anchor" aria-label="anchor" href="#ordering-the-groups"></a>
@@ -223,7 +273,7 @@ precedes <code>site10</code>). <code>set_levels()</code> imposes your
 own order, and it applies to <strong>every</strong> output — PCA and
 UMAP legends, the admixture facets and sample sweep, the differentiation
 matrix, and the composite figure:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ps</span><span class="op">$</span><span class="fu">set_levels</span><span class="op">(</span><span class="st">"site"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Uganda_North"</span>, <span class="st">"Uganda_East"</span>, <span class="st">"Kenya_West"</span>, <span class="st">"Kenya_East"</span>,</span>
 <span>                        <span class="st">"Tanzania_West"</span>, <span class="st">"Tanzania_East"</span>, <span class="st">"DRC"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Two things to know. Levels you leave out are dropped, so those

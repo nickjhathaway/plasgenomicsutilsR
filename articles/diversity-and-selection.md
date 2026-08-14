@@ -280,10 +280,42 @@ other has decayed:
 ``` r
 
 plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
-#> `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another
+#> `pfcrt` holds 11 SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another, or see ehh_candidates() for the shortlist
 ```
 
 ![](diversity-and-selection_files/figure-html/unnamed-chunk-13-1.png)
+
+Naming a gene leaves the choice of focal SNP to the function, which
+takes the most balanced one and says so.
+[`ehh_candidates()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ehh_candidates.md)
+shows the shortlist it chose from, most balanced first, so you can see
+what was on offer and name a `chr:pos` instead:
+
+``` r
+
+ehh_candidates(hap, "pfcrt", group = "country", genes = PF_EXAMPLE_DRUG_GENES)
+#> # A tibble: 11 × 9
+#>    snp_id             chr         pos    maf n_hap chosen maf_Cambodia maf_Ghana
+#>    <chr>              <chr>     <dbl>  <dbl> <int> <lgl>         <dbl>     <dbl>
+#>  1 Pf3D7_07_v3:403624 Pf3D7_0… 403624 0.5       60 TRUE         0         0     
+#>  2 Pf3D7_07_v3:404835 Pf3D7_0… 404835 0.5       60 FALSE        0         0     
+#>  3 Pf3D7_07_v3:405837 Pf3D7_0… 405837 0.5       60 FALSE        0         0     
+#>  4 Pf3D7_07_v3:405361 Pf3D7_0… 405361 0.483     60 FALSE        0.0667    0.0333
+#>  5 Pf3D7_07_v3:405599 Pf3D7_0… 405599 0.483     60 FALSE        0.0333    0     
+#>  6 Pf3D7_07_v3:406230 Pf3D7_0… 406230 0.433     60 FALSE        0         0.133 
+#>  7 Pf3D7_07_v3:403336 Pf3D7_0… 403336 0.333     60 FALSE        0         0.333 
+#>  8 Pf3D7_07_v3:403674 Pf3D7_0… 403674 0.117     60 FALSE        0.233     0     
+#>  9 Pf3D7_07_v3:403661 Pf3D7_0… 403661 0.1       60 FALSE        0.2       0     
+#> 10 Pf3D7_07_v3:403686 Pf3D7_0… 403686 0.0667    60 FALSE        0.133     0     
+#> 11 Pf3D7_07_v3:405561 Pf3D7_0… 405561 0.05      60 FALSE        0.1       0     
+#> # ℹ 1 more variable: n_groups_variable <int>
+```
+
+`maf` is the metric that decides it. The per-group columns catch the
+other way a panel comes back empty: the SNP chosen here has `maf` 0.5
+yet is monomorphic *inside* both countries — it separates them — so
+`plot_ehh(group = "country")` would have no curve to draw for either.
+`n_groups_variable` finds the SNPs that do vary within a group.
 
 A marker that only segregates in one part of the cohort is buried by
 pooling, so restrict the haplotypes to where it varies.
@@ -295,10 +327,10 @@ matches metadata the way `PopStructure$subset()` does,
 
 gh <- subset_haplotypes(hap, country = "Ghana")
 plot_ehh(gh, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
-#> `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403336 (minor allele 0.333) -- name a `chr:pos` to pick another
+#> `pfcrt` holds 11 SNPs; measuring from Pf3D7_07_v3:403336 (minor allele 0.333) -- name a `chr:pos` to pick another, or see ehh_candidates() for the shortlist
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-14-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png)
 
 The SNP panel is left exactly as
 [`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
@@ -330,7 +362,7 @@ underneath:
 plot_region_haplotypes(ps, "pfcrt", pad = 20000, genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-15-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png)
 
 `split` blocks the rows by a metadata column and clusters *within* each
 block, so a haplotype shared across a group reads as a solid band
@@ -344,7 +376,7 @@ plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
                        genes = PF_EXAMPLE_DRUG_GENES, annotations = "country")
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-16-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png)
 
 `annotations` adds coloured strips down the right, one column per
 metadata variable, each with its own legend and taking its colours from
@@ -357,7 +389,7 @@ plot_region_haplotypes(ps, "pfdhps", pad = 20000, split = "country",
                        annotations = "country", genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-17-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-18-1.png)
 
 `spacing` decides what the horizontal axis means, and the two answers
 show different things. `"even"` (the default) gives every SNP the same
@@ -380,7 +412,7 @@ plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
                        spacing = "genomic", genes = PF_EXAMPLE_DRUG_GENES)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-18-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-19-1.png)
 
 One thing to be sure of before reading the colours: `allele` says
 whether a dosage of 2 means two alternate alleles or two reference ones.
@@ -438,7 +470,7 @@ b <- beta_score(ps, group = "country", window = 300000, min_window_snps = 1)
 plot_beta(b)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-21-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-22-1.png)
 
 Use `window = 1000` (the default) on a real, dense callset; the fixture
 needs a far wider window just to find any neighbours.

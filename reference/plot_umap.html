@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,7 +39,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>UMAP scatter plot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>plot_umap.Rd</code></div>
     </div>
 
@@ -55,7 +55,9 @@
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  point_size <span class="op">=</span> <span class="fl">1.6</span>,</span>
 <span>  point_alpha <span class="op">=</span> <span class="fl">0.8</span>,</span>
-<span>  legend_point_size <span class="op">=</span> <span class="fl">3</span></span>
+<span>  legend_point_size <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  color <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  colours <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -67,11 +69,11 @@
 <dd><p>A <code>pop_structure</code> object (built with <code>umap = TRUE</code>) or a <a href="PopStructure.html">PopStructure</a>.</p></dd>
 
 
-<dt id="arg-colour">colour<a class="anchor" aria-label="anchor" href="#arg-colour"></a></dt>
+<dt id="arg-colour-color">colour, color<a class="anchor" aria-label="anchor" href="#arg-colour-color"></a></dt>
 <dd><p>Metadata column to colour points by (needs <code>meta</code>).</p></dd>
 
 
-<dt id="arg-colors">colors<a class="anchor" aria-label="anchor" href="#arg-colors"></a></dt>
+<dt id="arg-colors-colours">colors, colours<a class="anchor" aria-label="anchor" href="#arg-colors-colours"></a></dt>
 <dd><p>Optional named <code>level -&gt; colour</code> vector for the colour scale
 (e.g. from <code><a href="meta_colors.html">meta_colors()</a></code>); a <code>PopStructure</code> supplies its stored map.</p></dd>
 

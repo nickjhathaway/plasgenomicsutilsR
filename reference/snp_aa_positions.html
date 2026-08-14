@@ -13,7 +13,7 @@ change".'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -45,7 +45,7 @@ change".'></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>The amino acid a SNP falls in</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/aa_intervals.R" class="external-link"><code>R/aa_intervals.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/aa_intervals.R" class="external-link"><code>R/aa_intervals.R</code></a></small>
       <div class="d-none name"><code>snp_aa_positions.Rd</code></div>
     </div>
 
@@ -58,7 +58,13 @@ change".</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">snp_aa_positions</span><span class="op">(</span><span class="va">snps</span>, <span class="va">gff</span>, keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"all"</span>, <span class="st">"hits"</span><span class="op">)</span>, one_based_snps <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">snp_aa_positions</span><span class="op">(</span></span>
+<span>  <span class="va">snps</span>,</span>
+<span>  <span class="va">gff</span>,</span>
+<span>  keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"all"</span>, <span class="st">"hits"</span><span class="op">)</span>,</span>
+<span>  one_based_snps <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  fasta <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -84,11 +90,18 @@ only those in a CDS.</p></dd>
 names from <code><a href="load_genotypes.html">load_genotypes()</a></code> are, so set this when feeding those in; the package's own
 tables are 0-based, which is the default.</p></dd>
 
+
+<dt id="arg-fasta">fasta<a class="anchor" aria-label="anchor" href="#arg-fasta"></a></dt>
+<dd><p>Optional reference sequence, for the <code>ref_codon</code> / <code>ref_aa</code> columns: a path or
+URL to a FASTA, or a named character vector of sequences. Defaults to whatever <code>gff</code>
+carried; <code>NULL</code> with a GFF holding no sequence leaves the two columns off.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>snps</code> with <code>transcript_id</code>, <code>gene_id</code>, <code>aa_position</code> (1-based), <code>codon_base</code>
-(1/2/3 in transcript orientation), <code>strand</code> and <code>coding</code> added.</p>
+(1/2/3 in transcript orientation), <code>strand</code> and <code>coding</code> added, plus <code>ref_codon</code> and
+<code>ref_aa</code> when there is sequence to read them from.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -100,7 +113,37 @@ genomic coordinate of the three.</p>
 intergenic space are all simply non-coding here. A SNP inside overlapping isoforms yields one
 row per transcript, since the codon it hits can differ between them.</p>
 <p>Being in a codon says nothing about whether the residue actually changes: that needs the
-alleles and the reading frame's other two bases, which are not part of this.</p>
+alleles, which are not part of this. What reference sequence does buy you is the residue the
+codon currently codes for – see below.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-reference-residue">The reference residue<a class="anchor" aria-label="anchor" href="#the-reference-residue"></a></h2>
+
+
+<p>Given sequence, the result also carries <code>ref_codon</code> (the codon's three bases, in transcript
+orientation, complemented on the minus strand) and <code>ref_aa</code> (its residue, one letter, <code>*</code> for
+a stop). Sequence can come from either place:</p><ul><li><p><code>fasta =</code> – a path or URL to a genome FASTA (plain or gzipped), or a named vector of
+sequences you already have in hand.</p></li>
+<li><p>the GFF itself, when it ends with a <code>##FASTA</code> section. <code><a href="read_gff_cds.html">read_gff_cds()</a></code> keeps those
+sequences, so nothing extra needs passing.</p></li>
+</ul><p>Without either, both columns are simply absent: the reference base cannot be inferred from an
+annotation alone. Some GFFs do carry a translated protein in a feature attribute, but too few
+agree on how to make it worth reading, so it is not used.</p>
+<p>Names are matched through <code><a href="normalise_chr.html">normalise_chr()</a></code>, so a FASTA headed <code>Pf3D7_07_v3</code> lines up with a
+GFF spelling it the same way or differently. If nothing matches, both columns come back <code>NA</code>
+with a warning naming what was compared – silence there would look like a genome with no
+coding SNPs.</p>
+<p>This is worth doing even when you think you know the answer. <code>ref_aa</code> is what the <em>reference</em>
+carries, and a reference is one isolate's genome – not a consensus, and not the ancestral or
+wild-type sequence. Pf3D7 reads <code>G</code> at <em>pfdhps</em> 437, the residue A437G is named for changing
+<em>to</em>, so a callset aligned to 3D7 shows no variant at that position precisely because the
+reference is already the mutant. This is not a quirk of one locus: across <em>Plasmodium</em> species
+the reference is sometimes the non-wild-type allele, so "REF" means "what this isolate has",
+never "what came first".</p>
+<p>Two conventions here follow from that. <code><a href="load_genotypes.html">load_genotypes()</a></code> records which allele its dosages
+count rather than letting REF stand in for a baseline, and <code><a href="run_ihs.html">run_ihs()</a></code> and <code><a href="plot_ehh.html">plot_ehh()</a></code> default
+to <code>polarized = FALSE</code>, treating the two states as simply the two states, since ancestral
+versus derived cannot be read off REF and ALT.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -110,11 +153,57 @@ gene a SNP is in.</p></div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">cds</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_gff_cds.html">read_gff_cds</a></span><span class="op">(</span><span class="st">"Pf3D7.gff"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># every genotyped SNP in pfdhps, and the residues they sit on</span></span></span>
-<span class="r-in"><span><span class="va">snps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>snp_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">ps</span><span class="op">$</span><span class="fu">genotype</span><span class="op">(</span><span class="st">"full"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">snp_aa_positions</span><span class="op">(</span><span class="va">snps</span>, <span class="va">cds</span>, keep <span class="op">=</span> <span class="st">"hits"</span>, one_based_snps <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">cds</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_gff_cds.html">read_gff_cds</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"pf3d7_drug_gene_cds.gff"</span>,</span></span>
+<span class="r-in"><span>                                package <span class="op">=</span> <span class="st">"plasgenomicsutilsR"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># the three bases of pfkelch13 codon 580, on the minus strand: base 1 is the highest</span></span></span>
+<span class="r-in"><span><span class="fu">snp_aa_positions</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>chr <span class="op">=</span> <span class="st">"Pf3D7_13_v3"</span>, pos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1725260</span>, <span class="fl">1725259</span>, <span class="fl">1725258</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                 <span class="va">cds</span>, keep <span class="op">=</span> <span class="st">"hits"</span>, one_based_snps <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span></span></span>
+<span class="r-in"><span>  , <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pos"</span>, <span class="st">"aa_position"</span>, <span class="st">"codon_base"</span>, <span class="st">"strand"</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       pos aa_position codon_base strand</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1<span style="text-decoration: underline;">725</span>260         580          1 -     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 1<span style="text-decoration: underline;">725</span>259         580          2 -     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 1<span style="text-decoration: underline;">725</span>258         580          3 -     </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># `ref_codon` / `ref_aa` need sequence. A GFF ending in a `##FASTA` section carries its own,</span></span></span>
+<span class="r-in"><span><span class="co"># so nothing extra is passed:</span></span></span>
+<span class="r-in"><span><span class="va">gff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".gff"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"##gff-version 3"</span>,</span></span>
+<span class="r-in"><span>             <span class="st">"demo\t.\tCDS\t11\t25\t.\t+\t0\tID=c1;Parent=T.1;gene_id=T"</span>,</span></span>
+<span class="r-in"><span>             <span class="st">"##FASTA"</span>, <span class="st">"&gt;demo"</span>, <span class="st">"CCCCCCCCCCATGAAATTTGGGTAAC"</span><span class="op">)</span>, <span class="va">gff</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">snp_aa_positions</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>chr <span class="op">=</span> <span class="st">"demo"</span>, pos <span class="op">=</span> <span class="fl">11</span><span class="op">:</span><span class="fl">22</span><span class="op">)</span>, <span class="fu"><a href="read_gff_cds.html">read_gff_cds</a></span><span class="op">(</span><span class="va">gff</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                 keep <span class="op">=</span> <span class="st">"hits"</span>, one_based_snps <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span></span></span>
+<span class="r-in"><span>  , <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pos"</span>, <span class="st">"aa_position"</span>, <span class="st">"codon_base"</span>, <span class="st">"ref_codon"</span>, <span class="st">"ref_aa"</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> 1 sequence(s) read from the GFF's own ##FASTA section</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 12 × 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      pos aa_position codon_base ref_codon ref_aa</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span>    11           1          1 ATG       M     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span>    12           1          2 ATG       M     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span>    13           1          3 ATG       M     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span>    14           2          1 AAA       K     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span>    15           2          2 AAA       K     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span>    16           2          3 AAA       K     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span>    17           3          1 TTT       F     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span>    18           3          2 TTT       F     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>    19           3          3 TTT       F     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>    20           4          1 GGG       G     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span>    21           4          2 GGG       G     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span>    22           4          3 GGG       G     </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span><span class="co"># every genotyped SNP that is coding, and the residue it sits on. Genotype-matrix ids</span></span></span>
+<span class="r-in"><span><span class="co"># are 0-based, so no `one_based_snps` here.</span></span></span>
+<span class="r-in"><span><span class="fu">snp_aa_positions</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>snp_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">ps</span><span class="op">$</span><span class="fu">genotype</span><span class="op">(</span><span class="st">"full"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="va">cds</span>, keep <span class="op">=</span> <span class="st">"hits"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># or point `fasta` at the released genome, read straight from the web like the GFF is.</span></span></span>
+<span class="r-in"><span><span class="co"># pfcrt codon 76 comes back "AAA" / "K".</span></span></span>
+<span class="r-in"><span><span class="va">genome</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"https://plasmodb.org/common/downloads/Current_Release/"</span>,</span></span>
+<span class="r-in"><span>                 <span class="st">"Pfalciparum3D7/fasta/data/PlasmoDB-68_Pfalciparum3D7_Genome.fasta"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">snp_aa_positions</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>chr <span class="op">=</span> <span class="st">"Pf3D7_07_v3"</span>, pos <span class="op">=</span> <span class="fl">403625</span><span class="op">)</span>, <span class="va">cds</span>, keep <span class="op">=</span> <span class="st">"hits"</span>,</span></span>
+<span class="r-in"><span>                 one_based_snps <span class="op">=</span> <span class="cn">TRUE</span>, fasta <span class="op">=</span> <span class="va">genome</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

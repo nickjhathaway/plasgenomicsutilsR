@@ -47,6 +47,10 @@ Expected columns (superset; extras are kept):
 
 - [`IbdResults$get_blocks()`](#method-IbdResults-get_blocks)
 
+- [`IbdResults$get_pair_fraction()`](#method-IbdResults-get_pair_fraction)
+
+- [`IbdResults$set_pair_fraction()`](#method-IbdResults-set_pair_fraction)
+
 - [`IbdResults$get_analyzed_samples()`](#method-IbdResults-get_analyzed_samples)
 
 - [`IbdResults$get_meta()`](#method-IbdResults-get_meta)
@@ -79,6 +83,10 @@ Expected columns (superset; extras are kept):
 
 - [`IbdResults$plot_ibd_network()`](#method-IbdResults-plot_ibd_network)
 
+- [`IbdResults$plot_ibd_pair_network()`](#method-IbdResults-plot_ibd_pair_network)
+
+- [`IbdResults$pair_fraction_summary()`](#method-IbdResults-pair_fraction_summary)
+
 - [`IbdResults$pos_selection_genes()`](#method-IbdResults-pos_selection_genes)
 
 - [`IbdResults$clone()`](#method-IbdResults-clone)
@@ -100,10 +108,11 @@ Create an IbdResults object.
       blocks = NULL,
       meta = NULL,
       gene_overlap = NULL,
+      pair_fraction = NULL,
       group_col_in_meta = NULL,
       min_block_snp = IBD_MIN_BLOCK_SNP,
       min_block_kb = IBD_MIN_BLOCK_KB,
-      reference = "pf3d7"
+      reference = DEFAULT_REFERENCE
     )
 
 #### Arguments
@@ -154,6 +163,13 @@ Create an IbdResults object.
   `plasgenomicsutils ibd_gene_overlap`: `gene`, `group_a`, `group_b`,
   `frac_pairs_ibd`, ...), used directly by the gene triangles.
 
+- `pair_fraction`:
+
+  Optional genome-wide per-pair IBD fraction table (path or data frame)
+  from `plasgenomicsutils ibd_fraction_and_snp_density`, for
+  [`plot_ibd_pair_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pair_network.md).
+  Sample-keyed, so it narrows with the samples when groups are dropped.
+
 - `group_col_in_meta`:
 
   Name of the `meta` column that defines the grouping. It becomes the
@@ -176,7 +192,7 @@ Create an IbdResults object.
 
 - `reference`:
 
-  Reference id for chromosome lengths (default `"pf3d7"`).
+  Reference id for chromosome lengths (default `DEFAULT_REFERENCE`).
 
 #### Returns
 
@@ -350,6 +366,32 @@ IBD segment table (`sample1`, `sample2`, `chr`, `start`, `end`), or
 #### Usage
 
     IbdResults$get_blocks()
+
+------------------------------------------------------------------------
+
+### `IbdResults$get_pair_fraction()`
+
+Genome-wide per-pair IBD fraction table, or `NULL`.
+
+#### Usage
+
+    IbdResults$get_pair_fraction()
+
+------------------------------------------------------------------------
+
+### `IbdResults$set_pair_fraction()`
+
+Attach (or replace) the per-pair IBD fraction table.
+
+#### Usage
+
+    IbdResults$set_pair_fraction(pair_fraction)
+
+#### Arguments
+
+- `pair_fraction`:
+
+  A path or data frame, as `ibd_results(pair_fraction = )` takes.
 
 ------------------------------------------------------------------------
 
@@ -600,6 +642,50 @@ Sample-level IBD network at a gene / locus (see
 
   Passed to
   [`plot_ibd_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_network.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$plot_ibd_pair_network()`
+
+Genome-wide IBD relatedness network from the attached pair table (see
+[`plot_ibd_pair_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pair_network.md)).
+Needs `ibd_results(pair_fraction = )` or `$set_pair_fraction()`.
+
+#### Usage
+
+    IbdResults$plot_ibd_pair_network(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`plot_ibd_pair_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pair_network.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$pair_fraction_summary()`
+
+Genome-wide IBD sharing summarised over the sample pairs spanning each
+pair of metadata groups (see
+[`pair_fraction_summary()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pair_fraction_summary.md)).
+Needs the pair table.
+
+#### Usage
+
+    IbdResults$pair_fraction_summary(group = NULL, ...)
+
+#### Arguments
+
+- `group`:
+
+  Metadata column defining the groups (default the declared group
+  column).
+
+- `...`:
+
+  Passed to
+  [`pair_fraction_summary()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pair_fraction_summary.md).
 
 ------------------------------------------------------------------------
 

@@ -11,7 +11,9 @@ plot_umap(
   colors = NULL,
   point_size = 1.6,
   point_alpha = 0.8,
-  legend_point_size = 3
+  legend_point_size = 3,
+  color = NULL,
+  colours = NULL
 )
 ```
 
@@ -22,11 +24,11 @@ plot_umap(
   A `pop_structure` object (built with `umap = TRUE`) or a
   [PopStructure](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.md).
 
-- colour:
+- colour, color:
 
   Metadata column to colour points by (needs `meta`).
 
-- colors:
+- colors, colours:
 
   Optional named `level -> colour` vector for the colour scale (e.g.
   from

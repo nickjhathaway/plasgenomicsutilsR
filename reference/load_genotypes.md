@@ -19,7 +19,8 @@ load_genotypes(
   missing_rate = NaN,
   seed = 42,
   vcf_dir = NULL,
-  allele = c("alt", "ref")
+  allele = c("alt", "ref"),
+  variants = c("biallelic_snvs", "all")
 )
 ```
 
@@ -37,8 +38,9 @@ load_genotypes(
 
 - prune:
 
-  LD-prune (default `TRUE`). `FALSE` returns **every** biallelic SNP,
-  unpruned – use this for the genotype matrix fed to
+  LD-prune (default `TRUE`). `FALSE` returns every record `variants`
+  admits (see *Which records reach the panel*), unpruned – use this for
+  the genotype matrix fed to
   [`pop_diff()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.md)
   /
   [`pop_diff_table()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_table.md),
@@ -74,14 +76,22 @@ load_genotypes(
   every diversity, differentiation, LD and selection statistic here is
   symmetric in `p` and `1 - p`.
 
+- variants:
+
+  Which records to read. `"biallelic_snvs"` (default) keeps biallelic
+  SNVs only; `"all"` keeps every record, multiallelic sites and indels
+  included, at the cost of a dosage that cannot say which ALT it counts.
+  See the two sections below – nothing in this package handles `"all"`,
+  and it warns.
+
 ## Value
 
 A list with `genotype` (matrix; sample row names and `chr:pos0` column
 names – 0-based, like every other position in the package), `sample.id`,
-`snp.id`, and the two facts the matrix itself cannot carry: `allele`
-(which allele the dosages count) and `pruned`.
+`snp.id`, and the facts the matrix itself cannot carry: `allele` (which
+allele the dosages count), `pruned`, `positions` and `variants`.
 [PopStructure](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.md)
-keeps both, so anything that names a call or warns about pruning can ask
+keeps them, so anything that names a call or warns about pruning can ask
 instead of assuming.
 
 ## Details
@@ -96,6 +106,72 @@ and haplotypes
 – because it keeps one SNP out of each correlated run and drops the
 rest. Holding both is cheap: the GDS is reused, so a second call with
 `prune = FALSE` only re-reads it.
+
+## Which records reach the panel
+
+`prune = FALSE` means unpruned, not every record: the panel is usually
+smaller than the VCF's record count whatever `prune` is, because the
+default `variants = "biallelic_snvs"` has SNPRelate read the file with
+`method = "biallelic.only"`. Three kinds of record are skipped,
+silently:
+
+- sites with **no ALT allele** (`ALT="."`) – the reference positions an
+  all-sites caller emits. Usually the biggest share by far, and the
+  easiest to miss, since nothing about them says "variant":
+  `bcftools view --exclude-types indels` leaves every one of them in
+  place, because they are not indels.
+
+- **indels** and other non-SNV records.
+
+- sites with **more than one ALT**.
+
+So a VCF of 28,927 records carrying 9,158 `ALT="."` positions and 48
+multiallelic sites loads as 19,721 SNPs. When a panel comes out short,
+count what is actually there rather than the total, and drop the no-ALT
+records upstream if you would rather the two numbers agree:
+
+    bcftools view -H -m2 -M2 -v snps file.vcf.gz | wc -l   # what will load
+    bcftools view -e 'ALT="."' -Ob -o out.bcf in.bcf       # or --min-ac 1
+
+Sites that are **invariant across the loaded samples are kept**, as long
+as the VCF lists an ALT allele there: `"biallelic.only"` asks how many
+alleles the record declares, not whether these samples differ. A site
+every sample calls `1/1`, or every sample calls `0/0`, comes through –
+which is why the functions needing variable sites
+([`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md),
+[`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md))
+apply their own `maf` cutoff instead of trusting the panel. SNPRelate's
+own help calls this "excluding monomorphic variants", which is easy to
+read as the stronger promise.
+
+## Keeping every variant
+
+`variants = "all"` reads the VCF with `method = "copy.num.of.ref"`
+instead, which keeps every record – multiallelic sites, indels and
+`ALT="."` positions included – and stores the **copy number of the
+reference allele**. Nothing in this package reads that correctly, so it
+warns; the switch is here to hand the matrix to something that does.
+
+What breaks is the coding, not the reading. A dosage says how many
+reference copies a sample has and nothing about *which* alternate allele
+makes up the rest, so at `C -> T,G` a sample called `1/1` and a sample
+called `2/2` are both 0 reference copies and land on the same number
+despite carrying different alleles:
+
+    variants = "biallelic_snvs"        variants = "all"
+      pos  allele  s1 s2 s3              pos  allele  s1 s2 s3
+      100  A/G      2  0  1              100  A/G      2  0  1
+      500  G/A      0  0  0              200  T/.      2  2  2   <- no ALT
+                                         300  AT/A     2  0  2   <- indel
+                                         400  C/T,G    2  0  0   <- 1/1 and 2/2 both 0
+                                         500  G/A      0  0  0
+
+The allele strings themselves survive in the GDS
+(`SNPRelate::snpgdsSNPList()$allele` gives `"C/T,G"`), so which alleles
+exist is recoverable even though the dosage cannot express them. The
+returned list records the choice as `variants`, and the GDS is tagged
+with it, so the two panels never get confused for one another through a
+reused `.gds`.
 
 ## See also
 

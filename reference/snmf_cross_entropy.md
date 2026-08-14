@@ -37,13 +37,16 @@ returns).
 
 ## Details
 
-Picking K is a separate judgement from picking a replicate: read the
-elbow of `min` across K with
-[`plot_snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.md).
-A curve that keeps falling or is flat means the data do not support a
-well-defined K, whatever
+`min` is also what K is chosen on, by
 [`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md)
-returns.
+and by the
+[`plot_snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.md)
+elbow, so the K you settle on and the ancestry you draw at it are scored
+by the same number. A curve that keeps falling or is flat means the data
+do not support a well-defined K, whatever
+[`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md)
+returns; `n_runs` is worth a glance first, since a K whose replicates
+mostly failed has its minimum taken over fewer of them.
 
 ## See also
 

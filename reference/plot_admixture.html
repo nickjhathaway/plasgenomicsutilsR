@@ -11,7 +11,7 @@ column, with an optional group colour strip whose colours can match another plot
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,7 +43,7 @@ column, with an optional group colour strip whose colours can match another plot
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Admixture (STRUCTURE) bar plot from a Q matrix</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>plot_admixture.Rd</code></div>
     </div>
 
@@ -69,7 +69,10 @@ column, with an optional group colour strip whose colours can match another plot
 <span>  border_colour <span class="op">=</span> <span class="st">"black"</span>,</span>
 <span>  border_linewidth <span class="op">=</span> <span class="fl">0.15</span>,</span>
 <span>  legend_position <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"right"</span>, <span class="st">"bottom"</span>, <span class="st">"top"</span>, <span class="st">"left"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
-<span>  legend_rows <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  legend_rows <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  group_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  border_color <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -103,7 +106,7 @@ column, with an optional group colour strip whose colours can match another plot
 bars in the same place across different K.</p></dd>
 
 
-<dt id="arg-colours">colours<a class="anchor" aria-label="anchor" href="#arg-colours"></a></dt>
+<dt id="arg-colours-colors">colours, colors<a class="anchor" aria-label="anchor" href="#arg-colours-colors"></a></dt>
 <dd><p>Optional fill colours for the K clusters.</p></dd>
 
 
@@ -111,7 +114,7 @@ bars in the same place across different K.</p></dd>
 <dd><p>Draw a coloured strip above the bars keyed by <code>group</code>.</p></dd>
 
 
-<dt id="arg-group-colours">group_colours<a class="anchor" aria-label="anchor" href="#arg-group-colours"></a></dt>
+<dt id="arg-group-colours-group-colors">group_colours, group_colors<a class="anchor" aria-label="anchor" href="#arg-group-colours-group-colors"></a></dt>
 <dd><p>Named <code>level -&gt; colour</code> vector for the group strip (see
 <code><a href="meta_colors.html">meta_colors()</a></code>); pass the same mapping you use for the UMAP to match colours.</p></dd>
 
@@ -124,7 +127,7 @@ can swamp the fills – either render wider (<code><a href="save_plot.html">save
 set <code>border = FALSE</code> / a thinner <code>border_linewidth</code>.</p></dd>
 
 
-<dt id="arg-border-colour-border-linewidth">border_colour, border_linewidth<a class="anchor" aria-label="anchor" href="#arg-border-colour-border-linewidth"></a></dt>
+<dt id="arg-border-colour-border-color-border-linewidth">border_colour, border_color, border_linewidth<a class="anchor" aria-label="anchor" href="#arg-border-colour-border-color-border-linewidth"></a></dt>
 <dd><p>Colour and width of the per-sample outline.</p></dd>
 
 

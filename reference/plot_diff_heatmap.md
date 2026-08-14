@@ -24,7 +24,9 @@ plot_diff_heatmap(
   digits = 2,
   colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
   trans = "identity",
-  base_size = 11
+  base_size = 11,
+  annotate_colors = NULL,
+  colours = NULL
 )
 
 plot_jost_d_heatmap(pd, stat = "mean", ...)
@@ -87,7 +89,7 @@ plot_jost_d_heatmap(pd, stat = "mean", ...)
 
   Metadata data frame for resolving `annotate` column names.
 
-- annotate_colours:
+- annotate_colours, annotate_colors:
 
   Named list `annotation -> (value -> colour)` giving custom colours per
   annotation (unlisted annotations get an automatic palette).
@@ -100,7 +102,7 @@ plot_jost_d_heatmap(pd, stat = "mean", ...)
 
   Cell-label digits.
 
-- colors:
+- colors, colours:
 
   Fill ramp (low -\> high differentiation).
 

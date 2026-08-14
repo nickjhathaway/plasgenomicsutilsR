@@ -33,7 +33,9 @@ plot_structure_figure(
   umap_ratio = 1,
   file = NULL,
   width = NULL,
-  height = NULL
+  height = NULL,
+  color = NULL,
+  border_color = NULL
 )
 ```
 
@@ -51,7 +53,7 @@ plot_structure_figure(
   Metadata column to facet/colour the admixture by (default the first
   non-`sample` metadata column).
 
-- colour:
+- colour, color:
 
   Metadata column supplying the shared region colours (default `group`).
 
@@ -102,7 +104,7 @@ plot_structure_figure(
   Outline each sample's admixture bar (default `TRUE`) so neighbours
   with nearly identical ancestry stay distinct.
 
-- border_colour, border_linewidth:
+- border_colour, border_color, border_linewidth:
 
   Colour and width of the per-sample outline.
 

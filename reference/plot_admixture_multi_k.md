@@ -21,7 +21,7 @@ plot_admixture_multi_k(
   sample_order = NULL,
   sample_order_best_k = TRUE,
   best_k = NULL,
-  stat = c("mean", "min"),
+  stat = c("min", "mean"),
   meta = NULL,
   samples = NULL,
   ...
@@ -71,7 +71,7 @@ plot_admixture_multi_k(
 
   How
   [`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md)
-  and the elbow combine replicates: `"mean"` (default) or `"min"`.
+  and the elbow combine replicates: `"min"` (default) or `"mean"`.
 
 - meta, samples:
 

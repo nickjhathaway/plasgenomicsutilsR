@@ -20,7 +20,8 @@ plot_ibd_pairwise_group_heatmap(
   limits = NULL,
   fill_scale = NULL,
   highlight_genes = NULL,
-  label_genes = NULL
+  label_genes = NULL,
+  colours = NULL
 )
 ```
 
@@ -49,7 +50,7 @@ plot_ibd_pairwise_group_heatmap(
 
   Fill-scale transform, e.g. `"identity"` (default), `"log2"`, `"sqrt"`.
 
-- colors:
+- colors, colours:
 
   Optional colour ramp for the fill (defaults to a single-hue
   light-to-dark sequential scale that stays readable when most values

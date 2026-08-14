@@ -17,6 +17,8 @@ plot_ibd_network(
   colors = NULL,
   shape_group = NULL,
   shapes = NULL,
+  na_shape = .NA_SHAPE,
+  na_colour = "grey70",
   within = 0,
   sharing = c("overlap", "complete"),
   include_isolated = FALSE,
@@ -29,7 +31,11 @@ plot_ibd_network(
   edge_width = 1,
   title = NULL,
   subtitle = TRUE,
-  seed = 42
+  seed = 42,
+  colour_group = NULL,
+  colours = NULL,
+  na_color = NULL,
+  edge_color = NULL
 )
 ```
 
@@ -55,7 +61,7 @@ plot_ibd_network(
   including 2000, and a bare `"chr:1000"` is the single base at 0-based
   1000.
 
-- color_group:
+- color_group, colour_group:
 
   Optional metadata column to colour nodes by (needs `meta`). To colour
   by the graph's own connected components, add them to the metadata
@@ -63,7 +69,7 @@ plot_ibd_network(
   [`add_ibd_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.md)
   and name the column it creates.
 
-- colors:
+- colors, colours:
 
   Colours for `color_group`. A **named** `level -> colour` vector maps
   by name and may cover only some levels (the rest keep their automatic
@@ -84,6 +90,19 @@ plot_ibd_network(
   (values are ggplot2 shape codes). `NULL` picks distinguishable
   defaults and errors if the column has more levels than there are
   distinct shapes.
+
+- na_shape, na_colour, na_color:
+
+  What a sample with **no value** in `shape_group` / `color_group` gets:
+  by default a hollow circle (shape `1`) and grey. The default shape is
+  deliberately outside the automatic palette so it cannot be mistaken
+  for a real level; if you set it to one that a level also uses, the
+  plot says so rather than letting two things look alike.
+
+  The legends stack in a fixed order – colour, then shape – so two plots
+  of the same cohort are comparable. ggplot2 otherwise orders guides by
+  an internal hash that changes with the labels. Override per plot with
+  `+ ggplot2::guides(shape = ggplot2::guide_legend(order = 1))`.
 
 - within:
 
@@ -140,7 +159,7 @@ plot_ibd_network(
 
   Node point aesthetics.
 
-- edge_colour, edge_width:
+- edge_colour, edge_color, edge_width:
 
   Edge aesthetics (default width `1`).
 

@@ -11,7 +11,7 @@ default."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,7 +43,7 @@ default."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Load genotypes from a VCF, optionally LD-pruned</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>load_genotypes.Rd</code></div>
     </div>
 
@@ -67,7 +67,8 @@ default.</p>
 <span>  missing_rate <span class="op">=</span> <span class="cn">NaN</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">42</span>,</span>
 <span>  vcf_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"alt"</span>, <span class="st">"ref"</span><span class="op">)</span></span>
+<span>  allele <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"alt"</span>, <span class="st">"ref"</span><span class="op">)</span>,</span>
+<span>  variants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"biallelic_snvs"</span>, <span class="st">"all"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -86,10 +87,10 @@ rather than making another copy.</p></dd>
 
 
 <dt id="arg-prune">prune<a class="anchor" aria-label="anchor" href="#arg-prune"></a></dt>
-<dd><p>LD-prune (default <code>TRUE</code>). <code>FALSE</code> returns <strong>every</strong> biallelic SNP,
-unpruned – use this for the genotype matrix fed to <code><a href="pop_diff.html">pop_diff()</a></code> /
-<code><a href="pop_diff_table.html">pop_diff_table()</a></code>, since LD-pruning removes the very SNPs that carry the
-differentiation signal.</p></dd>
+<dd><p>LD-prune (default <code>TRUE</code>). <code>FALSE</code> returns every record <code>variants</code> admits
+(see <em>Which records reach the panel</em>), unpruned – use this for the genotype matrix fed
+to <code><a href="pop_diff.html">pop_diff()</a></code> / <code><a href="pop_diff_table.html">pop_diff_table()</a></code>, since LD-pruning removes the very SNPs that carry
+the differentiation signal.</p></dd>
 
 
 <dt id="arg-ld-threshold-slide-max-bp-slide-max-n-autosome-only">ld_threshold, slide_max_bp, slide_max_n, autosome_only<a class="anchor" aria-label="anchor" href="#arg-ld-threshold-slide-max-bp-slide-max-n-autosome-only"></a></dt>
@@ -118,14 +119,21 @@ rest of the package says it means. Only reported allele frequencies (and the
 arbitrary sign of a PCA axis) depend on this – every diversity, differentiation, LD
 and selection statistic here is symmetric in <code>p</code> and <code>1 - p</code>.</p></dd>
 
+
+<dt id="arg-variants">variants<a class="anchor" aria-label="anchor" href="#arg-variants"></a></dt>
+<dd><p>Which records to read. <code>"biallelic_snvs"</code> (default) keeps biallelic SNVs
+only; <code>"all"</code> keeps every record, multiallelic sites and indels included, at the cost of a
+dosage that cannot say which ALT it counts. See the two sections below – nothing in this
+package handles <code>"all"</code>, and it warns.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list with <code>genotype</code> (matrix; sample row names and <code>chr:pos0</code> column names –
 0-based, like every other position in the package),
-<code>sample.id</code>, <code>snp.id</code>, and the two facts the matrix itself cannot carry: <code>allele</code> (which
-allele the dosages count) and <code>pruned</code>. <a href="PopStructure.html">PopStructure</a> keeps both, so anything that names
-a call or warns about pruning can ask instead of assuming.</p>
+<code>sample.id</code>, <code>snp.id</code>, and the facts the matrix itself cannot carry: <code>allele</code> (which
+allele the dosages count), <code>pruned</code>, <code>positions</code> and <code>variants</code>. <a href="PopStructure.html">PopStructure</a> keeps
+them, so anything that names a call or warns about pruning can ask instead of assuming.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -135,6 +143,55 @@ the correlation between neighbouring SNPs <em>is</em> the signal – differentia
 (<code><a href="pop_diff.html">pop_diff()</a></code>) and haplotypes (<code><a href="plot_region_haplotypes.html">plot_region_haplotypes()</a></code>) – because it keeps one SNP out
 of each correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a
 second call with <code>prune = FALSE</code> only re-reads it.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="which-records-reach-the-panel">Which records reach the panel<a class="anchor" aria-label="anchor" href="#which-records-reach-the-panel"></a></h2>
+
+
+<p><code>prune = FALSE</code> means unpruned, not every record: the panel is usually smaller than the
+VCF's record count whatever <code>prune</code> is, because the default <code>variants = "biallelic_snvs"</code>
+has <span class="pkg">SNPRelate</span> read the file with <code>method = "biallelic.only"</code>. Three kinds of record
+are skipped, silently:</p><ul><li><p>sites with <strong>no ALT allele</strong> (<code>ALT="."</code>) – the reference positions an all-sites caller
+emits. Usually the biggest share by far, and the easiest to miss, since nothing about them
+says "variant": <code>bcftools view --exclude-types indels</code> leaves every one of them in place,
+because they are not indels.</p></li>
+<li><p><strong>indels</strong> and other non-SNV records.</p></li>
+<li><p>sites with <strong>more than one ALT</strong>.</p></li>
+</ul><p>So a VCF of 28,927 records carrying 9,158 <code>ALT="."</code> positions and 48 multiallelic sites
+loads as 19,721 SNPs. When a panel comes out short, count what is actually there rather than
+the total, and drop the no-ALT records upstream if you would rather the two numbers agree:</p>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>bcftools view <span class="sc">-</span>H <span class="sc">-</span>m2 <span class="sc">-</span>M2 <span class="sc">-</span>v snps file.vcf.gz <span class="sc">|</span> wc <span class="sc">-</span>l   <span class="co"># what will load</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>bcftools view <span class="sc">-</span>e <span class="st">'ALT="."'</span> <span class="sc">-</span>Ob <span class="sc">-</span>o out.bcf in.bcf       <span class="co"># or --min-ac 1</span></span></code></pre><p></p></div>
+<p>Sites that are <strong>invariant across the loaded samples are kept</strong>, as long as the VCF lists an
+ALT allele there: <code>"biallelic.only"</code> asks how many alleles the record declares, not whether
+these samples differ. A site every sample calls <code>1/1</code>, or every sample calls <code>0/0</code>, comes
+through – which is why the functions needing variable sites (<code><a href="parasite_haplotypes.html">parasite_haplotypes()</a></code>,
+<code><a href="run_ihs.html">run_ihs()</a></code>) apply their own <code>maf</code> cutoff instead of trusting the panel. SNPRelate's own help
+calls this "excluding monomorphic variants", which is easy to read as the stronger promise.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="keeping-every-variant">Keeping every variant<a class="anchor" aria-label="anchor" href="#keeping-every-variant"></a></h2>
+
+
+<p><code>variants = "all"</code> reads the VCF with <code>method = "copy.num.of.ref"</code> instead, which keeps
+every record – multiallelic sites, indels and <code>ALT="."</code> positions included – and stores
+the <strong>copy number of the reference allele</strong>. Nothing in this package reads that correctly,
+so it warns; the switch is here to hand the matrix to something that does.</p>
+<p>What breaks is the coding, not the reading. A dosage says how many reference copies a sample
+has and nothing about <em>which</em> alternate allele makes up the rest, so at <code>C -&gt; T,G</code> a sample
+called <code>1/1</code> and a sample called <code>2/2</code> are both 0 reference copies and land on the same
+number despite carrying different alleles:</p>
+<p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>variants <span class="ot">=</span> <span class="st">"biallelic_snvs"</span>        variants <span class="ot">=</span> <span class="st">"all"</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  pos  allele  s1 s2 s3              pos  allele  s1 s2 s3</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="dv">100</span>  A<span class="sc">/</span>G      <span class="dv">2</span>  <span class="dv">0</span>  <span class="dv">1</span>              <span class="dv">100</span>  A<span class="sc">/</span>G      <span class="dv">2</span>  <span class="dv">0</span>  <span class="dv">1</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  <span class="dv">500</span>  G<span class="sc">/</span>A      <span class="dv">0</span>  <span class="dv">0</span>  <span class="dv">0</span>              <span class="dv">200</span>  T<span class="sc">/</span>.      <span class="dv">2</span>  <span class="dv">2</span>  <span class="dv">2</span>   <span class="ot">&lt;-</span> no ALT</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>                                     <span class="dv">300</span>  AT<span class="sc">/</span>A     <span class="dv">2</span>  <span class="dv">0</span>  <span class="dv">2</span>   <span class="ot">&lt;-</span> indel</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>                                     <span class="dv">400</span>  C<span class="sc">/</span>T,G    <span class="dv">2</span>  <span class="dv">0</span>  <span class="dv">0</span>   <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">1</span> and <span class="dv">2</span><span class="sc">/</span><span class="dv">2</span> both <span class="dv">0</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>                                     <span class="dv">500</span>  G<span class="sc">/</span>A      <span class="dv">0</span>  <span class="dv">0</span>  <span class="dv">0</span></span></code></pre><p></p></div>
+<p>The allele strings themselves survive in the GDS (<code>SNPRelate::snpgdsSNPList()$allele</code> gives
+<code>"C/T,G"</code>), so which alleles exist is recoverable even though the dosage cannot express
+them. The returned list records the choice as <code>variants</code>, and the GDS is tagged with it, so
+the two panels never get confused for one another through a reused <code>.gds</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

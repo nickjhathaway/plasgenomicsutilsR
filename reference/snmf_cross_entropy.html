@@ -15,7 +15,7 @@ trusting a K."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,7 +47,7 @@ trusting a K."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Cross-entropy of every sNMF replicate, summarised per K</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>snmf_cross_entropy.Rd</code></div>
     </div>
 
@@ -83,9 +83,11 @@ trusting a K.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Picking K is a separate judgement from picking a replicate: read the elbow of <code>min</code>
-across K with <code><a href="plot_snmf_cross_entropy.html">plot_snmf_cross_entropy()</a></code>. A curve that keeps falling or is flat means
-the data do not support a well-defined K, whatever <code><a href="snmf_best_k.html">snmf_best_k()</a></code> returns.</p>
+    <p><code>min</code> is also what K is chosen on, by <code><a href="snmf_best_k.html">snmf_best_k()</a></code> and by the
+<code><a href="plot_snmf_cross_entropy.html">plot_snmf_cross_entropy()</a></code> elbow, so the K you settle on and the ancestry you draw at it
+are scored by the same number. A curve that keeps falling or is flat means the data do not
+support a well-defined K, whatever <code><a href="snmf_best_k.html">snmf_best_k()</a></code> returns; <code>n_runs</code> is worth a glance
+first, since a K whose replicates mostly failed has its minimum taken over fewer of them.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -19,7 +19,8 @@ plot_ibd_sharing_manhattan(
   label_genes = NULL,
   point_size = 0.5,
   point_alpha = 0.6,
-  colours = NULL
+  colours = NULL,
+  colors = NULL
 )
 ```
 
@@ -92,7 +93,7 @@ plot_ibd_sharing_manhattan(
 
   Point aesthetics.
 
-- colours:
+- colours, colors:
 
   Optional length-2 colour vector for the alternating chromosome bands.
 

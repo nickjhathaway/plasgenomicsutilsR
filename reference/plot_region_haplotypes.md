@@ -36,7 +36,12 @@ plot_region_haplotypes(
   colours = NULL,
   na_colour = "grey85",
   show_sample_names = NULL,
-  reference = DEFAULT_REFERENCE
+  reference = DEFAULT_REFERENCE,
+  annotation_colours = NULL,
+  border_color = NULL,
+  colors = NULL,
+  na_color = NULL,
+  annotation_colors = NULL
 )
 ```
 
@@ -108,7 +113,7 @@ plot_region_haplotypes(
   Outline every call (default `TRUE`), which is what makes single SNPs
   readable as cells rather than a wash of colour.
 
-- border_colour:
+- border_colour, border_color:
 
   Colour of that outline.
 
@@ -169,11 +174,11 @@ plot_region_haplotypes(
   (default) uses 0.5% of the window, wide enough to see and narrow
   enough to leave the gaps between SNPs visible.
 
-- colours:
+- colours, colors:
 
   Named fill colours for `reference` / `mixed` / `alternate`.
 
-- na_colour:
+- na_colour, na_color:
 
   Fill for missing calls.
 
@@ -185,6 +190,17 @@ plot_region_haplotypes(
 - reference:
 
   Reference id, used when `region` names a whole chromosome.
+
+- annotation_colours, annotation_colors:
+
+  Per-annotation palettes, as a named list
+  (`list(region = c(north = "#1B9E77", south = "grey60"))`). Named
+  colours override those levels and leave the rest of that annotation's
+  shared map alone, so recolouring one level does not mean respelling
+  all of them; an unnamed vector is taken in level order. Only this plot
+  changes – `PopStructure$set_colors()` is still the way to move a
+  colour everywhere at once, which is what keeps a level looking the
+  same across figures.
 
 ## Value
 

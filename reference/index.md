@@ -27,6 +27,16 @@ Genome-wide and group-by-group IBD figures.
   : IBD "triangle" panels for genes or specific SNPs
 - [`plot_ibd_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_network.md)
   : IBD network at a gene or locus
+- [`plot_ibd_pair_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pair_network.md)
+  : Genome-wide IBD relatedness network
+
+## Genome-wide IBD between groups
+
+The per-pair IBD fraction reduced to one row per pair of metadata
+groups, over every sample pair spanning them.
+
+- [`pair_fraction_summary()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pair_fraction_summary.md)
+  : Summarise genome-wide IBD sharing between metadata groups
 
 ## Gene IBD-block overlap
 
@@ -166,6 +176,8 @@ balancing selection from clustered allele frequencies (beta).
   : Manhattan plot of a haplotype-homozygosity scan
 - [`plot_ehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ehh.md)
   : EHH decay around one SNP
+- [`ehh_candidates()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ehh_candidates.md)
+  : The SNPs an EHH plot had to choose between
 - [`plot_region_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_region_haplotypes.md)
   : Genotypes over one region, clustered by sample
 - [`beta_score()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.md)

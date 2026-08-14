@@ -15,7 +15,7 @@ ordered once and reused, laid out over one or more rows."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,7 +47,7 @@ ordered once and reused, laid out over one or more rows."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Combined UMAP + admixture figure</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/structure_figure.R" class="external-link"><code>R/structure_figure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/structure_figure.R" class="external-link"><code>R/structure_figure.R</code></a></small>
       <div class="d-none name"><code>plot_structure_figure.Rd</code></div>
     </div>
 
@@ -84,7 +84,9 @@ ordered once and reused, laid out over one or more rows.</p>
 <span>  umap_ratio <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  width <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  height <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  height <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  color <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  border_color <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -101,7 +103,7 @@ ordered once and reused, laid out over one or more rows.</p>
 non-<code>sample</code> metadata column).</p></dd>
 
 
-<dt id="arg-colour">colour<a class="anchor" aria-label="anchor" href="#arg-colour"></a></dt>
+<dt id="arg-colour-color">colour, color<a class="anchor" aria-label="anchor" href="#arg-colour-color"></a></dt>
 <dd><p>Metadata column supplying the shared region colours (default <code>group</code>).</p></dd>
 
 
@@ -148,7 +150,7 @@ region strip / K-cluster fills.</p></dd>
 nearly identical ancestry stay distinct.</p></dd>
 
 
-<dt id="arg-border-colour-border-linewidth">border_colour, border_linewidth<a class="anchor" aria-label="anchor" href="#arg-border-colour-border-linewidth"></a></dt>
+<dt id="arg-border-colour-border-color-border-linewidth">border_colour, border_color, border_linewidth<a class="anchor" aria-label="anchor" href="#arg-border-colour-border-color-border-linewidth"></a></dt>
 <dd><p>Colour and width of the per-sample outline.</p></dd>
 
 

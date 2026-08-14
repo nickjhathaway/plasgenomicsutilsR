@@ -22,7 +22,8 @@ plot_selection_manhattan(
   draw_threshold = TRUE,
   point_size = 0.5,
   point_alpha = 0.6,
-  colours = NULL
+  colours = NULL,
+  colors = NULL
 )
 ```
 
@@ -117,7 +118,7 @@ plot_selection_manhattan(
 
   Point aesthetics.
 
-- colours:
+- colours, colors:
 
   Optional length-2 colour vector for the alternating chromosome bands.
 

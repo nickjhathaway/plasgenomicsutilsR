@@ -25,7 +25,8 @@ plot_ehh(
   colours = NULL,
   show_freq = TRUE,
   freq_position = c("topleft", "topright", "bottomleft", "bottomright"),
-  reference = DEFAULT_REFERENCE
+  reference = DEFAULT_REFERENCE,
+  colors = NULL
 )
 ```
 
@@ -92,7 +93,7 @@ plot_ehh(
 
   Rotation for the gene names, in degrees.
 
-- colours:
+- colours, colors:
 
   Named colours for `reference` / `alternate`.
 
@@ -133,5 +134,5 @@ curve.
 ps <- example_pop_structure(umap = FALSE)
 hap <- parasite_haplotypes(ps, maf = 0.05)
 plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
-#> `pfcrt` holds several SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another
+#> `pfcrt` holds 11 SNPs; measuring from Pf3D7_07_v3:403624 (minor allele 0.5) -- name a `chr:pos` to pick another, or see ehh_candidates() for the shortlist
 ```

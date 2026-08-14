@@ -12,7 +12,9 @@ plot_pca(
   colors = NULL,
   point_size = 1.6,
   point_alpha = 0.8,
-  legend_point_size = 3
+  legend_point_size = 3,
+  color = NULL,
+  colours = NULL
 )
 ```
 
@@ -28,11 +30,11 @@ plot_pca(
 
   Which two PCs to plot (default `c(1, 2)`).
 
-- colour:
+- colour, color:
 
   Metadata column to colour points by (needs `meta`).
 
-- colors:
+- colors, colours:
 
   Optional named `level -> colour` vector for the colour scale (e.g.
   from

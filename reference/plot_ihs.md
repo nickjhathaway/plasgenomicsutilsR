@@ -23,7 +23,8 @@ plot_ihs(
   reference = DEFAULT_REFERENCE,
   point_size = 0.6,
   point_alpha = 0.7,
-  colours = NULL
+  colours = NULL,
+  colors = NULL
 )
 ```
 
@@ -99,7 +100,7 @@ plot_ihs(
 
   Reference id for the chromosome layout.
 
-- point_size, point_alpha, colours:
+- point_size, point_alpha, colours, colors:
 
   Point and band aesthetics.
 

@@ -59,13 +59,25 @@ ps$plot_admixture(K = ps$best_k(), group = "site", sample_order = ord)
 
 ### Choosing K
 
-sNMF fits several replicates per K and scores each by cross-entropy.
-[`q()`](https://rdrr.io/r/base/quit.html) and
-[`plot_admixture()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.md)
-use the **minimum**-cross-entropy replicate, so `min` is the column
-describing the ancestry you actually see; `mean`/`max` show how far the
-replicates disagreed. Picking K is a separate judgement — read the
-elbow, and treat a flat stretch or a wide min–max band as “the data
+sNMF fits several replicates per K and scores each by cross-entropy. Two
+choices come out of that, and both are made on the **minimum** across
+replicates:
+
+- **Which replicate** — [`q()`](https://rdrr.io/r/base/quit.html) and
+  [`plot_admixture()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.md)
+  show the minimum-cross-entropy replicate at the chosen K. sNMF’s
+  objective is non-convex, so replicates settle in different local
+  optima and the best-fitting one is the ancestry you draw.
+- **Which K** — `best_k()` and the elbow compare those same minima
+  across K, so the K you settle on is scored by the model you actually
+  plot at it. This is also what LEA’s own
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) of an sNMF
+  project shows.
+
+`stat = "mean"` averages the replicates instead, which is worth asking
+for when `n_runs` differs between K values — a minimum over more
+replicates is expected to be smaller whether or not that K fits better.
+Either way, treat a flat stretch or a wide min–max band as “the data
 don’t pin K down”, whatever `best_k()` returns:
 
 ``` r
@@ -178,6 +190,46 @@ Any other panel works the same way (`ps$add_panel("core", ...)`), and
 `genotype =` still overrides everything. Without a full panel, the
 analyses that want one say so once rather than quietly using pruned
 SNPs.
+
+### Why “full” is smaller than the VCF
+
+`prune = FALSE` means unpruned, not every record. SNPRelate reads the
+VCF with `method = "biallelic.only"` and skips three kinds of record:
+sites with **no ALT allele** (`ALT="."`), **indels**, and sites with
+**more than one ALT**. So a VCF of 28,927 records carrying 9,158
+`ALT="."` positions and 48 multiallelic sites gives a full panel of
+19,721.
+
+The no-ALT records are the ones that catch people out — the reference
+positions an all-sites caller emits, which
+`bcftools view --exclude-types indels` leaves untouched because they are
+not indels.
+[`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+reports the count it read; when that comes out short, count what is
+really there rather than the total:
+
+``` bash
+bcftools view -H -m2 -M2 -v snps file.vcf.gz | wc -l   # what will load
+bcftools view -e 'ALT="."' -Ob -o out.bcf in.bcf       # drop them upstream instead
+```
+
+Sites invariant *across your samples* are kept, though, as long as the
+VCF lists an ALT there. That filter asks how many alleles the record
+declares, not whether these samples differ — a site every sample calls
+`1/1` comes through — which is why
+[`parasite_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.md)
+and
+[`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
+apply their own `maf` cutoff rather than assuming the panel is variable.
+
+`variants = "all"` reads every record instead — multiallelic sites,
+indels and `ALT="."` included — storing the copy number of the reference
+allele. Nothing in this package reads that correctly, so it warns: a
+dosage cannot say *which* ALT it counts, so at `C -> T,G` a sample
+called `1/1` and one called `2/2` land on the same number. It is there
+to hand the matrix to something that does handle multiallelic data. The
+choice is recorded on the returned list and tagged into the `.gds`, so
+the two panels can share a path without being confused for each other.
 
 ## Ordering the groups
 

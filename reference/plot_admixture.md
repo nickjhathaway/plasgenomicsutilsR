@@ -21,7 +21,10 @@ plot_admixture(
   border_colour = "black",
   border_linewidth = 0.15,
   legend_position = c("right", "bottom", "top", "left", "none"),
-  legend_rows = NULL
+  legend_rows = NULL,
+  colors = NULL,
+  group_colors = NULL,
+  border_color = NULL
 )
 ```
 
@@ -55,7 +58,7 @@ plot_admixture(
   [`admixture_order()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/admixture_order.md));
   keeps bars in the same place across different K.
 
-- colours:
+- colours, colors:
 
   Optional fill colours for the K clusters.
 
@@ -63,7 +66,7 @@ plot_admixture(
 
   Draw a coloured strip above the bars keyed by `group`.
 
-- group_colours:
+- group_colours, group_colors:
 
   Named `level -> colour` vector for the group strip (see
   [`meta_colors()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.md));
@@ -80,7 +83,7 @@ plot_admixture(
   uses the attached width) or set `border = FALSE` / a thinner
   `border_linewidth`.
 
-- border_colour, border_linewidth:
+- border_colour, border_color, border_linewidth:
 
   Colour and width of the per-sample outline.
 

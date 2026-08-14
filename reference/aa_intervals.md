@@ -79,9 +79,26 @@ contiguous: `start` and `end` then span the intron as well, and
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-cds <- read_gff_cds("Pf3D7.gff")
+cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                package = "plasgenomicsutilsR"))
+
+# K76T and C580Y, at the positions they are reported at
 aa <- data.frame(transcript_id = c("pfcrt", "pfkelch13"), aa_position = c(76, 580))
-aa_intervals(aa, cds)
-} # }
+aa_intervals(aa, cds, one_based_output = TRUE)[, c("name", "chr", "start", "end", "strand")]
+#> # A tibble: 2 × 5
+#>   name                  chr     start     end strand
+#>   <chr>                 <chr>   <dbl>   <dbl> <chr> 
+#> 1 PF3D7_0709000.1-AA76  7      403624  403626 +     
+#> 2 PF3D7_1343700.1-AA580 13    1725258 1725260 -     
+
+# pfcrt has 13 coding exons, so four of its codons straddle an intron
+every_codon <- aa_intervals(data.frame(transcript_id = "pfcrt", aa_position = 1:424), cds)
+subset(every_codon, spans_intron)[, c("name", "codon_positions")]
+#> # A tibble: 4 × 2
+#>   name                  codon_positions     
+#>   <chr>                 <chr>               
+#> 1 PF3D7_0709000.1-AA31  403312,403490,403491
+#> 2 PF3D7_0709000.1-AA178 404109,404110,404283
+#> 3 PF3D7_0709000.1-AA272 404839,404936,404937
+#> 4 PF3D7_0709000.1-AA400 406071,406241,406242
 ```

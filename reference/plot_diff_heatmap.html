@@ -13,7 +13,7 @@ each site by its country)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -45,7 +45,7 @@ each site by its country)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Triangle heatmap of group x group differentiation</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.1/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
       <div class="d-none name"><code>plot_diff_heatmap.Rd</code></div>
     </div>
 
@@ -73,7 +73,9 @@ each site by its country).</p>
 <span>  digits <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"white"</span>, <span class="st">"#fde0dd"</span>, <span class="st">"#fa9fb5"</span>, <span class="st">"#c51b8a"</span>, <span class="st">"#7a0177"</span><span class="op">)</span>,</span>
 <span>  trans <span class="op">=</span> <span class="st">"identity"</span>,</span>
-<span>  base_size <span class="op">=</span> <span class="fl">11</span></span>
+<span>  base_size <span class="op">=</span> <span class="fl">11</span>,</span>
+<span>  annotate_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  colours <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">plot_jost_d_heatmap</span><span class="op">(</span><span class="va">pd</span>, stat <span class="op">=</span> <span class="st">"mean"</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
@@ -128,7 +130,7 @@ strips/legends). Each strip aligns to the clustered column order.</p></dd>
 <dd><p>Metadata data frame for resolving <code>annotate</code> column names.</p></dd>
 
 
-<dt id="arg-annotate-colours">annotate_colours<a class="anchor" aria-label="anchor" href="#arg-annotate-colours"></a></dt>
+<dt id="arg-annotate-colours-annotate-colors">annotate_colours, annotate_colors<a class="anchor" aria-label="anchor" href="#arg-annotate-colours-annotate-colors"></a></dt>
 <dd><p>Named list <code>annotation -&gt; (value -&gt; colour)</code> giving custom
 colours per annotation (unlisted annotations get an automatic palette).</p></dd>
 
@@ -141,7 +143,7 @@ colours per annotation (unlisted annotations get an automatic palette).</p></dd>
 <dd><p>Cell-label digits.</p></dd>
 
 
-<dt id="arg-colors">colors<a class="anchor" aria-label="anchor" href="#arg-colors"></a></dt>
+<dt id="arg-colors-colours">colors, colours<a class="anchor" aria-label="anchor" href="#arg-colors-colours"></a></dt>
 <dd><p>Fill ramp (low -&gt; high differentiation).</p></dd>
 
 

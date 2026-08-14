@@ -6,7 +6,7 @@ group, with the half-decay distance marked.
 ## Usage
 
 ``` r
-plot_ld_decay(ld, show_half_decay = TRUE, colours = NULL)
+plot_ld_decay(ld, show_half_decay = TRUE, colours = NULL, colors = NULL)
 ```
 
 ## Arguments
@@ -21,7 +21,7 @@ plot_ld_decay(ld, show_half_decay = TRUE, colours = NULL)
 
   Mark each group's half-decay distance with a vertical segment.
 
-- colours:
+- colours, colors:
 
   Optional named colour vector for the groups.
 

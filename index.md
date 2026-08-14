@@ -1,6 +1,6 @@
 # plasgenomicsutilsR
 
-> **Version 0.3.1** — early development; APIs, defaults, and outputs may
+> **Version 0.3.2** — early development; APIs, defaults, and outputs may
 > change between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** —
