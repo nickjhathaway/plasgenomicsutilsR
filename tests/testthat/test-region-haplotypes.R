@@ -324,3 +324,171 @@ test_that("under even spacing a gene's box is exactly the columns it holds", {
   expect_message(plot_region_haplotypes(ps, "pfcrt", pad = 30000, genes = PF3D7_GENES),
                  "hold no genotyped SNP")
 })
+
+test_that("the genotype legend sits above the annotations, which follow the order asked for", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("patchwork")
+  testthat::skip_if_not_installed("ggnewscale")
+  # ggplot sorts guides by an internal hash unless each carries an `order`, so without one the
+  # stack rearranged itself between datasets and two figures stopped being comparable.
+  fill_orders <- function(p) {
+    subs <- c(list(p), if (!is.null(p$patches)) p$patches$plots)
+    rows <- list()
+    for (q in subs) {
+      b <- tryCatch(ggplot2::ggplot_build(q), error = function(e) NULL)
+      if (is.null(b)) next
+      for (sc in b$plot$scales$scales) {
+        # ggnewscale renames the stashed scales (fill_new, ...), so match on the family
+        if (!grepl("fill", sc$aesthetics[1])) next
+        nm <- sc$name
+        if (!is.character(nm) || length(nm) != 1) next
+        g <- sc$guide
+        ord <- if (inherits(g, "Guide")) g$params$order else if (is.list(g)) g$order else NA
+        rows[[length(rows) + 1L]] <- data.frame(name = nm, order = as.numeric(ord)[1])
+      }
+    }
+    d <- do.call(rbind, rows)
+    d$name[order(d$order)]
+  }
+
+  build <- function(seed, nlev) {
+    obj <- example_pop_structure(umap = FALSE)
+    mm <- obj$get_meta()
+    set.seed(seed)
+    mm$marker <- sample(letters[seq_len(nlev)], nrow(mm), replace = TRUE)
+    mm$site <- sample(LETTERS[seq_len(nlev + 1)], nrow(mm), replace = TRUE)
+    obj$add_meta(mm[, c("sample", "marker", "site")])
+    obj
+  }
+  seen <- lapply(list(c(1, 2), c(7, 3), c(11, 4)), function(cfg)
+    fill_orders(suppressMessages(plot_region_haplotypes(
+      build(cfg[1], cfg[2]), "pfcrt", pad = 20000, genes = PF_EXAMPLE_DRUG_GENES,
+      annotations = c("marker", "site")))))
+
+  expect_equal(seen[[1]], c("call", "marker", "site"))
+  expect_equal(seen[[2]], seen[[1]])       # more marker levels must not reshuffle them
+  expect_equal(seen[[3]], seen[[1]])
+
+  # and the annotations follow the order they were listed in, not alphabetical
+  rev_ann <- fill_orders(suppressMessages(plot_region_haplotypes(
+    build(1, 2), "pfcrt", pad = 20000, genes = PF_EXAMPLE_DRUG_GENES,
+    annotations = c("site", "marker"))))
+  expect_equal(rev_ann, c("call", "site", "marker"))
+})
+
+# the fill each annotation level was actually drawn with, one entry per strip
+.strip_map <- function(p) {
+  for (i in seq_len(8)) {
+    q <- tryCatch(p[[i]], error = function(e) NULL)
+    if (is.null(q) || !length(q$layers)) next
+    d1 <- tryCatch(q$layers[[1]]$data, error = function(e) list())
+    if (!"value" %in% names(d1)) next
+    b <- ggplot2::ggplot_build(q)
+    return(lapply(seq_along(q$layers), function(k) {
+      d <- q$layers[[k]]$data
+      m <- unique(data.frame(level = as.character(d$value), fill = b$data[[k]]$fill,
+                             stringsAsFactors = FALSE))
+      stats::setNames(m$fill, m$level)[sort(m$level)]
+    }))
+  }
+  stop("no annotation strip")
+}
+
+test_that("annotation colours can be set per call without touching the object", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggnewscale")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  regs <- sort(unique(as.character(ps$get_meta()$region)))
+  before <- ps$get_colors()$region
+
+  # a named, partial palette recolours those levels and leaves the rest of the shared map
+  p <- plot_region_haplotypes(ps, "7", annotations = c("country", "region"),
+                              annotation_colours = list(
+                                region = stats::setNames("#FF00FF", regs[1])))
+  got <- .strip_map(p)[[2]]
+  expect_equal(unname(got[regs[1]]), "#FF00FF")
+  expect_equal(unname(got[regs[2]]), unname(before[regs[2]]))
+
+  # unnamed is positional in level order
+  pos <- plot_region_haplotypes(ps, "7", annotations = "region",
+                                annotation_colours = list(region = c("#111111", "#222222")))
+  expect_equal(unname(.strip_map(pos)[[1]][regs]), c("#111111", "#222222"))
+
+  # either spelling
+  amer <- plot_region_haplotypes(ps, "7", annotations = "region",
+                                 annotation_colors = list(region = c("#111111", "#222222")))
+  expect_equal(.strip_map(pos), .strip_map(amer))
+
+  # the object's shared map is unchanged, so other plots keep their colours
+  expect_equal(ps$get_colors()$region, before)
+})
+
+test_that("annotation colours say when they are given something unusable", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggnewscale")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  expect_error(plot_region_haplotypes(ps, "7", annotations = "region",
+                                      annotation_colours = c("#111111", "#222222")),
+               "named list")
+  expect_error(plot_region_haplotypes(ps, "7", annotations = "region",
+                                      annotation_colours = list(region = "#111111")),
+               "colour\\(s\\) for 2 level\\(s\\)")
+  expect_warning(plot_region_haplotypes(ps, "7", annotations = "region",
+                                        annotation_colours = list(nope = c(a = "#111111"))),
+                 "not an annotation")
+  expect_warning(plot_region_haplotypes(ps, "7", annotations = "region",
+                                        annotation_colours = list(
+                                          region = c(nowhere = "#111111"))),
+                 "not in the data")
+})
+
+# the legend keys of the annotation strips: level -> the colour actually mapped to it
+.strip_keys <- function(p) {
+  for (i in seq_len(8)) {
+    q <- tryCatch(p[[i]], error = function(e) NULL)
+    if (is.null(q) || !length(q$layers)) next
+    d1 <- tryCatch(q$layers[[1]]$data, error = function(e) list())
+    if (!"value" %in% names(d1)) next
+    b <- ggplot2::ggplot_build(q)
+    sc <- Filter(function(s) grepl("fill", s$aesthetics[1]), b$plot$scales$scales)
+    return(lapply(sc, function(s) {
+      br <- s$get_breaks(); br <- br[!is.na(br)]
+      stats::setNames(unname(s$map(br)), as.character(br))
+    }))
+  }
+  stop("no annotation strip")
+}
+
+test_that("an annotation level with no samples here is not given a legend key", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggnewscale")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  m <- ps$get_meta()
+  # a factor annotation carries every level it was built with, so subsetting the samples
+  # does not by itself remove a level -- which is how empty keys reached the legend
+  m$region <- factor(as.character(m$region),
+                     levels = c(unique(as.character(m$region)), "Nowhere"))
+  ps$add_meta(m)
+
+  full <- .strip_keys(plot_region_haplotypes(ps, "7", annotations = "region"))[[1]]
+  expect_setequal(names(full), unique(as.character(m$region)))
+  expect_false("Nowhere" %in% names(full))
+
+  sub <- ps$subset(region = "East Africa")
+  keys <- .strip_keys(plot_region_haplotypes(sub, "7", annotations = "region"))[[1]]
+  expect_equal(names(keys), "East Africa")
+  expect_false("Central Africa" %in% names(keys))
+})
+
+test_that("a level the shared colour map does not cover still gets a colour", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggnewscale")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  regs <- sort(unique(as.character(ps$get_meta()$region)))
+  # a map covering one level only: the other used to be drawn as a key with no swatch
+  ps$set_colors(list(region = stats::setNames("#E20134", regs[1])))
+  keys <- .strip_keys(plot_region_haplotypes(ps, "7", annotations = "region"))[[1]]
+  expect_setequal(names(keys), regs)
+  expect_false(anyNA(keys))
+  expect_equal(unname(keys[regs[1]]), "#E20134")   # the one that was set is honoured
+})

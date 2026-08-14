@@ -102,6 +102,10 @@
   iv
 }
 
+# The x expansion a zoomed panel and its gene track must share. Named so the two cannot be
+# changed apart -- they are aligned by patchwork, which matches panel areas, not data ranges.
+.ZOOM_AXIS_EXPAND <- 0.01
+
 # Inside one chromosome the cumulative axis is just position, so label it in bp/kb/Mb
 # rather than leaving the genome-wide chromosome ticks on a 200 kb window.
 .region_axis <- function(iv, offset) {
@@ -115,7 +119,7 @@
     breaks = function(lims) offset + pretty(lims - offset, n = 6),
     labels = function(v) format(round((v - offset) / unit, if (unit == 1) 0 else 1),
                                 big.mark = ",", trim = TRUE, scientific = FALSE),
-    expand = ggplot2::expansion(mult = 0.01))
+    expand = ggplot2::expansion(mult = .ZOOM_AXIS_EXPAND))
 }
 
 # Everything a genome-wide plot needs to become a zoomed one. Returns NULL when `zoom` is
@@ -224,7 +228,8 @@
 .CHAR_IN <- 2.845 / 72 * 0.5    # per point of text size: pt -> in, ~half-em per character
 
 .gene_track_panel <- function(genes, xlim, height = 0.9, fill = "#4d4d4d", angle = 0,
-                              width_in = 9, size = .GENE_LABEL_SIZE, min_width = TRUE) {
+                              width_in = 9, size = .GENE_LABEL_SIZE, min_width = TRUE,
+                              expand_mult = 0) {
   .need_package("ggplot2", "the zoomed gene track")
   if (is.null(genes) || !nrow(genes)) return(NULL)
   g <- genes[order(genes$.gene_xmin), , drop = FALSE]
@@ -338,6 +343,11 @@
       hjust = g$.hjust, vjust = 1) +
     ggplot2::scale_y_continuous(
       limits = c(height / 2 + 0.2 - span_units, height / 2 + 0.2), expand = ggplot2::expansion(0)) +
+    # The track's x expansion has to be the panel it sits under, not ggplot's 5% default:
+    # patchwork aligns the panel *areas*, so any difference in expansion re-scales one panel
+    # against the other and every gene box lands beside the SNPs it covers. `coord_cartesian`
+    # sets the limits but leaves the scale's expansion in force, so it has to be said here.
+    ggplot2::scale_x_continuous(expand = ggplot2::expansion(mult = expand_mult)) +
     ggplot2::coord_cartesian(xlim = xlim, clip = "off") +
     ggplot2::theme_void() +
     ggplot2::theme(plot.margin = ggplot2::margin(t = 0, r = 12, b = 0, l = 6))
@@ -357,8 +367,10 @@
 # Stack the gene track under a zoomed plot, sharing the x axis: the main panel keeps the
 # tick labels, the track just carries the boxes and names.
 .stack_gene_track <- function(p, z, layout, n_panels = 1L, angle = 0, min_width = TRUE) {
+  # .ZOOM_AXIS_EXPAND is what .region_axis() gives the panel above, and the two have to agree
   track <- .gene_track_panel(.zoom_gene_boxes(z$track, layout), z$xlim, angle = angle,
-                             width_in = .ZOOM_WIDTH_IN, min_width = min_width)
+                             width_in = .ZOOM_WIDTH_IN, min_width = min_width,
+                             expand_mult = .ZOOM_AXIS_EXPAND)
   if (is.null(track)) return(p)
   .need_package("patchwork", "the zoomed gene track")
   track_in <- attr(track, "track_in")

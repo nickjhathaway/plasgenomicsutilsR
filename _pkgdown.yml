@@ -19,6 +19,13 @@ reference:
   - plot_ibd_pairwise_group_heatmap
   - plot_pairwise_ibd_for_genes
   - plot_ibd_network
+  - plot_ibd_pair_network
+- title: Genome-wide IBD between groups
+  desc: >
+    The per-pair IBD fraction reduced to one row per pair of metadata groups, over every
+    sample pair spanning them.
+  contents:
+  - pair_fraction_summary
 - title: Gene IBD-block overlap
   desc: >
     Which pairs share a gene by IBD: the fraction per group pair (block-based, not
@@ -100,6 +107,7 @@ reference:
   - ihs_genes
   - plot_ihs
   - plot_ehh
+  - ehh_candidates
   - plot_region_haplotypes
   - beta_score
   - beta_genes

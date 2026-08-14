@@ -365,8 +365,8 @@ print.pop_structure <- function(x, ...) {
 #'
 #' @param x A `pop_structure` object or a [PopStructure] R6 object.
 #' @param pcs Which two PCs to plot (default `c(1, 2)`).
-#' @param colour Metadata column to colour points by (needs `meta`).
-#' @param colors Optional named `level -> colour` vector for the colour scale
+#' @param colour,color Metadata column to colour points by (needs `meta`).
+#' @param colors,colours Optional named `level -> colour` vector for the colour scale
 #'   (e.g. from [meta_colors()]); a `PopStructure` supplies its stored map.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param legend_point_size Size of the coloured dots in the legend (default `3`, larger
@@ -374,7 +374,10 @@ print.pop_structure <- function(x, ...) {
 #' @return A ggplot object.
 #' @export
 plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
-                     point_size = 1.6, point_alpha = 0.8, legend_point_size = 3) {
+                     point_size = 1.6, point_alpha = 0.8, legend_point_size = 3,
+                     color = NULL, colours = NULL) {
+  colour <- .alias_arg("colour", "color")
+  colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_pca()")
   if (inherits(x, "PopStructure")) {
     if (is.null(colors) && !is.null(colour)) colors <- x$get_colors()[[colour]]
@@ -395,8 +398,8 @@ plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
 #' UMAP scatter plot
 #'
 #' @param x A `pop_structure` object (built with `umap = TRUE`) or a [PopStructure].
-#' @param colour Metadata column to colour points by (needs `meta`).
-#' @param colors Optional named `level -> colour` vector for the colour scale
+#' @param colour,color Metadata column to colour points by (needs `meta`).
+#' @param colors,colours Optional named `level -> colour` vector for the colour scale
 #'   (e.g. from [meta_colors()]); a `PopStructure` supplies its stored map.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param legend_point_size Size of the coloured dots in the legend (default `3`, larger
@@ -404,7 +407,10 @@ plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
 #' @return A ggplot object.
 #' @export
 plot_umap <- function(x, colour = NULL, colors = NULL, point_size = 1.6,
-                      point_alpha = 0.8, legend_point_size = 3) {
+                      point_alpha = 0.8, legend_point_size = 3,
+                      color = NULL, colours = NULL) {
+  colour <- .alias_arg("colour", "color")
+  colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_umap()")
   if (inherits(x, "PopStructure")) {
     if (is.null(colors) && !is.null(colour)) colors <- x$get_colors()[[colour]]
@@ -839,16 +845,16 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
 #'   `sample_order` is supplied).
 #' @param sample_order Optional explicit sample order (see [admixture_order()]); keeps
 #'   bars in the same place across different K.
-#' @param colours Optional fill colours for the K clusters.
+#' @param colours,colors Optional fill colours for the K clusters.
 #' @param group_bar Draw a coloured strip above the bars keyed by `group`.
-#' @param group_colours Named `level -> colour` vector for the group strip (see
+#' @param group_colours,group_colors Named `level -> colour` vector for the group strip (see
 #'   [meta_colors()]); pass the same mapping you use for the UMAP to match colours.
 #' @param border Outline each sample's bar (default `TRUE`, matching
 #'   [plot_structure_figure()]) so neighbours with nearly identical ancestry stay distinct;
 #'   `FALSE` for borderless bars. With very many samples in a narrow render the outlines
 #'   can swamp the fills -- either render wider ([save_plot()] uses the attached width) or
 #'   set `border = FALSE` / a thinner `border_linewidth`.
-#' @param border_colour,border_linewidth Colour and width of the per-sample outline.
+#' @param border_colour,border_color,border_linewidth Colour and width of the per-sample outline.
 #' @param legend_position Where the legends go: `"right"` (default), `"bottom"`, `"top"`,
 #'   `"left"`, or `"none"`. A large K makes for a tall legend stack, so `"bottom"` often
 #'   fits better on a wide, short admixture panel.
@@ -865,7 +871,11 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
                            border = TRUE, border_colour = "black",
                            border_linewidth = 0.15,
                            legend_position = c("right", "bottom", "top", "left", "none"),
-                           legend_rows = NULL) {
+                           legend_rows = NULL,
+                           colors = NULL, group_colors = NULL, border_color = NULL) {
+  colours <- .alias_arg("colours", "colors")
+  group_colours <- .alias_arg("group_colours", "group_colors")
+  border_colour <- .alias_arg("border_colour", "border_color")
   .need_package("ggplot2", "plot_admixture()")
   legend_position <- match.arg(legend_position)
   q <- as.matrix(q)
@@ -992,7 +1002,8 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   are indistinguishable afterwards, so anything that names the calls has to be told.
     initialize = function(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL,
                           allele = NULL, pruned = NULL, full = NULL,
-                          one_based = FALSE) {
+                          one_based = FALSE, colours = NULL) {
+      colors <- .alias_arg("colors", "colours")
       positions <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(samples)) samples <- geno$sample.id
@@ -1075,7 +1086,8 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @description Attach/replace metadata; auto-assigns colours for new columns.
     #' @param meta Data frame with a `sample` column.
     #' @param colors Optional colour overrides (`column -> (level -> colour)`).
-    add_meta = function(meta, colors = NULL) {
+    add_meta = function(meta, colors = NULL, colours = NULL) {
+      colors <- .alias_arg("colors", "colours")
       meta <- as.data.frame(meta, stringsAsFactors = FALSE)
       if (!"sample" %in% names(meta)) stop("`meta` needs a `sample` column", call. = FALSE)
       private$meta_df <- meta
@@ -1088,7 +1100,8 @@ PopStructure <- R6::R6Class("PopStructure",
 
     #' @description Set/override colour maps for metadata columns.
     #' @param colors Named list `column -> (level -> colour)`.
-    set_colors = function(colors) {
+    set_colors = function(colors, colours = NULL) {
+      colors <- .alias_arg("colors", "colours")
       for (nm in names(colors)) private$colors[[nm]] <- colors[[nm]]
       invisible(self)
     },
@@ -1120,6 +1133,7 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param n_neighbors,min_dist UMAP parameters.
     #' @param seed Random seed.
     run_umap = function(pca_components = 30, n_neighbors = 15, min_dist = 0.1, seed = 42) {
+      private$collapse_to_active()
       private$ps <- pop_structure(private$geno_mat, samples = private$sample_ids,
                                   meta = private$meta_df, n_pcs = private$n_pcs,
                                   umap = TRUE, umap_pca = pca_components,
@@ -1131,6 +1145,7 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param K,rep,alpha,seed,cpu,cache,cache_dir,verbose,log_file Passed to [run_snmf()].
     run_snmf = function(K = 1:10, rep = 10, alpha = 10, seed = 42, cpu = 1,
                         cache = TRUE, cache_dir = NULL, verbose = FALSE, log_file = NULL) {
+      private$collapse_to_active()
       private$snmf_fit <- run_snmf(
         list(genotype = private$geno_mat, sample.id = private$sample_ids),
         K = K, rep = rep, alpha = alpha, seed = seed, cpu = cpu,
@@ -1190,8 +1205,13 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   matches (does not recompute PCA/UMAP/sNMF -- the embeddings are shared and
     #'   simply filtered).
     #' @param samples Sample ids to keep.
+    #' @param drop_samples Sample ids to remove, applied after `samples` and the metadata
+    #'   filters. For taking out the one or two samples an otherwise good subset should not
+    #'   include -- a contaminant, a duplicate -- without having to spell out the keep list.
+    #'   Ids that are not in the object are reported rather than ignored, since a typo would
+    #'   otherwise look exactly like a sample that was already gone.
     #' @param ... `column = value(s)` metadata filters (e.g. `region = "West Africa"`).
-    subset = function(samples = NULL, ...) {
+    subset = function(samples = NULL, drop_samples = NULL, ...) {
       keep <- private$active_ids
       if (!is.null(samples)) keep <- intersect(keep, samples)
       filt <- list(...)
@@ -1201,6 +1221,15 @@ PopStructure <- R6::R6Class("PopStructure",
         for (nm in names(filt)) if (nm %in% names(m)) ok <- ok & (m[[nm]] %in% filt[[nm]])
         keep <- intersect(keep, m$sample[ok])
       }
+      if (!is.null(drop_samples)) {
+        drop_samples <- as.character(drop_samples)
+        unknown <- setdiff(drop_samples, private$sample_ids)
+        if (length(unknown))
+          warning("drop_samples not in this object: ", paste(unknown, collapse = ", "),
+                  call. = FALSE)
+        keep <- setdiff(keep, drop_samples)
+      }
+      if (!length(keep)) stop("that leaves no samples", call. = FALSE)
       new <- self$clone(deep = FALSE)
       new$restrict(keep)
       new
@@ -1228,6 +1257,9 @@ PopStructure <- R6::R6Class("PopStructure",
       private$meta_df[private$meta_df$sample %in% private$active_ids, , drop = FALSE],
     #' @description The shared colour maps.
     get_colors = function() private$colors,
+
+    #' @description Alias for `get_colors()`.
+    get_colours = function() private$colors,
     #' @description Which allele the dosages count (`"alt"` / `"ref"`), or `NULL` when the
     #'   object does not record it (built from a bare matrix, or saved by an older version).
     #' @param panel Which panel to report on; the primary one when `NULL`.
@@ -1255,27 +1287,38 @@ PopStructure <- R6::R6Class("PopStructure",
     },
 
     #' @description PCA scatter coloured by a metadata column (shared colours).
-    #' @param colour Metadata column to colour by.
+    #' @param colour,color Metadata column to colour by (either spelling).
     #' @param pcs Which two PCs.
     #' @param ... Passed to [plot_pca()].
-    plot_pca = function(colour = NULL, pcs = c(1, 2), ...)
-      plot_pca(self, pcs = pcs, colour = colour, ...),
+    plot_pca = function(colour = NULL, pcs = c(1, 2), ..., color = NULL) {
+      colour <- .alias_arg("colour", "color")
+      private$check_colour_column(colour, "plot_pca")
+      plot_pca(self, pcs = pcs, colour = colour, ...)
+    },
 
     #' @description UMAP scatter coloured by a metadata column (shared colours).
-    #' @param colour Metadata column to colour by.
+    #' @param colour,color Metadata column to colour by (either spelling).
     #' @param ... Passed to [plot_umap()].
-    plot_umap = function(colour = NULL, ...) plot_umap(self, colour = colour, ...),
+    plot_umap = function(colour = NULL, ..., color = NULL) {
+      colour <- .alias_arg("colour", "color")
+      private$check_colour_column(colour, "plot_umap")
+      plot_umap(self, colour = colour, ...)
+    },
 
     #' @description Admixture bars; the group strip reuses the shared colour map, so it
     #'   matches the UMAP/PCA colouring.
     #' @param K Number of ancestral populations (default best K).
     #' @param group Metadata column to facet by and colour the strip with.
-    #' @param colour Metadata column for the strip colours (default `group`).
+    #' @param colour,color Metadata column for the strip colours (default `group`, either
+    #'   spelling). To recolour the ancestry clusters themselves, pass `colours` / `colors`
+    #'   (a palette), which goes to [plot_admixture()].
     #' @param sample_order Explicit sample order (see [admixture_order()]).
     #' @param group_bar Draw the group colour strip.
     #' @param ... Passed to [plot_admixture()].
     plot_admixture = function(K = NULL, group = NULL, colour = group, sample_order = NULL,
-                              group_bar = !is.null(group), ...) {
+                              group_bar = !is.null(group), ..., color = NULL) {
+      colour <- .alias_arg("colour", "color")
+      private$check_colour_column(colour, "plot_admixture")
       qq <- self$q(K)
       plot_admixture(qq, meta = self$get_meta(), group = group, sample_order = sample_order,
                      group_bar = group_bar,
@@ -1317,6 +1360,12 @@ PopStructure <- R6::R6Class("PopStructure",
       statistic <- if (is.null(dots$statistic)) "jost_d" else dots$statistic
       genotype  <- dots$genotype
       dots$statistic <- NULL; dots$genotype <- NULL
+      # annotation strips read the shared colour map, as the UMAP, the PCA and the admixture
+      # group bar do, so a level drawn here is the colour it is everywhere else
+      if (!is.null(dots$annotate) &&
+          is.null(dots$annotate_colours) && is.null(dots$annotate_colors) &&
+          length(private$colors))
+        dots$annotate_colours <- private$colors
       do.call(plot_diff_heatmap,
               c(list(pop_diff(self, group = group, statistic = statistic, genotype = genotype),
                      meta = private$meta_df), dots))
@@ -1450,6 +1499,54 @@ PopStructure <- R6::R6Class("PopStructure",
     },
     colors = NULL, ps = NULL, snmf_fit = NULL, n_pcs = NULL,
     idx = function() match(private$active_ids, private$sample_ids),
+    # `colour` names a metadata column whose shared colour map is reused; a palette passed
+    # here reaches `private$colors[[colour]]` and fails on the subscript instead of on the
+    # argument. The near-miss worth naming is `colours`, one letter away and a palette.
+    check_colour_column = function(colour, fn) {
+      if (is.null(colour)) return(invisible(NULL))
+      cols <- if (is.null(private$meta_df)) character() else
+        setdiff(names(private$meta_df), "sample")
+      if (!is.character(colour) || length(colour) != 1L)
+        stop("`colour` in ", fn, "() names one metadata column to colour by, not a palette.",
+             if (identical(fn, "plot_admixture"))
+               " To recolour the ancestry clusters, pass `colours = `." else "",
+             "\n  columns available: ",
+             if (length(cols)) paste(cols, collapse = ", ") else "none (add_meta() first)",
+             call. = FALSE)
+      if (!colour %in% cols)
+        stop("no metadata column `", colour, "` to colour by.\n  columns available: ",
+             if (length(cols)) paste(cols, collapse = ", ") else "none (add_meta() first)",
+             call. = FALSE)
+      invisible(NULL)
+    },
+    # Drop the samples a subset() excluded from the data itself, not just from the
+    # accessors. Called before anything that refits: PCA, UMAP and sNMF are joint fits, so
+    # a refit that still saw the excluded samples would place the kept ones by reference to
+    # samples the caller asked to leave out.
+    collapse_to_active = function() {
+      if (identical(private$sample_ids, private$active_ids)) return(invisible(NULL))
+      keep <- private$active_ids
+      i <- private$idx()
+      private$geno_mat <- private$geno_mat[i, , drop = FALSE]
+      if (!is.null(private$panel_list))
+        private$panel_list <- lapply(private$panel_list, function(p) {
+          p$genotype <- p$genotype[keep, , drop = FALSE]
+          p
+        })
+      if (!is.null(private$meta_df))
+        private$meta_df <- private$meta_df[private$meta_df$sample %in% keep, , drop = FALSE]
+      if (!is.null(private$ps)) {
+        private$ps$pca <- private$ps$pca[i, , drop = FALSE]
+        if (!is.null(private$ps$umap))
+          private$ps$umap <-
+            private$ps$umap[private$ps$umap$sample %in% keep, , drop = FALSE]
+        if (!is.null(private$ps$prcomp$x))
+          private$ps$prcomp$x <- private$ps$prcomp$x[i, , drop = FALSE]
+        private$ps$meta <- private$meta_df
+      }
+      private$sample_ids <- keep
+      invisible(NULL)
+    },
     require_snmf = function() {
       if (is.null(private$snmf_fit)) stop("run_snmf() first", call. = FALSE)
       invisible(NULL)

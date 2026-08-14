@@ -14,7 +14,8 @@ plot_ibd_pairwise_group_heatmap(
   limits = NULL,
   fill_scale = NULL,
   highlight_genes = NULL,
-  label_genes = NULL
+  label_genes = NULL,
+  colours = NULL
 )
 }
 \arguments{
@@ -29,7 +30,7 @@ the remaining ones re-laid-out contiguously.}
 
 \item{trans}{Fill-scale transform, e.g. \code{"identity"} (default), \code{"log2"}, \code{"sqrt"}.}
 
-\item{colors}{Optional colour ramp for the fill (defaults to a single-hue
+\item{colors, colours}{Optional colour ramp for the fill (defaults to a single-hue
 light-to-dark sequential scale that stays readable when most values are near 0).}
 
 \item{limits}{Optional \code{c(lo, hi)} fill limits; values outside are squished into

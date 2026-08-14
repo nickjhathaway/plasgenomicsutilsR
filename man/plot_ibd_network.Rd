@@ -12,6 +12,8 @@ plot_ibd_network(
   colors = NULL,
   shape_group = NULL,
   shapes = NULL,
+  na_shape = .NA_SHAPE,
+  na_colour = "grey70",
   within = 0,
   sharing = c("overlap", "complete"),
   include_isolated = FALSE,
@@ -24,7 +26,11 @@ plot_ibd_network(
   edge_width = 1,
   title = NULL,
   subtitle = TRUE,
-  seed = 42
+  seed = 42,
+  colour_group = NULL,
+  colours = NULL,
+  na_color = NULL,
+  edge_color = NULL
 )
 }
 \arguments{
@@ -38,11 +44,11 @@ are 0-based half-open (see \link{plasgenomicsutilsR-coordinates}), so \code{"chr
 the 1000 bases from 0-based 1000 up to but not including 2000, and a bare \code{"chr:1000"}
 is the single base at 0-based 1000.}
 
-\item{color_group}{Optional metadata column to colour nodes by (needs \code{meta}). To colour
+\item{color_group, colour_group}{Optional metadata column to colour nodes by (needs \code{meta}). To colour
 by the graph's own connected components, add them to the metadata first with
 \code{\link[=add_ibd_clusters]{add_ibd_clusters()}} and name the column it creates.}
 
-\item{colors}{Colours for \code{color_group}. A \strong{named} \code{level -> colour} vector maps by
+\item{colors, colours}{Colours for \code{color_group}. A \strong{named} \code{level -> colour} vector maps by
 name and may cover only some levels (the rest keep their automatic colour); an
 unnamed vector is taken positionally, in the column's level order. \code{NULL} (default)
 uses \code{\link[=meta_colors]{meta_colors()}}, so the same mapping can be shared with other plots.}
@@ -54,6 +60,15 @@ use either, both, or neither.}
 \item{shapes}{Shapes for \code{shape_group}, named or positional exactly like \code{colors}
 (values are \pkg{ggplot2} shape codes). \code{NULL} picks distinguishable defaults and
 errors if the column has more levels than there are distinct shapes.}
+
+\item{na_shape, na_colour, na_color}{What a sample with \strong{no value} in \code{shape_group} / \code{color_group}
+gets: by default a hollow circle (shape \code{1}) and grey. The default shape is deliberately
+outside the automatic palette so it cannot be mistaken for a real level; if you set it to
+one that a level also uses, the plot says so rather than letting two things look alike.
+
+The legends stack in a fixed order -- colour, then shape -- so two plots of the same cohort
+are comparable. \pkg{ggplot2} otherwise orders guides by an internal hash that changes with
+the labels. Override per plot with \code{+ ggplot2::guides(shape = ggplot2::guide_legend(order = 1))}.}
 
 \item{within}{Pad the interval by this many bp on both sides (default \code{0}).}
 
@@ -89,7 +104,7 @@ the cost of them taking up more of the canvas. Applies to weight-aware layouts
 
 \item{node_size, node_alpha}{Node point aesthetics.}
 
-\item{edge_colour, edge_width}{Edge aesthetics (default width \code{1}).}
+\item{edge_colour, edge_color, edge_width}{Edge aesthetics (default width \code{1}).}
 
 \item{edge_alpha}{Edge opacity (default \code{0.5}). \code{NULL} instead scales opacity down with
 edge count (\code{~120 / n_edges}, clamped to [0.06, 0.6]).}

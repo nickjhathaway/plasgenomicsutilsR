@@ -57,6 +57,57 @@ test_that("subset by samples and by metadata narrows the active set", {
   expect_equal(nrow(two$pca_scores()), 2)
 })
 
+test_that("drop_samples removes named samples, after the other filters", {
+  ps <- example_pop_structure(umap = FALSE)
+  ids <- ps$get_samples()
+
+  less <- ps$subset(drop_samples = ids[1:2])
+  expect_length(less$get_samples(), length(ids) - 2)
+  expect_false(any(ids[1:2] %in% less$get_samples()))
+  expect_equal(nrow(less$genotype()), length(ids) - 2)
+  expect_length(ps$get_samples(), length(ids))    # original untouched
+
+  # applied to what the metadata filter left, not to the whole object
+  gh <- ps$subset(country = "Ghana")$get_samples()
+  expect_length(ps$subset(country = "Ghana", drop_samples = gh[1])$get_samples(),
+                length(gh) - 1L)
+  # a sample the filter already excluded is a no-op
+  expect_length(ps$subset(country = "Ghana",
+                          drop_samples = setdiff(ids, gh)[1])$get_samples(),
+                length(gh))
+
+  expect_warning(ps$subset(drop_samples = "not-a-sample"), "not in this object")
+  expect_error(ps$subset(drop_samples = ids), "no samples")
+})
+
+test_that("a refit after subsetting is fit on the kept samples only", {
+  ps_all <- example_pop_structure("africa", umap = FALSE)
+  m <- ps_all$get_meta()
+  victim <- m$sample[m$region == "East Africa"][3]
+
+  out <- ps_all$subset(region = "East Africa", drop_samples = victim)$run_umap(
+    pca_components = 0.1)
+  n <- length(out$get_samples())
+  expect_false(victim %in% out$get_samples())
+
+  # PCA and UMAP are joint fits: the excluded samples must not be in them at all,
+  # otherwise the kept samples are placed by reference to samples the caller dropped
+  g <- out$genotype()
+  scores <- out$pca_scores()
+  expect_equal(nrow(scores), n)
+  expect_identical(rownames(scores), out$get_samples())
+  expect_equal(nrow(out$umap_df()), n)
+  expect_setequal(out$umap_df()$sample, out$get_samples())
+  expect_setequal(unique(as.character(out$get_meta()$region)), "East Africa")
+
+  refit <- pop_structure(g, samples = rownames(g), n_pcs = ncol(scores), umap = FALSE)
+  expect_equal(unname(scores[, 1]), unname(refit$pca[, 1]))
+
+  # the object subsetted from keeps its own samples and its own (absent) embedding
+  expect_length(ps_all$get_samples(), 258)
+  expect_null(ps_all$umap_df())
+})
+
 test_that("plot_umap errors without a UMAP embedding", {
   testthat::skip_if_not_installed("ggplot2")
   mat <- matrix(stats::rbinom(20 * 40, 2, 0.4), nrow = 20)
@@ -650,4 +701,29 @@ test_that("variants = 'all' keeps every record, warns, and does not reuse the ot
 
   # and back again
   expect_equal(ncol(load_genotypes(vcf, gds = gds, prune = FALSE)$genotype), 2L)
+})
+
+test_that("a palette passed as `colour` is named as the mistake it is", {
+  skip_if_not_installed("ggplot2")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  ps$run_umap(pca_components = 5)
+  ps$run_snmf(K = 1:3, rep = 2, cache = FALSE)
+  pal <- c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C")
+
+  # `colour` names a metadata column; `colours` is the cluster palette, one letter away
+  expect_error(ps$plot_admixture(K = 3, group = "region", colour = pal), "not a palette")
+  expect_error(ps$plot_admixture(K = 3, group = "region", colour = pal), "`colours = `")
+  expect_error(ps$plot_admixture(K = 3, colour = stats::setNames(pal, paste0("K", 1:4))),
+               "not a palette")
+  expect_error(ps$plot_umap(colour = pal), "not a palette")
+  expect_error(ps$plot_pca(colour = pal), "not a palette")
+  # an unknown column says which ones exist
+  expect_error(ps$plot_umap(colour = "nope"), "no metadata column `nope`")
+  expect_error(ps$plot_umap(colour = "nope"), "country, site, region")
+
+  # and the working spellings still work
+  expect_s3_class(ps$plot_admixture(K = 3, group = "region", colours = pal), "ggplot")
+  expect_s3_class(ps$plot_admixture(K = 3, group = "region", colour = "region"), "ggplot")
+  expect_s3_class(ps$plot_umap(colour = "region"), "ggplot")
+  expect_s3_class(ps$plot_pca(), "ggplot")
 })

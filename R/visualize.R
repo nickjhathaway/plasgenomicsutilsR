@@ -383,7 +383,7 @@
 #' @param label_genes Label the genes with their names. `NULL` (default) labels them
 #'   only when `highlight_genes` is given; `TRUE`/`FALSE` forces it.
 #' @param point_size,point_alpha Point aesthetics.
-#' @param colours Optional length-2 colour vector for the alternating chromosome bands.
+#' @param colours,colors Optional length-2 colour vector for the alternating chromosome bands.
 #' @param zoom Optional single interval to crop to, keeping the same data and the same
 #'   coordinates as the genome-wide plot: a chromosome (`"7"`), a range
 #'   (`"7:728,081-988,719"`), a gene name from the object's track, or a one-row data frame
@@ -408,7 +408,9 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
                                        zoom = NULL, zoom_pad = 0.05,
                                        genes_for_track = NULL, gene_label_angle = 0,
                                highlight_genes = NULL, label_genes = NULL,
-                               point_size = 0.5, point_alpha = 0.6, colours = NULL) {
+                               point_size = 0.5, point_alpha = 0.6, colours = NULL,
+                                       colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   .need_package("ggplot2", "plot_ibd_sharing_manhattan()")
   .need_package("scales", "plot_ibd_sharing_manhattan()")
   df <- x$get_per_snp_group()
@@ -488,7 +490,7 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
 #'   Naming a kind the run did not write is an error; `"all"` draws whichever kinds the
 #'   threshold table carries.
 #' @param point_size,point_alpha Point aesthetics.
-#' @param colours Optional length-2 colour vector for the alternating chromosome bands.
+#' @param colours,colors Optional length-2 colour vector for the alternating chromosome bands.
 #' @param zoom Optional single interval to crop to, keeping the same data and the same
 #'   coordinates as the genome-wide plot: a chromosome (`"7"`), a range
 #'   (`"7:728,081-988,719"`), a gene name from the object's track, or a one-row data frame
@@ -515,7 +517,9 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
                                      genes_for_track = NULL, gene_label_angle = 0,
                                      highlight_genes = NULL, label_genes = NULL,
                                      draw_threshold = TRUE,
-                                     point_size = 0.5, point_alpha = 0.6, colours = NULL) {
+                                     point_size = 0.5, point_alpha = 0.6, colours = NULL,
+                                     colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   .need_package("ggplot2", "plot_selection_manhattan()")
   metric <- match.arg(metric)
   df <- x$get_selection()
@@ -603,7 +607,7 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
 #'   the remaining ones re-laid-out contiguously.
 #' @param skip_chr Optional chromosomes to drop (complement of `chroms`).
 #' @param trans Fill-scale transform, e.g. `"identity"` (default), `"log2"`, `"sqrt"`.
-#' @param colors Optional colour ramp for the fill (defaults to a single-hue
+#' @param colors,colours Optional colour ramp for the fill (defaults to a single-hue
 #'   light-to-dark sequential scale that stays readable when most values are near 0).
 #' @param limits Optional `c(lo, hi)` fill limits; values outside are squished into
 #'   range, so a few extremes near 1 don't crush the rest of the scale.
@@ -617,7 +621,9 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
 plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, skip_chr = NULL,
                                     trans = "identity", colors = NULL, limits = NULL,
                                     fill_scale = NULL, highlight_genes = NULL,
-                                    label_genes = NULL) {
+                                    label_genes = NULL,
+                                            colours = NULL) {
+  colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_ibd_pairwise_group_heatmap()")
   df <- x$get_pairwise_group()
   if (is.null(df)) stop("this IbdResults has no pairwise_group table", call. = FALSE)
@@ -1100,7 +1106,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
 #' @param digits Decimal places for the tile labels.
 #' @param ncol Facet columns for the grid (default: ggplot2 chooses).
 #' @param trans Fill-scale transform, e.g. `"identity"` (default), `"log2"`, `"sqrt"`.
-#' @param colors Optional colour ramp for the fill (default: the pairwise-sharing ramp).
+#' @param colors,colours Optional colour ramp for the fill (default: the pairwise-sharing ramp).
 #' @param limits Fill limits. `NULL` (default) lets each plot scale to its own values;
 #'   `"shared"` pins every feature to the range across all of them, which makes the pages
 #'   from `individual = TRUE` colour-comparable; or give `c(lo, hi)` explicitly (values
@@ -1113,7 +1119,9 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
                                      individual = FALSE,
                                      label = TRUE, digits = 2, ncol = NULL,
                                      trans = "identity", colors = NULL, limits = NULL,
-                                     fill_scale = NULL) {
+                                     fill_scale = NULL,
+                                        colours = NULL) {
+  colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_pairwise_ibd_for_genes()")
   agg <- match.arg(agg)
   agg_fn <- switch(agg, mean = function(v) mean(v, na.rm = TRUE),

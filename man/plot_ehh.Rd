@@ -18,7 +18,8 @@ plot_ehh(
   colours = NULL,
   show_freq = TRUE,
   freq_position = c("topleft", "topright", "bottomleft", "bottomright"),
-  reference = DEFAULT_REFERENCE
+  reference = DEFAULT_REFERENCE,
+  colors = NULL
 )
 }
 \arguments{
@@ -53,7 +54,7 @@ would crowd a hundred names under it, so this is opt-in.}
 
 \item{gene_label_angle}{Rotation for the gene names, in degrees.}
 
-\item{colours}{Named colours for \code{reference} / \code{alternate}.}
+\item{colours, colors}{Named colours for \code{reference} / \code{alternate}.}
 
 \item{show_freq}{Note each panel's haplotype count and allele frequencies inside it
 (default \code{TRUE}); \code{FALSE} leaves the panel clean.}

@@ -176,6 +176,10 @@ IbdResults <- R6::R6Class(
     #'   the analyzed-sample set (the denominator behind every fraction) still comes from
     #'   every row of the blocks file, so a pair whose only segment is short still counts
     #'   as compared. The SNP criterion needs the `Nsnp` column hmmibd-rs writes.
+    #' @param pair_fraction Optional genome-wide per-pair IBD fraction table (path or data
+    #'   frame) from `plasgenomicsutils ibd_fraction_and_snp_density`, for
+    #'   [plot_ibd_pair_network()]. Sample-keyed, so it narrows with the samples when groups
+    #'   are dropped.
     #' @param group_col_in_meta Name of the `meta` column that defines the grouping. It
     #'   becomes the default `group` for the block-based tools, and if the column is a
     #'   factor its levels set the group order for every loaded table (equivalent to
@@ -185,7 +189,7 @@ IbdResults <- R6::R6Class(
     initialize = function(per_snp_group = NULL, pairwise_group = NULL,
                           selection = NULL, threshold = NULL, genes = NULL,
                           blocks = NULL, meta = NULL, gene_overlap = NULL,
-                          group_col_in_meta = NULL,
+                          pair_fraction = NULL, group_col_in_meta = NULL,
                           min_block_snp = IBD_MIN_BLOCK_SNP,
                           min_block_kb = IBD_MIN_BLOCK_KB,
                           reference = DEFAULT_REFERENCE) {
@@ -198,6 +202,12 @@ IbdResults <- R6::R6Class(
         per_snp <- .add_cum_pos(per_snp, private$layout)
       }
       private$per_snp <- per_snp
+
+      # genome-wide per-pair sharing, for plot_ibd_pair_network(). Sample-keyed, so it narrows
+      # with the samples when groups are dropped.
+      pf <- .read_maybe(pair_fraction, "pair_fraction")
+      if (!is.null(pf)) pf <- .pair_endpoints(as.data.frame(pf, stringsAsFactors = FALSE))
+      private$pair_fraction <- pf
 
       pw <- .read_maybe(pairwise_group, "pairwise_group")
       if (!is.null(pw)) {
@@ -321,6 +331,16 @@ IbdResults <- R6::R6Class(
     get_genes = function() private$genes,
     #' @description IBD segment table (`sample1`, `sample2`, `chr`, `start`, `end`), or `NULL`.
     get_blocks = function() private$blocks,
+    #' @description Genome-wide per-pair IBD fraction table, or `NULL`.
+    get_pair_fraction = function() private$pair_fraction,
+    #' @description Attach (or replace) the per-pair IBD fraction table.
+    #' @param pair_fraction A path or data frame, as `ibd_results(pair_fraction = )` takes.
+    set_pair_fraction = function(pair_fraction) {
+      pf <- .read_maybe(pair_fraction, "pair_fraction")
+      if (!is.null(pf)) pf <- .pair_endpoints(as.data.frame(pf, stringsAsFactors = FALSE))
+      private$pair_fraction <- pf
+      invisible(self)
+    },
     #' @description Analyzed-sample ids (from every block row, pre IBD filter), or `NULL`.
     get_analyzed_samples = function() private$analyzed_samples,
     #' @description Sample metadata data frame, or `NULL`.
@@ -408,6 +428,19 @@ IbdResults <- R6::R6Class(
     #' @param ... Passed to [plot_ibd_network()].
     plot_ibd_network = function(...) plot_ibd_network(self, ...),
 
+    #' @description Genome-wide IBD relatedness network from the attached pair table
+    #'   (see [plot_ibd_pair_network()]). Needs `ibd_results(pair_fraction = )` or
+    #'   `$set_pair_fraction()`.
+    #' @param ... Passed to [plot_ibd_pair_network()].
+    plot_ibd_pair_network = function(...) plot_ibd_pair_network(self, ...),
+
+    #' @description Genome-wide IBD sharing summarised over the sample pairs spanning each
+    #'   pair of metadata groups (see [pair_fraction_summary()]). Needs the pair table.
+    #' @param group Metadata column defining the groups (default the declared group column).
+    #' @param ... Passed to [pair_fraction_summary()].
+    pair_fraction_summary = function(group = NULL, ...)
+      pair_fraction_summary(self, group = group, ...),
+
     #' @description Genes overlapping (or within `within` bp of) above-threshold
     #'   selection SNPs. See [pos_selection_genes()].
     #' @param ... Passed to [pos_selection_genes()].
@@ -417,6 +450,7 @@ IbdResults <- R6::R6Class(
     reference = NULL, layout = NULL, per_snp = NULL, pairwise = NULL,
     selection = NULL, threshold = NULL, genes = NULL,
     blocks = NULL, analyzed_samples = NULL, meta = NULL, gene_overlap = NULL,
+    pair_fraction = NULL,
     group_order = NULL, group_col = NULL, block_filter = NULL,
 
     # every group label appearing anywhere in the loaded tables
@@ -509,6 +543,11 @@ IbdResults <- R6::R6Class(
         if (!is.null(private$blocks)) {
           b <- private$blocks
           private$blocks <- b[b$sample1 %in% kept & b$sample2 %in% kept, , drop = FALSE]
+        }
+        if (!is.null(private$pair_fraction)) {
+          pf <- private$pair_fraction
+          private$pair_fraction <- pf[pf$sample1 %in% kept & pf$sample2 %in% kept, ,
+                                      drop = FALSE]
         }
         if (!is.null(private$analyzed_samples))
           private$analyzed_samples <- intersect(private$analyzed_samples, kept)

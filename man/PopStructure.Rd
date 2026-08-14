@@ -46,6 +46,7 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-umap_df}{\code{PopStructure$umap_df()}}
     \item \href{#method-PopStructure-get_meta}{\code{PopStructure$get_meta()}}
     \item \href{#method-PopStructure-get_colors}{\code{PopStructure$get_colors()}}
+    \item \href{#method-PopStructure-get_colours}{\code{PopStructure$get_colours()}}
     \item \href{#method-PopStructure-allele}{\code{PopStructure$allele()}}
     \item \href{#method-PopStructure-positions}{\code{PopStructure$positions()}}
     \item \href{#method-PopStructure-pruned}{\code{PopStructure$pruned()}}
@@ -89,7 +90,8 @@ west <- ps$subset(population = c("PopA", "PopB"))
   allele = NULL,
   pruned = NULL,
   full = NULL,
-  one_based = FALSE
+  one_based = FALSE,
+  colours = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -158,7 +160,7 @@ says so.}
   Attach/replace metadata; auto-assigns colours for new columns.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$add_meta(meta, colors = NULL)}
+    \preformatted{PopStructure$add_meta(meta, colors = NULL, colours = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -178,7 +180,7 @@ says so.}
   Set/override colour maps for metadata columns.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$set_colors(colors)}
+    \preformatted{PopStructure$set_colors(colors, colours = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -409,13 +411,18 @@ matches (does not recompute PCA/UMAP/sNMF -- the embeddings are shared and
 simply filtered).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$subset(samples = NULL, ...)}
+    \preformatted{PopStructure$subset(samples = NULL, drop_samples = NULL, ...)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{samples}}{Sample ids to keep.}
+      \item{\code{drop_samples}}{Sample ids to remove, applied after \code{samples} and the metadata
+filters. For taking out the one or two samples an otherwise good subset should not
+include -- a contaminant, a duplicate -- without having to spell out the keep list.
+Ids that are not in the object are reported rather than ignored, since a typo would
+otherwise look exactly like a sample that was already gone.}
       \item{\code{...}}{\code{column = value(s)} metadata filters (e.g. \code{region = "West Africa"}).}
     }
     \if{html}{\out{</div>}}
@@ -516,6 +523,18 @@ how an analysis asks for the panel it wants without requiring it.}
 }
 
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-get_colours"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-get_colours}{}}}
+\subsection{\code{PopStructure$get_colours()}}{
+  Alias for \code{get_colors()}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$get_colours()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-PopStructure-allele"></a>}}
 \if{latex}{\out{\hypertarget{method-PopStructure-allele}{}}}
 \subsection{\code{PopStructure$allele()}}{
@@ -599,13 +618,13 @@ object does not record it.
   PCA scatter coloured by a metadata column (shared colours).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$plot_pca(colour = NULL, pcs = c(1, 2), ...)}
+    \preformatted{PopStructure$plot_pca(colour = NULL, pcs = c(1, 2), ..., color = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{colour}}{Metadata column to colour by.}
+      \item{\code{colour, color}}{Metadata column to colour by (either spelling).}
       \item{\code{pcs}}{Which two PCs.}
       \item{\code{...}}{Passed to \code{\link[=plot_pca]{plot_pca()}}.}
     }
@@ -620,13 +639,13 @@ object does not record it.
   UMAP scatter coloured by a metadata column (shared colours).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$plot_umap(colour = NULL, ...)}
+    \preformatted{PopStructure$plot_umap(colour = NULL, ..., color = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{colour}}{Metadata column to colour by.}
+      \item{\code{colour, color}}{Metadata column to colour by (either spelling).}
       \item{\code{...}}{Passed to \code{\link[=plot_umap]{plot_umap()}}.}
     }
     \if{html}{\out{</div>}}
@@ -647,7 +666,8 @@ matches the UMAP/PCA colouring.
   colour = group,
   sample_order = NULL,
   group_bar = !is.null(group),
-  ...
+  ...,
+  color = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -656,7 +676,9 @@ matches the UMAP/PCA colouring.
     \describe{
       \item{\code{K}}{Number of ancestral populations (default best K).}
       \item{\code{group}}{Metadata column to facet by and colour the strip with.}
-      \item{\code{colour}}{Metadata column for the strip colours (default \code{group}).}
+      \item{\code{colour, color}}{Metadata column for the strip colours (default \code{group}, either
+spelling). To recolour the ancestry clusters themselves, pass \code{colours} / \code{colors}
+(a palette), which goes to \code{\link[=plot_admixture]{plot_admixture()}}.}
       \item{\code{sample_order}}{Explicit sample order (see \code{\link[=admixture_order]{admixture_order()}}).}
       \item{\code{group_bar}}{Draw the group colour strip.}
       \item{\code{...}}{Passed to \code{\link[=plot_admixture]{plot_admixture()}}.}

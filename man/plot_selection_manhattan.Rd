@@ -19,7 +19,8 @@ plot_selection_manhattan(
   draw_threshold = TRUE,
   point_size = 0.5,
   point_alpha = 0.6,
-  colours = NULL
+  colours = NULL,
+  colors = NULL
 )
 }
 \arguments{
@@ -80,7 +81,7 @@ threshold table carries.}
 
 \item{point_size, point_alpha}{Point aesthetics.}
 
-\item{colours}{Optional length-2 colour vector for the alternating chromosome bands.}
+\item{colours, colors}{Optional length-2 colour vector for the alternating chromosome bands.}
 }
 \value{
 A ggplot object.

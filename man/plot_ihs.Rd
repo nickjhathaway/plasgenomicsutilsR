@@ -20,7 +20,8 @@ plot_ihs(
   reference = DEFAULT_REFERENCE,
   point_size = 0.6,
   point_alpha = 0.7,
-  colours = NULL
+  colours = NULL,
+  colors = NULL
 )
 }
 \arguments{
@@ -62,7 +63,7 @@ which is what keeps long systematic ids from colliding over a dense annotation.}
 
 \item{reference}{Reference id for the chromosome layout.}
 
-\item{point_size, point_alpha, colours}{Point and band aesthetics.}
+\item{point_size, point_alpha, colours, colors}{Point and band aesthetics.}
 }
 \value{
 A ggplot object.

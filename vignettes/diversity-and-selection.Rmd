@@ -209,6 +209,19 @@ one allele holding EHH near 1 far past where the other has decayed:
 plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000)
 ```
 
+Naming a gene leaves the choice of focal SNP to the function, which takes the most balanced one
+and says so. `ehh_candidates()` shows the shortlist it chose from, most balanced first, so you
+can see what was on offer and name a `chr:pos` instead:
+
+```{r}
+ehh_candidates(hap, "pfcrt", group = "country", genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+`maf` is the metric that decides it. The per-group columns catch the other way a panel comes
+back empty: the SNP chosen here has `maf` 0.5 yet is monomorphic *inside* both countries —
+it separates them — so `plot_ehh(group = "country")` would have no curve to draw for either.
+`n_groups_variable` finds the SNPs that do vary within a group.
+
 A marker that only segregates in one part of the cohort is buried by pooling, so restrict the
 haplotypes to where it varies. `subset_haplotypes()` matches metadata the way
 `PopStructure$subset()` does, `column = values`, and takes several values:

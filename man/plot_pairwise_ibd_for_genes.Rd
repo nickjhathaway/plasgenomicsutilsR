@@ -18,7 +18,8 @@ plot_pairwise_ibd_for_genes(
   trans = "identity",
   colors = NULL,
   limits = NULL,
-  fill_scale = NULL
+  fill_scale = NULL,
+  colours = NULL
 )
 }
 \arguments{
@@ -56,7 +57,7 @@ upper triangle; if \code{FALSE} (default), one faceted grid plot.}
 
 \item{trans}{Fill-scale transform, e.g. \code{"identity"} (default), \code{"log2"}, \code{"sqrt"}.}
 
-\item{colors}{Optional colour ramp for the fill (default: the pairwise-sharing ramp).}
+\item{colors, colours}{Optional colour ramp for the fill (default: the pairwise-sharing ramp).}
 
 \item{limits}{Fill limits. \code{NULL} (default) lets each plot scale to its own values;
 \code{"shared"} pins every feature to the range across all of them, which makes the pages

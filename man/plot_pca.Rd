@@ -11,7 +11,9 @@ plot_pca(
   colors = NULL,
   point_size = 1.6,
   point_alpha = 0.8,
-  legend_point_size = 3
+  legend_point_size = 3,
+  color = NULL,
+  colours = NULL
 )
 }
 \arguments{
@@ -19,9 +21,9 @@ plot_pca(
 
 \item{pcs}{Which two PCs to plot (default \code{c(1, 2)}).}
 
-\item{colour}{Metadata column to colour points by (needs \code{meta}).}
+\item{colour, color}{Metadata column to colour points by (needs \code{meta}).}
 
-\item{colors}{Optional named \code{level -> colour} vector for the colour scale
+\item{colors, colours}{Optional named \code{level -> colour} vector for the colour scale
 (e.g. from \code{\link[=meta_colors]{meta_colors()}}); a \code{PopStructure} supplies its stored map.}
 
 \item{point_size, point_alpha}{Point aesthetics.}

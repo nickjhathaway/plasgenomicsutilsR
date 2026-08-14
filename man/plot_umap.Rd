@@ -10,15 +10,17 @@ plot_umap(
   colors = NULL,
   point_size = 1.6,
   point_alpha = 0.8,
-  legend_point_size = 3
+  legend_point_size = 3,
+  color = NULL,
+  colours = NULL
 )
 }
 \arguments{
 \item{x}{A \code{pop_structure} object (built with \code{umap = TRUE}) or a \link{PopStructure}.}
 
-\item{colour}{Metadata column to colour points by (needs \code{meta}).}
+\item{colour, color}{Metadata column to colour points by (needs \code{meta}).}
 
-\item{colors}{Optional named \code{level -> colour} vector for the colour scale
+\item{colors, colours}{Optional named \code{level -> colour} vector for the colour scale
 (e.g. from \code{\link[=meta_colors]{meta_colors()}}); a \code{PopStructure} supplies its stored map.}
 
 \item{point_size, point_alpha}{Point aesthetics.}
