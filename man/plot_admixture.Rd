@@ -18,7 +18,10 @@ plot_admixture(
   border_colour = "black",
   border_linewidth = 0.15,
   legend_position = c("right", "bottom", "top", "left", "none"),
-  legend_rows = NULL
+  legend_rows = NULL,
+  colors = NULL,
+  group_colors = NULL,
+  border_color = NULL
 )
 }
 \arguments{
@@ -36,11 +39,11 @@ plot_admixture(
 \item{sample_order}{Optional explicit sample order (see \code{\link[=admixture_order]{admixture_order()}}); keeps
 bars in the same place across different K.}
 
-\item{colours}{Optional fill colours for the K clusters.}
+\item{colours, colors}{Optional fill colours for the K clusters.}
 
 \item{group_bar}{Draw a coloured strip above the bars keyed by \code{group}.}
 
-\item{group_colours}{Named \code{level -> colour} vector for the group strip (see
+\item{group_colours, group_colors}{Named \code{level -> colour} vector for the group strip (see
 \code{\link[=meta_colors]{meta_colors()}}); pass the same mapping you use for the UMAP to match colours.}
 
 \item{border}{Outline each sample's bar (default \code{TRUE}, matching
@@ -49,7 +52,7 @@ bars in the same place across different K.}
 can swamp the fills -- either render wider (\code{\link[=save_plot]{save_plot()}} uses the attached width) or
 set \code{border = FALSE} / a thinner \code{border_linewidth}.}
 
-\item{border_colour, border_linewidth}{Colour and width of the per-sample outline.}
+\item{border_colour, border_color, border_linewidth}{Colour and width of the per-sample outline.}
 
 \item{legend_position}{Where the legends go: \code{"right"} (default), \code{"bottom"}, \code{"top"},
 \code{"left"}, or \code{"none"}. A large K makes for a tall legend stack, so \code{"bottom"} often

@@ -30,7 +30,12 @@ plot_region_haplotypes(
   colours = NULL,
   na_colour = "grey85",
   show_sample_names = NULL,
-  reference = DEFAULT_REFERENCE
+  reference = DEFAULT_REFERENCE,
+  annotation_colours = NULL,
+  border_color = NULL,
+  colors = NULL,
+  na_color = NULL,
+  annotation_colors = NULL
 )
 }
 \arguments{
@@ -68,7 +73,7 @@ arrive, which is worth doing when the metadata order is the point.}
 \item{border}{Outline every call (default \code{TRUE}), which is what makes single SNPs
 readable as cells rather than a wash of colour.}
 
-\item{border_colour}{Colour of that outline.}
+\item{border_colour, border_color}{Colour of that outline.}
 
 \item{allele}{Which allele the dosages count, \code{"alt"} or \code{"ref"}. \code{NULL} (default) asks
 the object; if it does not record it, alt is assumed and a message says so. The two are
@@ -100,14 +105,21 @@ thousands of SNPs is unreadable as tiles; narrow it rather than have it silently
 (default) uses 0.5\% of the window, wide enough to see and narrow enough to leave the
 gaps between SNPs visible.}
 
-\item{colours}{Named fill colours for \code{reference} / \code{mixed} / \code{alternate}.}
+\item{colours, colors}{Named fill colours for \code{reference} / \code{mixed} / \code{alternate}.}
 
-\item{na_colour}{Fill for missing calls.}
+\item{na_colour, na_color}{Fill for missing calls.}
 
 \item{show_sample_names}{Label the rows. \code{NULL} (default) labels them when there are at
 most 40 samples.}
 
 \item{reference}{Reference id, used when \code{region} names a whole chromosome.}
+
+\item{annotation_colours, annotation_colors}{Per-annotation palettes, as a named list
+(\code{list(region = c(north = "#1B9E77", south = "grey60"))}). Named colours override those
+levels and leave the rest of that annotation's shared map alone, so recolouring one
+level does not mean respelling all of them; an unnamed vector is taken in level order.
+Only this plot changes -- \code{PopStructure$set_colors()} is still the way to move a colour
+everywhere at once, which is what keeps a level looking the same across figures.}
 }
 \value{
 A patchwork of the dendrogram, heatmap and gene track, or a plain ggplot when

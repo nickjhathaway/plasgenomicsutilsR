@@ -115,7 +115,7 @@
 #'   (default) centres each name under its gene; `45` or `90` runs it down to the left,
 #'   which is what keeps long systematic ids from colliding over a dense annotation.
 #' @param reference Reference id for the chromosome layout.
-#' @param point_size,point_alpha,colours Point and band aesthetics.
+#' @param point_size,point_alpha,colours,colors Point and band aesthetics.
 #' @return A ggplot object.
 #' @examples
 #' ps <- example_pop_structure(umap = FALSE)
@@ -127,7 +127,9 @@ plot_ihs <- function(scan, metric = c("neg_log10_p", "ihs", "value"), threshold 
                      chroms = NULL, skip_chr = NULL, zoom = NULL, zoom_pad = 0.05,
                      genes_for_track = NULL, gene_label_angle = 0,
                      reference = DEFAULT_REFERENCE,
-                     point_size = 0.6, point_alpha = 0.7, colours = NULL) {
+                     point_size = 0.6, point_alpha = 0.7, colours = NULL,
+                     colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   metric <- match.arg(metric)
   if (metric == "ihs" && !"ihs" %in% names(scan)) metric <- "value"
   facet <- if ("group" %in% names(scan)) "group" else if ("pair" %in% names(scan)) "pair"
@@ -163,7 +165,9 @@ plot_beta <- function(b, threshold = NULL, genes = NULL, highlight_genes = NULL,
                       zoom = NULL, zoom_pad = 0.05,
                       genes_for_track = NULL, gene_label_angle = 0,
                       reference = DEFAULT_REFERENCE, point_size = 0.6,
-                      point_alpha = 0.7, colours = NULL) {
+                      point_alpha = 0.7, colours = NULL,
+                      colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   thr <- if (is.null(threshold)) {
     v <- b$beta[is.finite(b$beta)]
     if (length(v) > 20) stats::quantile(v, 0.99, names = FALSE) else NULL
@@ -197,7 +201,9 @@ plot_diversity <- function(div, metric = "pi", genes = NULL, highlight_genes = N
                            zoom = NULL, zoom_pad = 0.05,
                            genes_for_track = NULL, gene_label_angle = 0,
                            reference = DEFAULT_REFERENCE, point_size = 0.6,
-                           point_alpha = 0.7, colours = NULL) {
+                           point_alpha = 0.7, colours = NULL,
+                           colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   if (!"start" %in% names(div) || all(is.na(div$start)))
     stop("plot_diversity() needs a windowed result: pop_diversity(by = \"window\")",
          call. = FALSE)
@@ -220,7 +226,7 @@ plot_diversity <- function(div, metric = "pi", genes = NULL, highlight_genes = N
 #'
 #' @param ld The tibble from [read_ld_decay()] (or `plasgenomicsutils ld_decay`).
 #' @param show_half_decay Mark each group's half-decay distance with a vertical segment.
-#' @param colours Optional named colour vector for the groups.
+#' @param colours,colors Optional named colour vector for the groups.
 #' @return A ggplot object.
 #' @examples
 #' # the curve itself comes from `plasgenomicsutils ld_decay`; read_ld_decay() loads it
@@ -233,7 +239,9 @@ plot_diversity <- function(div, metric = "pi", genes = NULL, highlight_genes = N
 #'                                         half_decay_bp = c(7100, NA))
 #' plot_ld_decay(ld)
 #' @export
-plot_ld_decay <- function(ld, show_half_decay = TRUE, colours = NULL) {
+plot_ld_decay <- function(ld, show_half_decay = TRUE, colours = NULL,
+                          colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   .need_package("ggplot2", "plot_ld_decay()")
   if (!nrow(ld)) stop("nothing to plot", call. = FALSE)
   df <- as.data.frame(ld)

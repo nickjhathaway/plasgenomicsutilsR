@@ -57,6 +57,57 @@ test_that("subset by samples and by metadata narrows the active set", {
   expect_equal(nrow(two$pca_scores()), 2)
 })
 
+test_that("drop_samples removes named samples, after the other filters", {
+  ps <- example_pop_structure(umap = FALSE)
+  ids <- ps$get_samples()
+
+  less <- ps$subset(drop_samples = ids[1:2])
+  expect_length(less$get_samples(), length(ids) - 2)
+  expect_false(any(ids[1:2] %in% less$get_samples()))
+  expect_equal(nrow(less$genotype()), length(ids) - 2)
+  expect_length(ps$get_samples(), length(ids))    # original untouched
+
+  # applied to what the metadata filter left, not to the whole object
+  gh <- ps$subset(country = "Ghana")$get_samples()
+  expect_length(ps$subset(country = "Ghana", drop_samples = gh[1])$get_samples(),
+                length(gh) - 1L)
+  # a sample the filter already excluded is a no-op
+  expect_length(ps$subset(country = "Ghana",
+                          drop_samples = setdiff(ids, gh)[1])$get_samples(),
+                length(gh))
+
+  expect_warning(ps$subset(drop_samples = "not-a-sample"), "not in this object")
+  expect_error(ps$subset(drop_samples = ids), "no samples")
+})
+
+test_that("a refit after subsetting is fit on the kept samples only", {
+  ps_all <- example_pop_structure("africa", umap = FALSE)
+  m <- ps_all$get_meta()
+  victim <- m$sample[m$region == "East Africa"][3]
+
+  out <- ps_all$subset(region = "East Africa", drop_samples = victim)$run_umap(
+    pca_components = 0.1)
+  n <- length(out$get_samples())
+  expect_false(victim %in% out$get_samples())
+
+  # PCA and UMAP are joint fits: the excluded samples must not be in them at all,
+  # otherwise the kept samples are placed by reference to samples the caller dropped
+  g <- out$genotype()
+  scores <- out$pca_scores()
+  expect_equal(nrow(scores), n)
+  expect_identical(rownames(scores), out$get_samples())
+  expect_equal(nrow(out$umap_df()), n)
+  expect_setequal(out$umap_df()$sample, out$get_samples())
+  expect_setequal(unique(as.character(out$get_meta()$region)), "East Africa")
+
+  refit <- pop_structure(g, samples = rownames(g), n_pcs = ncol(scores), umap = FALSE)
+  expect_equal(unname(scores[, 1]), unname(refit$pca[, 1]))
+
+  # the object subsetted from keeps its own samples and its own (absent) embedding
+  expect_length(ps_all$get_samples(), 258)
+  expect_null(ps_all$umap_df())
+})
+
 test_that("plot_umap errors without a UMAP embedding", {
   testthat::skip_if_not_installed("ggplot2")
   mat <- matrix(stats::rbinom(20 * 40, 2, 0.4), nrow = 20)
@@ -291,21 +342,24 @@ test_that("without a factor, group order is a natural sort", {
 
 test_that("plot_snmf_cross_entropy reads an elbow table and marks the best K", {
   testthat::skip_if_not_installed("ggplot2")
+  # min and mean deliberately disagree here: min bottoms out at K = 3, mean at K = 4
   ce <- tibble::tibble(K = 1:5, n_runs = 3L,
-                       min  = c(0.70, 0.66, 0.64, 0.645, 0.65),
-                       mean = c(0.71, 0.67, 0.65, 0.655, 0.66),
-                       max  = c(0.72, 0.68, 0.66, 0.665, 0.67),
+                       min  = c(0.70, 0.66, 0.640, 0.645, 0.65),
+                       mean = c(0.71, 0.67, 0.652, 0.650, 0.66),
+                       max  = c(0.72, 0.68, 0.665, 0.663, 0.67),
                        best_run = 1L)
   p <- plot_snmf_cross_entropy(ce)                       # a table is accepted directly
   b <- ggplot2::ggplot_build(p)
-  # the line follows `min` by default -- the replicate snmf_q() actually returns
+  # the line follows `min` by default, so the marked K is the one snmf_best_k() returns
   expect_equal(p$data$.y, ce$min)
   expect_equal(p$data$K[p$data$.best], 3L)               # lowest min
   labels <- vapply(b$plot$layers,
                    function(l) paste0(l$aes_params$label %||% "", collapse = ""), character(1))
   expect_true(any(grepl("best K = 3", labels)))
-  # stat = "mean" follows the other column and can pick a different K
-  expect_equal(plot_snmf_cross_entropy(ce, stat = "mean")$data$.y, ce$mean)
+  # stat = "mean" follows the other column, and here picks a different K
+  mean_p <- plot_snmf_cross_entropy(ce, stat = "mean")
+  expect_equal(mean_p$data$.y, ce$mean)
+  expect_equal(mean_p$data$K[mean_p$data$.best], 4L)
   # best_k is overridable, and NA marks none
   expect_equal(plot_snmf_cross_entropy(ce, best_k = 5)$data$K[
     plot_snmf_cross_entropy(ce, best_k = 5)$data$.best], 5L)
@@ -315,6 +369,16 @@ test_that("plot_snmf_cross_entropy reads an elbow table and marks the best K", {
   expect_true(any(ribbons))
   expect_false(any(vapply(ggplot2::ggplot_build(plot_snmf_cross_entropy(ce, show_range = FALSE))$plot$layers,
                           function(l) inherits(l$geom, "GeomRibbon"), logical(1))))
+})
+
+test_that("every entry point summarises cross-entropy replicates the same way", {
+  # a plot marking one best K while best_k() returns another is the failure this guards.
+  # `min` is LEA's own convention and the replicate snmf_q() returns -- see snmf_best_k().
+  stat_default <- function(f) eval(formals(f)$stat)[1]
+  expect_equal(stat_default(snmf_best_k), "min")
+  expect_equal(stat_default(plot_snmf_cross_entropy), "min")
+  expect_equal(stat_default(plot_admixture_multi_k), "min")
+  expect_equal(stat_default(PopStructure$public_methods$best_k), "min")
 })
 
 test_that("snmf_cross_entropy summarises replicates per K", {
@@ -575,4 +639,91 @@ test_that("a saved object without panels rebuilds them from its genotypes", {
   expect_equal(dim(back$genotype()), dim(m))
   expect_setequal(rownames(back$genotype()), rownames(m))
   expect_equal(unname(back$genotype()), unname(m))
+})
+
+test_that("load_genotypes drops no-ALT/indel/multiallelic records and keeps invariant sites", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  # one record of every kind that shows up in a real callset. ALT="." is the one that
+  # surprises people: `bcftools view --exclude-types indels` keeps every one of them.
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(
+    "##fileformat=VCFv4.2",
+    "##contig=<ID=Pf3D7_01_v3,length=640851>",
+    '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\ts1\ts2\ts3",
+    "Pf3D7_01_v3\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0/0\t1/1\t0/1",  # polymorphic SNV
+    "Pf3D7_01_v3\t200\t.\tT\t.\t.\tPASS\t.\tGT\t0/0\t0/0\t0/0",  # no ALT      -> skipped
+    "Pf3D7_01_v3\t300\t.\tAT\tA\t.\tPASS\t.\tGT\t0/0\t1/1\t0/0", # indel       -> skipped
+    "Pf3D7_01_v3\t400\t.\tC\tT,G\t.\tPASS\t.\tGT\t0/0\t1/1\t2/2",# multiallelic-> skipped
+    "Pf3D7_01_v3\t500\t.\tG\tA\t.\tPASS\t.\tGT\t1/1\t1/1\t1/1",  # invariant, all alt
+    "Pf3D7_01_v3\t600\t.\tG\tA\t.\tPASS\t.\tGT\t0/0\t0/0\t0/0"), # invariant, no carrier
+    vcf)
+
+  expect_message(g <- load_genotypes(vcf, gds = tempfile(fileext = ".gds"), prune = FALSE),
+                 "3 biallelic SNVs")
+  expect_equal(colnames(g$genotype),
+               c("Pf3D7_01_v3:99", "Pf3D7_01_v3:499", "Pf3D7_01_v3:599"))
+  # both invariant sites survive -- the filter is about the record's alleles, not the samples'
+  expect_true(all(g$genotype[, "Pf3D7_01_v3:499"] == 2L))   # alt dosage, every sample 1/1
+  expect_true(all(g$genotype[, "Pf3D7_01_v3:599"] == 0L))   # alt dosage, every sample 0/0
+  expect_equal(g$variants, "biallelic_snvs")
+})
+
+test_that("variants = 'all' keeps every record, warns, and does not reuse the other GDS", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(
+    "##fileformat=VCFv4.2",
+    "##contig=<ID=Pf3D7_01_v3,length=640851>",
+    '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\ts1\ts2\ts3",
+    "Pf3D7_01_v3\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0/0\t1/1\t0/1",
+    "Pf3D7_01_v3\t200\t.\tT\t.\t.\tPASS\t.\tGT\t0/0\t0/0\t0/0",
+    "Pf3D7_01_v3\t300\t.\tAT\tA\t.\tPASS\t.\tGT\t0/0\t1/1\t0/0",
+    "Pf3D7_01_v3\t400\t.\tC\tT,G\t.\tPASS\t.\tGT\t0/0\t1/1\t2/2",
+    "Pf3D7_01_v3\t500\t.\tG\tA\t.\tPASS\t.\tGT\t1/1\t1/1\t1/1"), vcf)
+  gds <- tempfile(fileext = ".gds")
+
+  bi <- load_genotypes(vcf, gds = gds, prune = FALSE)
+  expect_equal(ncol(bi$genotype), 2L)
+
+  # the same gds path must be rebuilt, not reused, or "all" would hand back the biallelic panel
+  expect_warning(all_v <- load_genotypes(vcf, gds = gds, prune = FALSE, variants = "all"),
+                 "copy number of the reference allele")
+  expect_equal(ncol(all_v$genotype), 5L)
+  expect_equal(all_v$variants, "all")
+  # the indel and the ALT="." site are there now
+  expect_true(all(c("Pf3D7_01_v3:199", "Pf3D7_01_v3:299") %in% colnames(all_v$genotype)))
+  # and the reason nothing downstream can read it: at C -> T,G, 1/1 and 2/2 collapse together
+  expect_equal(unname(all_v$genotype[c("s2", "s3"), "Pf3D7_01_v3:399"]), c(2L, 2L))
+
+  # and back again
+  expect_equal(ncol(load_genotypes(vcf, gds = gds, prune = FALSE)$genotype), 2L)
+})
+
+test_that("a palette passed as `colour` is named as the mistake it is", {
+  skip_if_not_installed("ggplot2")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  ps$run_umap(pca_components = 5)
+  ps$run_snmf(K = 1:3, rep = 2, cache = FALSE)
+  pal <- c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C")
+
+  # `colour` names a metadata column; `colours` is the cluster palette, one letter away
+  expect_error(ps$plot_admixture(K = 3, group = "region", colour = pal), "not a palette")
+  expect_error(ps$plot_admixture(K = 3, group = "region", colour = pal), "`colours = `")
+  expect_error(ps$plot_admixture(K = 3, colour = stats::setNames(pal, paste0("K", 1:4))),
+               "not a palette")
+  expect_error(ps$plot_umap(colour = pal), "not a palette")
+  expect_error(ps$plot_pca(colour = pal), "not a palette")
+  # an unknown column says which ones exist
+  expect_error(ps$plot_umap(colour = "nope"), "no metadata column `nope`")
+  expect_error(ps$plot_umap(colour = "nope"), "country, site, region")
+
+  # and the working spellings still work
+  expect_s3_class(ps$plot_admixture(K = 3, group = "region", colours = pal), "ggplot")
+  expect_s3_class(ps$plot_admixture(K = 3, group = "region", colour = "region"), "ggplot")
+  expect_s3_class(ps$plot_umap(colour = "region"), "ggplot")
+  expect_s3_class(ps$plot_pca(), "ggplot")
 })

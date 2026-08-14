@@ -40,6 +40,30 @@
   out
 }
 
+# Which `variants` a cached GDS was built with, recorded as a node in the file itself so a
+# reused GDS is never mistaken for one built the other way. A GDS from before this was written
+# has no node and was necessarily biallelic-only.
+.GDS_VARIANTS_NODE <- "plasgenomicsutilsR.variants"
+
+.gds_variants <- function(gds) {
+  if (!file.exists(gds)) return(NA_character_)
+  f <- try(gdsfmt::openfn.gds(gds), silent = TRUE)
+  if (inherits(f, "try-error")) return(NA_character_)
+  on.exit(gdsfmt::closefn.gds(f), add = TRUE)
+  n <- try(gdsfmt::index.gdsn(f, .GDS_VARIANTS_NODE), silent = TRUE)
+  if (inherits(n, "try-error")) "biallelic_snvs" else as.character(gdsfmt::read.gdsn(n))[1]
+}
+
+.tag_gds_variants <- function(gds, variants) {
+  f <- try(gdsfmt::openfn.gds(gds, readonly = FALSE), silent = TRUE)
+  if (inherits(f, "try-error")) return(invisible(FALSE))
+  on.exit(gdsfmt::closefn.gds(f), add = TRUE)
+  old <- try(gdsfmt::index.gdsn(f, .GDS_VARIANTS_NODE), silent = TRUE)
+  if (!inherits(old, "try-error")) gdsfmt::delete.gdsn(old)
+  gdsfmt::add.gdsn(f, .GDS_VARIANTS_NODE, variants, closezip = TRUE)
+  invisible(TRUE)
+}
+
 #' Load genotypes from a VCF, optionally LD-pruned
 #'
 #' Converts a VCF to GDS (only when needed) and returns the genotype matrix
@@ -53,14 +77,69 @@
 #' of each correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a
 #' second call with `prune = FALSE` only re-reads it.
 #'
+#' @section Which records reach the panel:
+#' `prune = FALSE` means unpruned, not every record: the panel is usually smaller than the
+#' VCF's record count whatever `prune` is, because the default `variants = "biallelic_snvs"`
+#' has \pkg{SNPRelate} read the file with `method = "biallelic.only"`. Three kinds of record
+#' are skipped, silently:
+#'
+#' * sites with **no ALT allele** (`ALT="."`) -- the reference positions an all-sites caller
+#'   emits. Usually the biggest share by far, and the easiest to miss, since nothing about them
+#'   says "variant": `bcftools view --exclude-types indels` leaves every one of them in place,
+#'   because they are not indels.
+#' * **indels** and other non-SNV records.
+#' * sites with **more than one ALT**.
+#'
+#' So a VCF of 28,927 records carrying 9,158 `ALT="."` positions and 48 multiallelic sites
+#' loads as 19,721 SNPs. When a panel comes out short, count what is actually there rather than
+#' the total, and drop the no-ALT records upstream if you would rather the two numbers agree:
+#'
+#' ```
+#' bcftools view -H -m2 -M2 -v snps file.vcf.gz | wc -l   # what will load
+#' bcftools view -e 'ALT="."' -Ob -o out.bcf in.bcf       # or --min-ac 1
+#' ```
+#'
+#' Sites that are **invariant across the loaded samples are kept**, as long as the VCF lists an
+#' ALT allele there: `"biallelic.only"` asks how many alleles the record declares, not whether
+#' these samples differ. A site every sample calls `1/1`, or every sample calls `0/0`, comes
+#' through -- which is why the functions needing variable sites ([parasite_haplotypes()],
+#' [run_ihs()]) apply their own `maf` cutoff instead of trusting the panel. SNPRelate's own help
+#' calls this "excluding monomorphic variants", which is easy to read as the stronger promise.
+#'
+#' @section Keeping every variant:
+#' `variants = "all"` reads the VCF with `method = "copy.num.of.ref"` instead, which keeps
+#' every record -- multiallelic sites, indels and `ALT="."` positions included -- and stores
+#' the **copy number of the reference allele**. Nothing in this package reads that correctly,
+#' so it warns; the switch is here to hand the matrix to something that does.
+#'
+#' What breaks is the coding, not the reading. A dosage says how many reference copies a sample
+#' has and nothing about *which* alternate allele makes up the rest, so at `C -> T,G` a sample
+#' called `1/1` and a sample called `2/2` are both 0 reference copies and land on the same
+#' number despite carrying different alleles:
+#'
+#' ```
+#' variants = "biallelic_snvs"        variants = "all"
+#'   pos  allele  s1 s2 s3              pos  allele  s1 s2 s3
+#'   100  A/G      2  0  1              100  A/G      2  0  1
+#'   500  G/A      0  0  0              200  T/.      2  2  2   <- no ALT
+#'                                      300  AT/A     2  0  2   <- indel
+#'                                      400  C/T,G    2  0  0   <- 1/1 and 2/2 both 0
+#'                                      500  G/A      0  0  0
+#' ```
+#'
+#' The allele strings themselves survive in the GDS (`SNPRelate::snpgdsSNPList()$allele` gives
+#' `"C/T,G"`), so which alleles exist is recoverable even though the dosage cannot express
+#' them. The returned list records the choice as `variants`, and the GDS is tagged with it, so
+#' the two panels never get confused for one another through a reused `.gds`.
+#'
 #' @param vcf Path to a (bgzipped) VCF, or a **BCF** -- SNPRelate reads VCF text only, so
 #'   a BCF is converted first with `bcftools`, reusing any VCF already sitting next to it
 #'   rather than making another copy.
 #' @param gds Optional GDS path; derived from `vcf` if `NULL`.
-#' @param prune LD-prune (default `TRUE`). `FALSE` returns **every** biallelic SNP,
-#'   unpruned -- use this for the genotype matrix fed to [pop_diff()] /
-#'   [pop_diff_table()], since LD-pruning removes the very SNPs that carry the
-#'   differentiation signal.
+#' @param prune LD-prune (default `TRUE`). `FALSE` returns every record `variants` admits
+#'   (see *Which records reach the panel*), unpruned -- use this for the genotype matrix fed
+#'   to [pop_diff()] / [pop_diff_table()], since LD-pruning removes the very SNPs that carry
+#'   the differentiation signal.
 #' @param ld_threshold,slide_max_bp,slide_max_n,autosome_only Passed to
 #'   [SNPRelate::snpgdsLDpruning()] (defaults 0.2 / 20000 / 200 / `FALSE`); ignored
 #'   when `prune = FALSE`.
@@ -73,30 +152,59 @@
 #'   rest of the package says it means. Only reported allele frequencies (and the
 #'   arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
 #'   and selection statistic here is symmetric in `p` and `1 - p`.
+#' @param variants Which records to read. `"biallelic_snvs"` (default) keeps biallelic SNVs
+#'   only; `"all"` keeps every record, multiallelic sites and indels included, at the cost of a
+#'   dosage that cannot say which ALT it counts. See the two sections below -- nothing in this
+#'   package handles `"all"`, and it warns.
 #' @return A list with `genotype` (matrix; sample row names and `chr:pos0` column names --
 #'   0-based, like every other position in the package),
-#'   `sample.id`, `snp.id`, and the two facts the matrix itself cannot carry: `allele` (which
-#'   allele the dosages count) and `pruned`. [PopStructure] keeps both, so anything that names
-#'   a call or warns about pruning can ask instead of assuming.
+#'   `sample.id`, `snp.id`, and the facts the matrix itself cannot carry: `allele` (which
+#'   allele the dosages count), `pruned`, `positions` and `variants`. [PopStructure] keeps
+#'   them, so anything that names a call or warns about pruning can ask instead of assuming.
 #' @seealso [PopStructure], [pop_structure()]
 #' @export
 load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
                          slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
                          maf = NaN, missing_rate = NaN, seed = 42, vcf_dir = NULL,
-                         allele = c("alt", "ref")) {
+                         allele = c("alt", "ref"),
+                         variants = c("biallelic_snvs", "all")) {
   .need_package("SNPRelate", "load_genotypes()")
   .need_package("gdsfmt", "load_genotypes()")
   allele <- match.arg(allele)
+  variants <- match.arg(variants)
+  method <- if (identical(variants, "all")) "copy.num.of.ref" else "biallelic.only"
   if (!file.exists(vcf)) stop(sprintf("no such file: %s", vcf), call. = FALSE)
   vcf <- .as_text_vcf(vcf, vcf_dir)
   if (is.null(gds)) gds <- sub("\\.vcf(\\.gz)?$", ".gds", vcf, ignore.case = TRUE)
   if (identical(gds, vcf)) gds <- paste0(vcf, ".gds")
-  if (!file.exists(gds) || file.mtime(gds) < file.mtime(vcf)) {
-    SNPRelate::snpgdsVCF2GDS(vcf, gds, method = "biallelic.only", verbose = FALSE)
+  # A GDS built one way holds a different set of records, so reuse only when it was built the
+  # same way -- otherwise asking for `variants = "all"` would silently hand back the cached
+  # biallelic panel (or the reverse).
+  stale <- !file.exists(gds) || file.mtime(gds) < file.mtime(vcf) ||
+    !identical(.gds_variants(gds), variants)
+  if (stale) {
+    # biallelic.only keeps biallelic SNVs and skips ALT="." reference positions, indels and
+    # multiallelic sites, so the panel is routinely smaller than the VCF's record count
+    SNPRelate::snpgdsVCF2GDS(vcf, gds, method = method, verbose = FALSE)
+    .tag_gds_variants(gds, variants)
   }
   h <- SNPRelate::snpgdsOpen(gds)
   on.exit(SNPRelate::snpgdsClose(h), add = TRUE)
   snpinfo <- SNPRelate::snpgdsSNPList(h)              # snp.id, chromosome, position
+  # said out loud because it is the number people go looking for when a panel is smaller
+  # than the VCF they built it from
+  if (identical(variants, "all")) {
+    message(nrow(snpinfo), " records in ", basename(vcf),
+            " (every variant, including indels and multiallelic sites)")
+    warning("`variants = \"all\"` stores the copy number of the reference allele, so at a ",
+            "multiallelic site every non-reference genotype collapses to the same dosage no ",
+            "matter which ALT it carries, and indels and ALT=\".\" records come through too. ",
+            "Nothing downstream in this package reads that correctly -- use it to hand the ",
+            "matrix to something that does.", call. = FALSE)
+  } else {
+    message(nrow(snpinfo), " biallelic SNVs in ", basename(vcf),
+            " (ALT=\".\" reference positions, indels and multiallelic sites are not read)")
+  }
   if (prune) {
     set.seed(seed)
     snpset <- SNPRelate::snpgdsLDpruning(
@@ -126,7 +234,7 @@ load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
   # a bare matrix says whether it counts reference or alternate alleles, and the two are
   # indistinguishable after the fact, so a plot that names the calls has to be told.
   list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id,
-       allele = allele, pruned = prune, positions = "0-based")
+       allele = allele, pruned = prune, positions = "0-based", variants = variants)
 }
 
 #' Deprecated name for load_genotypes()
@@ -257,8 +365,8 @@ print.pop_structure <- function(x, ...) {
 #'
 #' @param x A `pop_structure` object or a [PopStructure] R6 object.
 #' @param pcs Which two PCs to plot (default `c(1, 2)`).
-#' @param colour Metadata column to colour points by (needs `meta`).
-#' @param colors Optional named `level -> colour` vector for the colour scale
+#' @param colour,color Metadata column to colour points by (needs `meta`).
+#' @param colors,colours Optional named `level -> colour` vector for the colour scale
 #'   (e.g. from [meta_colors()]); a `PopStructure` supplies its stored map.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param legend_point_size Size of the coloured dots in the legend (default `3`, larger
@@ -266,7 +374,10 @@ print.pop_structure <- function(x, ...) {
 #' @return A ggplot object.
 #' @export
 plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
-                     point_size = 1.6, point_alpha = 0.8, legend_point_size = 3) {
+                     point_size = 1.6, point_alpha = 0.8, legend_point_size = 3,
+                     color = NULL, colours = NULL) {
+  colour <- .alias_arg("colour", "color")
+  colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_pca()")
   if (inherits(x, "PopStructure")) {
     if (is.null(colors) && !is.null(colour)) colors <- x$get_colors()[[colour]]
@@ -287,8 +398,8 @@ plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
 #' UMAP scatter plot
 #'
 #' @param x A `pop_structure` object (built with `umap = TRUE`) or a [PopStructure].
-#' @param colour Metadata column to colour points by (needs `meta`).
-#' @param colors Optional named `level -> colour` vector for the colour scale
+#' @param colour,color Metadata column to colour points by (needs `meta`).
+#' @param colors,colours Optional named `level -> colour` vector for the colour scale
 #'   (e.g. from [meta_colors()]); a `PopStructure` supplies its stored map.
 #' @param point_size,point_alpha Point aesthetics.
 #' @param legend_point_size Size of the coloured dots in the legend (default `3`, larger
@@ -296,7 +407,10 @@ plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
 #' @return A ggplot object.
 #' @export
 plot_umap <- function(x, colour = NULL, colors = NULL, point_size = 1.6,
-                      point_alpha = 0.8, legend_point_size = 3) {
+                      point_alpha = 0.8, legend_point_size = 3,
+                      color = NULL, colours = NULL) {
+  colour <- .alias_arg("colour", "color")
+  colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_umap()")
   if (inherits(x, "PopStructure")) {
     if (is.null(colors) && !is.null(colour)) colors <- x$get_colors()[[colour]]
@@ -428,12 +542,27 @@ print.snmf_fit <- function(x, ...) {
 
 #' Pick the best K from an sNMF fit by cross-entropy
 #'
+#' sNMF fits `rep` replicates at each K, so a K has a spread of cross-entropies rather than
+#' one. They are summarised by their **minimum** across replicates, which is what
+#' \pkg{LEA}'s own `plot()` of an sNMF project shows, and the criterion its vignette reads a
+#' best K off. It is also the replicate [snmf_q()] returns: sNMF's objective is non-convex,
+#' replicates land in different local optima, and the best-fitting one is the model whose
+#' ancestry you go on to plot -- so comparing minima compares the models actually used at
+#' each K.
+#'
+#' `stat = "mean"` averages the replicates instead. Reach for it when the replicate count
+#' differs between K values (`n_runs` in [snmf_cross_entropy()]), since a minimum over more
+#' replicates is expected to be smaller whether or not that K fits better; averaging is not
+#' sensitive to how many were run.
+#'
 #' @param x An [run_snmf()] result (or a raw LEA project, with `K` given).
 #' @param K Candidate K values (defaults to the fitted range from [run_snmf()]).
-#' @param stat Combine replicates by `"mean"` (default) or `"min"` cross-entropy.
+#' @param stat Combine replicates by `"min"` (default) or `"mean"` cross-entropy.
 #' @return The K minimising the summarised cross-entropy.
+#' @seealso [snmf_cross_entropy()] for the per-K spread, [plot_snmf_cross_entropy()] for the
+#'   elbow.
 #' @export
-snmf_best_k <- function(x, K = NULL, stat = c("mean", "min")) {
+snmf_best_k <- function(x, K = NULL, stat = c("min", "mean")) {
   .need_package("LEA", "snmf_best_k()")
   stat <- match.arg(stat)
   project <- .snmf_project(x)
@@ -454,9 +583,11 @@ snmf_best_k <- function(x, K = NULL, stat = c("mean", "min")) {
 #' `mean` and `max` show how much the replicates disagreed, which is worth a look before
 #' trusting a K.
 #'
-#' Picking K is a separate judgement from picking a replicate: read the elbow of `min`
-#' across K with [plot_snmf_cross_entropy()]. A curve that keeps falling or is flat means
-#' the data do not support a well-defined K, whatever [snmf_best_k()] returns.
+#' `min` is also what K is chosen on, by [snmf_best_k()] and by the
+#' [plot_snmf_cross_entropy()] elbow, so the K you settle on and the ancestry you draw at it
+#' are scored by the same number. A curve that keeps falling or is flat means the data do not
+#' support a well-defined K, whatever [snmf_best_k()] returns; `n_runs` is worth a glance
+#' first, since a K whose replicates mostly failed has its minimum taken over fewer of them.
 #'
 #' @param x An [run_snmf()] result (or a raw LEA project, with `K` given).
 #' @param K Candidate K values (defaults to the fitted range).
@@ -492,8 +623,9 @@ snmf_cross_entropy <- function(x, K = NULL) {
 #'
 #' @param x An [run_snmf()] result, or a table from [snmf_cross_entropy()].
 #' @param K Candidate K values (defaults to the fitted range).
-#' @param stat Which summary the line follows: `"min"` (default -- the replicate that
-#'   [snmf_q()] plots) or `"mean"`.
+#' @param stat Which summary the line follows, and which the red marker minimises:
+#'   `"min"` (default, as in [snmf_best_k()]) or `"mean"`. See [snmf_best_k()] for why
+#'   `"min"` is the default and when `"mean"` is worth asking for.
 #' @param show_range Draw the replicate min-max band (default `TRUE`).
 #' @param best_k K to mark in red; `NULL` (default) marks the K minimising `stat`, `NA`
 #'   marks none.
@@ -564,8 +696,8 @@ plot_snmf_cross_entropy <- function(x, K = NULL, stat = c("min", "mean"),
 #'   it on every page (default `TRUE`). `FALSE` lets each page cluster its own samples,
 #'   so bars move between pages.
 #' @param best_k The K to treat as best; `NULL` (default) uses [snmf_best_k()].
-#' @param stat How [snmf_best_k()] and the elbow combine replicates: `"mean"` (default)
-#'   or `"min"`.
+#' @param stat How [snmf_best_k()] and the elbow combine replicates: `"min"` (default)
+#'   or `"mean"`.
 #' @param meta,samples Metadata and sample ids, needed only when `x` is a raw
 #'   [run_snmf()] result.
 #' @param ... Passed to [plot_admixture()] (e.g. `group_bar`, `border`, `colours`).
@@ -582,7 +714,7 @@ plot_snmf_cross_entropy <- function(x, K = NULL, stat = c("min", "mean"),
 plot_admixture_multi_k <- function(x, K = NULL, group = NULL,
                                    cross_entropy_first = TRUE,
                                    sample_order = NULL, sample_order_best_k = TRUE,
-                                   best_k = NULL, stat = c("mean", "min"),
+                                   best_k = NULL, stat = c("min", "mean"),
                                    meta = NULL, samples = NULL, ...) {
   .need_package("ggplot2", "plot_admixture_multi_k()")
   stat <- match.arg(stat)
@@ -713,16 +845,16 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
 #'   `sample_order` is supplied).
 #' @param sample_order Optional explicit sample order (see [admixture_order()]); keeps
 #'   bars in the same place across different K.
-#' @param colours Optional fill colours for the K clusters.
+#' @param colours,colors Optional fill colours for the K clusters.
 #' @param group_bar Draw a coloured strip above the bars keyed by `group`.
-#' @param group_colours Named `level -> colour` vector for the group strip (see
+#' @param group_colours,group_colors Named `level -> colour` vector for the group strip (see
 #'   [meta_colors()]); pass the same mapping you use for the UMAP to match colours.
 #' @param border Outline each sample's bar (default `TRUE`, matching
 #'   [plot_structure_figure()]) so neighbours with nearly identical ancestry stay distinct;
 #'   `FALSE` for borderless bars. With very many samples in a narrow render the outlines
 #'   can swamp the fills -- either render wider ([save_plot()] uses the attached width) or
 #'   set `border = FALSE` / a thinner `border_linewidth`.
-#' @param border_colour,border_linewidth Colour and width of the per-sample outline.
+#' @param border_colour,border_color,border_linewidth Colour and width of the per-sample outline.
 #' @param legend_position Where the legends go: `"right"` (default), `"bottom"`, `"top"`,
 #'   `"left"`, or `"none"`. A large K makes for a tall legend stack, so `"bottom"` often
 #'   fits better on a wide, short admixture panel.
@@ -739,7 +871,11 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
                            border = TRUE, border_colour = "black",
                            border_linewidth = 0.15,
                            legend_position = c("right", "bottom", "top", "left", "none"),
-                           legend_rows = NULL) {
+                           legend_rows = NULL,
+                           colors = NULL, group_colors = NULL, border_color = NULL) {
+  colours <- .alias_arg("colours", "colors")
+  group_colours <- .alias_arg("group_colours", "group_colors")
+  border_colour <- .alias_arg("border_colour", "border_color")
   .need_package("ggplot2", "plot_admixture()")
   legend_position <- match.arg(legend_position)
   q <- as.matrix(q)
@@ -866,7 +1002,8 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   are indistinguishable afterwards, so anything that names the calls has to be told.
     initialize = function(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL,
                           allele = NULL, pruned = NULL, full = NULL,
-                          one_based = FALSE) {
+                          one_based = FALSE, colours = NULL) {
+      colors <- .alias_arg("colors", "colours")
       positions <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(samples)) samples <- geno$sample.id
@@ -949,7 +1086,8 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @description Attach/replace metadata; auto-assigns colours for new columns.
     #' @param meta Data frame with a `sample` column.
     #' @param colors Optional colour overrides (`column -> (level -> colour)`).
-    add_meta = function(meta, colors = NULL) {
+    add_meta = function(meta, colors = NULL, colours = NULL) {
+      colors <- .alias_arg("colors", "colours")
       meta <- as.data.frame(meta, stringsAsFactors = FALSE)
       if (!"sample" %in% names(meta)) stop("`meta` needs a `sample` column", call. = FALSE)
       private$meta_df <- meta
@@ -962,7 +1100,8 @@ PopStructure <- R6::R6Class("PopStructure",
 
     #' @description Set/override colour maps for metadata columns.
     #' @param colors Named list `column -> (level -> colour)`.
-    set_colors = function(colors) {
+    set_colors = function(colors, colours = NULL) {
+      colors <- .alias_arg("colors", "colours")
       for (nm in names(colors)) private$colors[[nm]] <- colors[[nm]]
       invisible(self)
     },
@@ -994,6 +1133,7 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param n_neighbors,min_dist UMAP parameters.
     #' @param seed Random seed.
     run_umap = function(pca_components = 30, n_neighbors = 15, min_dist = 0.1, seed = 42) {
+      private$collapse_to_active()
       private$ps <- pop_structure(private$geno_mat, samples = private$sample_ids,
                                   meta = private$meta_df, n_pcs = private$n_pcs,
                                   umap = TRUE, umap_pca = pca_components,
@@ -1005,6 +1145,7 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param K,rep,alpha,seed,cpu,cache,cache_dir,verbose,log_file Passed to [run_snmf()].
     run_snmf = function(K = 1:10, rep = 10, alpha = 10, seed = 42, cpu = 1,
                         cache = TRUE, cache_dir = NULL, verbose = FALSE, log_file = NULL) {
+      private$collapse_to_active()
       private$snmf_fit <- run_snmf(
         list(genotype = private$geno_mat, sample.id = private$sample_ids),
         K = K, rep = rep, alpha = alpha, seed = seed, cpu = cpu,
@@ -1013,8 +1154,8 @@ PopStructure <- R6::R6Class("PopStructure",
     },
 
     #' @description Best K (cross-entropy) from the fitted sNMF.
-    #' @param stat Combine replicates by `"mean"` or `"min"`.
-    best_k = function(stat = c("mean", "min")) snmf_best_k(private$snmf_fit, stat = match.arg(stat)),
+    #' @param stat Combine replicates by `"min"` or `"mean"`; see [snmf_best_k()].
+    best_k = function(stat = c("min", "mean")) snmf_best_k(private$snmf_fit, stat = match.arg(stat)),
 
     #' @description Per-K cross-entropy summary of the sNMF replicates
     #'   (see [snmf_cross_entropy()]).
@@ -1064,8 +1205,13 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   matches (does not recompute PCA/UMAP/sNMF -- the embeddings are shared and
     #'   simply filtered).
     #' @param samples Sample ids to keep.
+    #' @param drop_samples Sample ids to remove, applied after `samples` and the metadata
+    #'   filters. For taking out the one or two samples an otherwise good subset should not
+    #'   include -- a contaminant, a duplicate -- without having to spell out the keep list.
+    #'   Ids that are not in the object are reported rather than ignored, since a typo would
+    #'   otherwise look exactly like a sample that was already gone.
     #' @param ... `column = value(s)` metadata filters (e.g. `region = "West Africa"`).
-    subset = function(samples = NULL, ...) {
+    subset = function(samples = NULL, drop_samples = NULL, ...) {
       keep <- private$active_ids
       if (!is.null(samples)) keep <- intersect(keep, samples)
       filt <- list(...)
@@ -1075,6 +1221,15 @@ PopStructure <- R6::R6Class("PopStructure",
         for (nm in names(filt)) if (nm %in% names(m)) ok <- ok & (m[[nm]] %in% filt[[nm]])
         keep <- intersect(keep, m$sample[ok])
       }
+      if (!is.null(drop_samples)) {
+        drop_samples <- as.character(drop_samples)
+        unknown <- setdiff(drop_samples, private$sample_ids)
+        if (length(unknown))
+          warning("drop_samples not in this object: ", paste(unknown, collapse = ", "),
+                  call. = FALSE)
+        keep <- setdiff(keep, drop_samples)
+      }
+      if (!length(keep)) stop("that leaves no samples", call. = FALSE)
       new <- self$clone(deep = FALSE)
       new$restrict(keep)
       new
@@ -1102,6 +1257,9 @@ PopStructure <- R6::R6Class("PopStructure",
       private$meta_df[private$meta_df$sample %in% private$active_ids, , drop = FALSE],
     #' @description The shared colour maps.
     get_colors = function() private$colors,
+
+    #' @description Alias for `get_colors()`.
+    get_colours = function() private$colors,
     #' @description Which allele the dosages count (`"alt"` / `"ref"`), or `NULL` when the
     #'   object does not record it (built from a bare matrix, or saved by an older version).
     #' @param panel Which panel to report on; the primary one when `NULL`.
@@ -1129,27 +1287,38 @@ PopStructure <- R6::R6Class("PopStructure",
     },
 
     #' @description PCA scatter coloured by a metadata column (shared colours).
-    #' @param colour Metadata column to colour by.
+    #' @param colour,color Metadata column to colour by (either spelling).
     #' @param pcs Which two PCs.
     #' @param ... Passed to [plot_pca()].
-    plot_pca = function(colour = NULL, pcs = c(1, 2), ...)
-      plot_pca(self, pcs = pcs, colour = colour, ...),
+    plot_pca = function(colour = NULL, pcs = c(1, 2), ..., color = NULL) {
+      colour <- .alias_arg("colour", "color")
+      private$check_colour_column(colour, "plot_pca")
+      plot_pca(self, pcs = pcs, colour = colour, ...)
+    },
 
     #' @description UMAP scatter coloured by a metadata column (shared colours).
-    #' @param colour Metadata column to colour by.
+    #' @param colour,color Metadata column to colour by (either spelling).
     #' @param ... Passed to [plot_umap()].
-    plot_umap = function(colour = NULL, ...) plot_umap(self, colour = colour, ...),
+    plot_umap = function(colour = NULL, ..., color = NULL) {
+      colour <- .alias_arg("colour", "color")
+      private$check_colour_column(colour, "plot_umap")
+      plot_umap(self, colour = colour, ...)
+    },
 
     #' @description Admixture bars; the group strip reuses the shared colour map, so it
     #'   matches the UMAP/PCA colouring.
     #' @param K Number of ancestral populations (default best K).
     #' @param group Metadata column to facet by and colour the strip with.
-    #' @param colour Metadata column for the strip colours (default `group`).
+    #' @param colour,color Metadata column for the strip colours (default `group`, either
+    #'   spelling). To recolour the ancestry clusters themselves, pass `colours` / `colors`
+    #'   (a palette), which goes to [plot_admixture()].
     #' @param sample_order Explicit sample order (see [admixture_order()]).
     #' @param group_bar Draw the group colour strip.
     #' @param ... Passed to [plot_admixture()].
     plot_admixture = function(K = NULL, group = NULL, colour = group, sample_order = NULL,
-                              group_bar = !is.null(group), ...) {
+                              group_bar = !is.null(group), ..., color = NULL) {
+      colour <- .alias_arg("colour", "color")
+      private$check_colour_column(colour, "plot_admixture")
       qq <- self$q(K)
       plot_admixture(qq, meta = self$get_meta(), group = group, sample_order = sample_order,
                      group_bar = group_bar,
@@ -1191,6 +1360,12 @@ PopStructure <- R6::R6Class("PopStructure",
       statistic <- if (is.null(dots$statistic)) "jost_d" else dots$statistic
       genotype  <- dots$genotype
       dots$statistic <- NULL; dots$genotype <- NULL
+      # annotation strips read the shared colour map, as the UMAP, the PCA and the admixture
+      # group bar do, so a level drawn here is the colour it is everywhere else
+      if (!is.null(dots$annotate) &&
+          is.null(dots$annotate_colours) && is.null(dots$annotate_colors) &&
+          length(private$colors))
+        dots$annotate_colours <- private$colors
       do.call(plot_diff_heatmap,
               c(list(pop_diff(self, group = group, statistic = statistic, genotype = genotype),
                      meta = private$meta_df), dots))
@@ -1324,6 +1499,54 @@ PopStructure <- R6::R6Class("PopStructure",
     },
     colors = NULL, ps = NULL, snmf_fit = NULL, n_pcs = NULL,
     idx = function() match(private$active_ids, private$sample_ids),
+    # `colour` names a metadata column whose shared colour map is reused; a palette passed
+    # here reaches `private$colors[[colour]]` and fails on the subscript instead of on the
+    # argument. The near-miss worth naming is `colours`, one letter away and a palette.
+    check_colour_column = function(colour, fn) {
+      if (is.null(colour)) return(invisible(NULL))
+      cols <- if (is.null(private$meta_df)) character() else
+        setdiff(names(private$meta_df), "sample")
+      if (!is.character(colour) || length(colour) != 1L)
+        stop("`colour` in ", fn, "() names one metadata column to colour by, not a palette.",
+             if (identical(fn, "plot_admixture"))
+               " To recolour the ancestry clusters, pass `colours = `." else "",
+             "\n  columns available: ",
+             if (length(cols)) paste(cols, collapse = ", ") else "none (add_meta() first)",
+             call. = FALSE)
+      if (!colour %in% cols)
+        stop("no metadata column `", colour, "` to colour by.\n  columns available: ",
+             if (length(cols)) paste(cols, collapse = ", ") else "none (add_meta() first)",
+             call. = FALSE)
+      invisible(NULL)
+    },
+    # Drop the samples a subset() excluded from the data itself, not just from the
+    # accessors. Called before anything that refits: PCA, UMAP and sNMF are joint fits, so
+    # a refit that still saw the excluded samples would place the kept ones by reference to
+    # samples the caller asked to leave out.
+    collapse_to_active = function() {
+      if (identical(private$sample_ids, private$active_ids)) return(invisible(NULL))
+      keep <- private$active_ids
+      i <- private$idx()
+      private$geno_mat <- private$geno_mat[i, , drop = FALSE]
+      if (!is.null(private$panel_list))
+        private$panel_list <- lapply(private$panel_list, function(p) {
+          p$genotype <- p$genotype[keep, , drop = FALSE]
+          p
+        })
+      if (!is.null(private$meta_df))
+        private$meta_df <- private$meta_df[private$meta_df$sample %in% keep, , drop = FALSE]
+      if (!is.null(private$ps)) {
+        private$ps$pca <- private$ps$pca[i, , drop = FALSE]
+        if (!is.null(private$ps$umap))
+          private$ps$umap <-
+            private$ps$umap[private$ps$umap$sample %in% keep, , drop = FALSE]
+        if (!is.null(private$ps$prcomp$x))
+          private$ps$prcomp$x <- private$ps$prcomp$x[i, , drop = FALSE]
+        private$ps$meta <- private$meta_df
+      }
+      private$sample_ids <- keep
+      invisible(NULL)
+    },
     require_snmf = function() {
       if (is.null(private$snmf_fit)) stop("run_snmf() first", call. = FALSE)
       invisible(NULL)

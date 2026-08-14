@@ -229,3 +229,77 @@ test_that("asymmetric padding reaches the plots", {
   expect_lt(l[1], r[1])
   expect_lt(l[2], r[2])
 })
+
+# --------------------------------------------------------------------------- #
+#  A gene track shares its x scale with the panel above it                     #
+# --------------------------------------------------------------------------- #
+
+# patchwork aligns panel *areas*, not data ranges, so a difference in x expansion between a
+# panel and its gene track silently re-scales one against the other and every gene box lands
+# beside the SNPs it covers. Compare the built ranges rather than the data.
+.panel_x_ranges <- function(p) {
+  plots <- c(list(p), if (!is.null(p$patches)) p$patches$plots)
+  out <- list()
+  for (q in plots) {
+    b <- tryCatch(ggplot2::ggplot_build(q), error = function(e) NULL)
+    if (is.null(b)) next
+    geoms <- vapply(b$plot$layers, function(l) class(l$geom)[1], character(1))
+    out[[length(out) + 1L]] <- list(x = b$layout$panel_params[[1]]$x.range, geoms = geoms)
+  }
+  out
+}
+
+test_that("the region-haplotype gene track is on the same x scale as the heatmap", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("patchwork")
+  ps <- example_pop_structure(umap = FALSE)
+  p <- suppressMessages(
+    plot_region_haplotypes(ps, "pfcrt", pad = 20000, genes = PF_EXAMPLE_DRUG_GENES,
+                           gene_label_angle = 90, mark_snps = "pfcrt"))
+
+  rs <- .panel_x_ranges(p)
+  # the heatmap carries the marks (vlines); the track carries the gene names
+  heat <- Filter(function(r) "GeomVline" %in% r$geoms, rs)
+  track <- Filter(function(r) "GeomText" %in% r$geoms, rs)
+  expect_length(heat, 1L)
+  expect_length(track, 1L)
+  expect_equal(track[[1]]$x, heat[[1]]$x)
+})
+
+test_that("a marked SNP lands inside its own gene's box", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("patchwork")
+  ps <- example_pop_structure(umap = FALSE)
+  p <- suppressMessages(
+    plot_region_haplotypes(ps, "pfcrt", pad = 20000, genes = PF_EXAMPLE_DRUG_GENES,
+                           gene_label_angle = 90, mark_snps = "pfcrt"))
+
+  marks <- NULL; box <- NULL
+  for (q in c(list(p), p$patches$plots)) {
+    b <- tryCatch(ggplot2::ggplot_build(q), error = function(e) NULL)
+    if (is.null(b)) next
+    geoms <- vapply(b$plot$layers, function(l) class(l$geom)[1], character(1))
+    if ("GeomVline" %in% geoms)
+      marks <- b$data[[which(geoms == "GeomVline")[1]]]$xintercept
+    if ("GeomText" %in% geoms) {
+      lab <- b$data[[which(geoms == "GeomText")[1]]]
+      rect <- b$data[[which(geoms == "GeomRect")[1]]]
+      i <- which(lab$label == "pfcrt")
+      if (length(i)) box <- c(rect$xmin[i[1]], rect$xmax[i[1]])
+    }
+  }
+  expect_false(is.null(marks)); expect_false(is.null(box))
+  expect_true(all(marks > box[1] & marks < box[2]))
+})
+
+test_that("a zoomed plot's gene track shares the zoomed panel's expansion", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("patchwork")
+  ibd <- example_ibd_results()
+  p <- suppressMessages(plot_ibd_sharing_manhattan(
+    ibd, zoom = "pfcrt", zoom_pad = 20000, genes_for_track = PF_EXAMPLE_DRUG_GENES))
+  rs <- .panel_x_ranges(p)
+  xs <- unique(lapply(rs, function(r) round(r$x, 6)))
+  # every panel sharing the zoomed axis lands on one range
+  expect_length(xs, 1L)
+})

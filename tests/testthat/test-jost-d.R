@@ -121,3 +121,86 @@ test_that("pop_diff accepts a genotype override (full unpruned set)", {
   lst <- list(genotype = wide, sample.id = rownames(wide))
   expect_s3_class(ps$pop_diff(group = "region", genotype = lst), "pop_diff")
 })
+
+# ggplot orders guides by their `order`, and with the default 0 on all of them it falls back
+# to a hash of the guide, which depends on the labels. Read the built gtable, not the scales.
+diff_legend_titles <- function(p) {
+  g <- if (inherits(p, "patchwork")) patchwork::patchworkGrob(p) else ggplot2::ggplotGrob(p)
+  out <- list()
+  for (k in grep("guide-box", g$layout$name)) {
+    gb <- g$grobs[[k]]
+    if (is.null(gb$layout)) next
+    for (j in seq_along(gb$grobs)) {
+      gr <- gb$grobs[[j]]
+      if (is.null(gr$layout)) next
+      ti <- which(grepl("^title", gr$layout$name))[1]
+      if (is.na(ti)) next
+      lab <- tryCatch(gr$grobs[[ti]]$children[[1]]$label, error = function(e) NULL)
+      if (!is.null(lab) && length(lab) == 1)
+        out[[length(out) + 1]] <- list(t = gb$layout$t[j], lab = gsub("\n", " ", lab))
+    }
+  }
+  if (!length(out)) return(character(0))
+  vapply(out[order(vapply(out, `[[`, 0, "t"))], `[[`, "", "lab")
+}
+
+test_that("the heatmap legends follow the order `annotate` was given", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("patchwork")
+  testthat::skip_if_not_installed("ggnewscale")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  meta <- ps$get_meta()
+  meta$batch <- factor(ifelse(seq_len(nrow(meta)) %% 2 == 0, "run_A", "run_B"))
+  pd <- jost_d(ps, group = "site")
+
+  # the statistic first, then the annotations as asked for -- reversing the request
+  # reverses the stack, which is what tells us the order is honoured and not hashed
+  expect_equal(diff_legend_titles(
+    plot_diff_heatmap(pd, annotate = c("country", "region", "batch"), meta = meta)),
+    c("Jost's D (mean)", "country", "region", "batch"))
+  expect_equal(diff_legend_titles(
+    plot_diff_heatmap(pd, annotate = c("batch", "country"), meta = meta)),
+    c("Jost's D (mean)", "batch", "country"))
+
+  # and it does not move when the data behind the labels changes
+  sites <- unique(as.character(meta$site))
+  stacks <- lapply(list(sites, sites[1:4], sites[1:3]), function(keep) {
+    sub <- ps$subset(site = keep)
+    m <- sub$get_meta()
+    m$batch <- factor(ifelse(seq_len(nrow(m)) %% 2 == 0, "run_A", "run_B"))
+    diff_legend_titles(plot_diff_heatmap(jost_d(sub, group = "site"),
+                                         annotate = c("country", "region", "batch"), meta = m))
+  })
+  expect_equal(length(unique(stacks)), 1L)
+
+  # legends in the margin are collected panel by panel, so they follow the strip layout:
+  # the annotations top to bottom, then the heatmap's own scale
+  expect_equal(diff_legend_titles(
+    plot_diff_heatmap(pd, annotate = c("country", "region"), meta = meta,
+                      legend_inside = FALSE)),
+    c("country", "region", "Jost's D (mean)"))
+})
+
+test_that("annotation strips reuse the object's shared colour map", {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("patchwork")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  regs <- sort(unique(as.character(ps$get_meta()$region)))
+  mine <- stats::setNames(c("#E20134", "#003C86")[seq_along(regs)], regs)
+  ps$set_colors(list(region = mine))
+
+  fills <- function(p) {
+    if (inherits(p, "patchwork")) { q <- p; class(q) <- setdiff(class(q), "patchwork"); p <- q }
+    b <- ggplot2::ggplot_build(p)
+    unique(unlist(lapply(b$data, function(d) c(d$colour, d$fill))))
+  }
+  # a level keeps the colour it has in the UMAP and the admixture bars
+  expect_true(all(mine %in% fills(ps$plot_diff_heatmap(group = "site", annotate = "region"))))
+
+  # an explicit palette still wins over the shared map
+  green <- stats::setNames(rep("#00FF00", length(regs)), regs)
+  got <- fills(ps$plot_diff_heatmap(group = "site", annotate = "region",
+                                    annotate_colours = list(region = green)))
+  expect_true("#00FF00" %in% got)
+  expect_false(any(mine %in% got))
+})

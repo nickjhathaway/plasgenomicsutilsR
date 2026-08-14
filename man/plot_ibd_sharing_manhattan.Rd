@@ -17,7 +17,8 @@ plot_ibd_sharing_manhattan(
   label_genes = NULL,
   point_size = 0.5,
   point_alpha = 0.6,
-  colours = NULL
+  colours = NULL,
+  colors = NULL
 )
 }
 \arguments{
@@ -61,7 +62,7 @@ only when \code{highlight_genes} is given; \code{TRUE}/\code{FALSE} forces it.}
 
 \item{point_size, point_alpha}{Point aesthetics.}
 
-\item{colours}{Optional length-2 colour vector for the alternating chromosome bands.}
+\item{colours, colors}{Optional length-2 colour vector for the alternating chromosome bands.}
 }
 \value{
 A ggplot object.

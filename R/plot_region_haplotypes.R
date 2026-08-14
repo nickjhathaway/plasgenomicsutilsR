@@ -6,6 +6,12 @@
 # Every call gets a colour of its own, from the package's colour-blind-friendly set, and only
 # missing data is grey: a near-white fill for one of the calls is hard to tell from both the
 # panel and the grey of a missing call, which is the one distinction that must stay obvious.
+# The genotype legend sits above the annotation legends, which then follow the order the caller
+# listed them in. Without an explicit order ggplot sorts guides by an internal hash of their
+# labels, so the stack rearranged itself between datasets and two figures stopped being
+# comparable.
+.HAP_LEGEND_CALL <- 1L
+
 .GENO_FILL <- c(reference = "#2271B2", mixed = "#359B73", alternate = "#D55E00")
 
 # What a dosage means depends on which allele it counts, and the two codings are
@@ -146,9 +152,15 @@
 #' @param annotations Optional metadata columns to draw as coloured strips down the right,
 #'   one column each, sharing the object's colour maps (see [meta_colors()]) so a level keeps
 #'   the colour it has in the other plots. Each gets its own legend.
+#' @param annotation_colours,annotation_colors Per-annotation palettes, as a named list
+#'   (`list(region = c(north = "#1B9E77", south = "grey60"))`). Named colours override those
+#'   levels and leave the rest of that annotation's shared map alone, so recolouring one
+#'   level does not mean respelling all of them; an unnamed vector is taken in level order.
+#'   Only this plot changes -- `PopStructure$set_colors()` is still the way to move a colour
+#'   everywhere at once, which is what keeps a level looking the same across figures.
 #' @param border Outline every call (default `TRUE`), which is what makes single SNPs
 #'   readable as cells rather than a wash of colour.
-#' @param border_colour Colour of that outline.
+#' @param border_colour,border_color Colour of that outline.
 #' @param allele Which allele the dosages count, `"alt"` or `"ref"`. `NULL` (default) asks
 #'   the object; if it does not record it, alt is assumed and a message says so. The two are
 #'   indistinguishable from the matrix, and getting it backwards mislabels every call.
@@ -177,8 +189,8 @@
 #' @param snp_width Width of each mark under `"genomic"` spacing, in base pairs. `NULL`
 #'   (default) uses 0.5% of the window, wide enough to see and narrow enough to leave the
 #'   gaps between SNPs visible.
-#' @param colours Named fill colours for `reference` / `mixed` / `alternate`.
-#' @param na_colour Fill for missing calls.
+#' @param colours,colors Named fill colours for `reference` / `mixed` / `alternate`.
+#' @param na_colour,na_color Fill for missing calls.
 #' @param show_sample_names Label the rows. `NULL` (default) labels them when there are at
 #'   most 40 samples.
 #' @param reference Reference id, used when `region` names a whole chromosome.
@@ -200,7 +212,14 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                                    pad = 0, min_span = 0, max_snps = 2000, snp_width = NULL,
                                    colours = NULL, na_colour = "grey85",
                                    show_sample_names = NULL,
-                                   reference = DEFAULT_REFERENCE) {
+                                   reference = DEFAULT_REFERENCE,
+                                   annotation_colours = NULL,
+                                   border_color = NULL, colors = NULL, na_color = NULL,
+                                   annotation_colors = NULL) {
+  annotation_colours <- .alias_arg("annotation_colours", "annotation_colors")
+  border_colour <- .alias_arg("border_colour", "border_color")
+  colours <- .alias_arg("colours", "colors")
+  na_colour <- .alias_arg("na_colour", "na_color")
   .need_package("ggplot2", "plot_region_haplotypes()")
   spacing <- match.arg(spacing)
   if (is.null(gene_track)) gene_track <- !is.null(genes)
@@ -286,7 +305,8 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
       colour = if (border) border_colour else NA,
       linewidth = if (border) 0.06 else 0) +
     ggplot2::scale_fill_manual(values = fills, na.value = na_colour, drop = FALSE,
-                               name = "call") +
+                               name = "call",
+                               guide = ggplot2::guide_legend(order = .HAP_LEGEND_CALL)) +
     ggplot2::scale_y_reverse(
       breaks = if (labels) rows$.row, labels = if (labels) rows$sample,
       expand = ggplot2::expansion(0)) +
@@ -314,7 +334,8 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   # ---- dendrogram beside the rows, gene track underneath -------------------
   dend <- if (dendrogram && cluster) .dendro_panel(.block_dendro(ord, rows), rows,
                                                    faceted) else NULL
-  ann <- .hap_annotation_panel(x, annotations, rows, faceted, border, border_colour)
+  ann <- .hap_annotation_panel(x, annotations, rows, faceted, border, border_colour,
+                               annotation_colours)
   # only the rightmost panel names the blocks, or every block is labelled twice
   if (!is.null(ann) && faceted)
     p <- p + ggplot2::theme(strip.text.y = ggplot2::element_blank(),
@@ -343,7 +364,8 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
 # is what ggnewscale is for: without it a single panel can only carry one fill mapping.
 # Colours come from the object's own maps, so a level keeps the colour it has in the UMAP or
 # the admixture bars.
-.hap_annotation_panel <- function(x, cols, rows, faceted, border, border_colour) {
+.hap_annotation_panel <- function(x, cols, rows, faceted, border, border_colour,
+                                  ann_colours = NULL) {
   if (is.null(cols) || !length(cols)) return(NULL)
   .need_package("ggnewscale", "annotation strips in plot_region_haplotypes()")
   meta <- x$get_meta()
@@ -362,11 +384,28 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
     ggplot2::scale_x_continuous(breaks = seq_along(cols), labels = cols,
                                 expand = ggplot2::expansion(0), position = "top") +
     ggplot2::scale_y_reverse(expand = ggplot2::expansion(0))
+  if (!is.null(ann_colours)) {
+    if (!is.list(ann_colours))
+      stop("`annotation_colours` is a named list, one entry per annotation, e.g. ",
+           "list(", cols[1], " = c(level = \"#1B9E77\"))", call. = FALSE)
+    stray <- setdiff(names(ann_colours), cols)
+    if (length(stray))
+      warning("`annotation_colours` names something that is not an annotation: ",
+              paste(stray, collapse = ", "), ". Annotations here: ",
+              paste(cols, collapse = ", "), call. = FALSE)
+  }
+
   for (k in seq_along(cols)) {
     cc <- cols[k]
+    # A factor annotation keeps every level it was built with, so a level whose samples
+    # are all outside this plot would otherwise be drawn as a legend key with nothing
+    # behind it -- and blank, wherever the shared colour map has no entry for it.
     d <- data.frame(
       .row = rows$.row, .split = rows$.split, x = k,
-      value = .as_group_factor(meta[[cc]][match(rows$sample, key)]))
+      value = droplevels(.as_group_factor(meta[[cc]][match(rows$sample, key)])))
+    lev <- levels(d$value)
+    maps[[cc]] <- .fill_palette_gaps(maps[[cc]], lev, meta, cc)
+    maps[[cc]] <- .merge_palette(maps[[cc]], ann_colours[[cc]], lev, cc)
     p <- p +
       ggplot2::geom_rect(
         data = d,
@@ -374,8 +413,10 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                      ymin = .data$.row - 0.5, ymax = .data$.row + 0.5, fill = .data$value),
         colour = if (border) border_colour else NA,
         linewidth = if (border) 0.06 else 0) +
+      # numbered by the position in `annotations`, so the legends read in the order asked for
       ggplot2::scale_fill_manual(values = maps[[cc]], na.value = "grey85", drop = FALSE,
-                                 name = cc) +
+                                 name = cc,
+                                 guide = ggplot2::guide_legend(order = .HAP_LEGEND_CALL + k)) +
       ggnewscale::new_scale_fill()
   }
   p <- p +
@@ -631,4 +672,36 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                            guides = "collect")
   attr(out, "plasgenomics_track_in") <- if (is.null(track)) 0 else attr(track, "track_in")
   out
+}
+
+# Lay a caller's palette over the shared one: named colours replace those levels and leave
+# the rest, so recolouring one level does not mean respelling all of them. An unnamed vector
+# is positional, in level order, as elsewhere in the package.
+.merge_palette <- function(base, override, levels, what) {
+  if (is.null(override) || !length(override)) return(base)
+  if (is.null(names(override))) {
+    if (length(override) < length(levels))
+      stop("`annotation_colours$", what, "` has ", length(override), " colour(s) for ",
+           length(levels), " level(s) (", paste(levels, collapse = ", "),
+           "); name them, or give one per level", call. = FALSE)
+    override <- stats::setNames(override[seq_along(levels)], levels)
+  }
+  unknown <- setdiff(names(override), levels)
+  if (length(unknown))
+    warning("`annotation_colours$", what, "` names level(s) that are not in the data: ",
+            paste(unknown, collapse = ", "), ". Levels here: ",
+            paste(levels, collapse = ", "), call. = FALSE)
+  base[names(override)] <- override
+  base
+}
+
+# A shared colour map can predate a level -- metadata added later, a level renamed -- and
+# `scale_fill_manual()` draws an uncoloured key rather than complaining. Fill any gap from
+# the automatic palette for that column, so every key drawn has a colour behind it.
+.fill_palette_gaps <- function(pal, levels, meta, col) {
+  gaps <- setdiff(levels, names(pal))
+  if (!length(gaps)) return(pal)
+  auto <- tryCatch(meta_colors(meta, cols = col)[[col]], error = function(e) NULL)
+  for (g in gaps) pal[g] <- if (!is.null(auto) && g %in% names(auto)) auto[[g]] else "grey85"
+  pal
 }

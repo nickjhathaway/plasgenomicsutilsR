@@ -61,6 +61,81 @@
   out
 }
 
+# Candidate focal SNPs and the balance metric the focal is chosen on. Shared so that
+# ehh_candidates() ranks by what plot_ehh() actually acts on -- a table that merely resembled
+# the choice would be no use for overriding it.
+.focal_candidates <- function(x, focal, genes, reference) {
+  idx <- .focal_marker(focal, x$map, genes, reference)
+  maf <- vapply(idx, function(i) {
+    p <- mean(x$hap[, i], na.rm = TRUE)
+    min(p, 1 - p)
+  }, numeric(1))
+  list(idx = idx, maf = maf, best = idx[which.max(maf)])
+}
+
+#' The SNPs an EHH plot had to choose between
+#'
+#' [plot_ehh()] measures decay from a single focal SNP, and a gene usually holds many. It takes
+#' the one with the most balanced alleles and reports which -- this returns the whole shortlist
+#' it chose from, chosen SNP first, so the decision is visible and can be overridden by passing
+#' a `chr:pos` back to `focal`.
+#'
+#' `maf` is the metric that decides it: minor-allele frequency across the haplotypes, which
+#' [plot_ehh()] maximises because EHH measured from a near-singleton is a flat line at 1 that
+#' says nothing about a sweep.
+#'
+#' With `group`, each group gets a `maf_<group>` column and `n_groups_variable` counts the groups
+#' the SNP actually varies in. That is the other way a panel comes back empty: a SNP can be well
+#' balanced overall and monomorphic inside one group, which drops that group's curve with "the
+#' focal SNP is not variable in it". Sorting on `n_groups_variable` finds a SNP that works
+#' everywhere, when one exists.
+#'
+#' @param x A [parasite_haplotypes()] object, or a [PopStructure].
+#' @param focal As in [plot_ehh()]: a `chr:pos` id, a bare position, or a gene name in `genes`.
+#' @param group Optional metadata column, for the per-group columns.
+#' @param genes Gene table used to resolve `focal` (e.g. [PF3D7_GENES]).
+#' @param min_haplotypes Groups smaller than this are left out, as in [plot_ehh()].
+#' @param reference Reference id, used when `focal` names a whole chromosome.
+#' @return A tibble of `snp_id`, `chr`, `pos`, `maf`, `n_hap` and `chosen`, plus the per-group
+#'   columns when `group` is given. The chosen SNP is the first row; the rest follow by
+#'   descending `maf`.
+#' @seealso [plot_ehh()]
+#' @examples
+#' ps <- example_pop_structure(umap = FALSE)
+#' hap <- parasite_haplotypes(ps, maf = 0.05)
+#' ehh_candidates(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES)
+#' @export
+ehh_candidates <- function(x, focal, group = NULL, genes = NULL, min_haplotypes = 10,
+                           reference = DEFAULT_REFERENCE) {
+  if (inherits(x, "PopStructure")) x <- parasite_haplotypes(x)
+  if (is.null(x$hap) || is.null(x$map))
+    stop("`x` must be a parasite_haplotypes() object", call. = FALSE)
+
+  cand <- .focal_candidates(x, focal, genes, reference)
+  idx <- cand$idx
+  out <- tibble::tibble(
+    snp_id = x$map$snp_id[idx],
+    chr = as.character(x$map$chr[idx]),
+    pos = x$map$pos[idx],
+    maf = round(cand$maf, 4),
+    n_hap = vapply(idx, function(i) sum(!is.na(x$hap[, i])), integer(1)),
+    chosen = idx == cand$best)
+
+  if (!is.null(group)) {
+    rows <- .ihs_rows(x, group, x$meta, min_haplotypes)
+    for (g in names(rows)) {
+      out[[paste0("maf_", g)]] <- round(vapply(idx, function(i) {
+        p <- mean(x$hap[rows[[g]], i], na.rm = TRUE)
+        if (is.nan(p)) NA_real_ else min(p, 1 - p)
+      }, numeric(1)), 4)
+    }
+    gcols <- paste0("maf_", names(rows))
+    m <- as.matrix(out[, gcols, drop = FALSE])
+    out$n_groups_variable <- as.integer(rowSums(!is.na(m) & m > 0))
+  }
+  out[order(!out$chosen, -out$maf), , drop = FALSE]
+}
+
 #' EHH decay around one SNP
 #'
 #' Extended haplotype homozygosity either side of a focal SNP, one curve per allele: how far
@@ -95,7 +170,7 @@
 #'   supplied only to resolve `focal`, and an EHH window is wide enough that a full annotation
 #'   would crowd a hundred names under it, so this is opt-in.
 #' @param gene_label_angle Rotation for the gene names, in degrees.
-#' @param colours Named colours for `reference` / `alternate`.
+#' @param colours,colors Named colours for `reference` / `alternate`.
 #' @param show_freq Note each panel's haplotype count and allele frequencies inside it
 #'   (default `TRUE`); `FALSE` leaves the panel clean.
 #' @param freq_position Which corner that note sits in: `"topleft"` (default), `"topright"`,
@@ -112,7 +187,9 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
                      polarized = FALSE, limehh = 0.05, genes = NULL, gene_track = NULL,
                      gene_label_angle = 0, colours = NULL, show_freq = TRUE,
                      freq_position = c("topleft", "topright", "bottomleft", "bottomright"),
-                     reference = DEFAULT_REFERENCE) {
+                     reference = DEFAULT_REFERENCE,
+                     colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   .need_package("ggplot2", "plot_ehh()")
   .need_package("rehh", "plot_ehh()")
   freq_position <- match.arg(freq_position)
@@ -128,17 +205,13 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
   gene_track <- isTRUE(gene_track)
 
   map <- x$map
-  cand <- .focal_marker(focal, map, genes, reference)
-  if (length(cand) > 1) {
-    # most balanced alleles: EHH from a near-singleton is a flat line that says nothing
-    maf <- vapply(cand, function(i) {
-      p <- mean(x$hap[, i], na.rm = TRUE)
-      min(p, 1 - p)
-    }, numeric(1))
-    cand <- cand[which.max(maf)]
-    message("`", focal, "` holds several SNPs; measuring from ", map$snp_id[cand],
-            " (minor allele ", format(round(max(maf), 3)), ") -- name a `chr:pos` to pick ",
-            "another")
+  # most balanced alleles: EHH from a near-singleton is a flat line that says nothing
+  cc <- .focal_candidates(x, focal, genes, reference)
+  cand <- cc$best
+  if (length(cc$idx) > 1) {
+    message("`", focal, "` holds ", length(cc$idx), " SNPs; measuring from ",
+            map$snp_id[cand], " (minor allele ", format(round(max(cc$maf), 3)), ") -- name a ",
+            "`chr:pos` to pick another, or see ehh_candidates() for the shortlist")
   }
   mrk_pos <- map$pos[cand]
   mrk_chr <- as.character(map$chr[cand])          # as the haplotypes name it

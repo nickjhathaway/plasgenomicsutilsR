@@ -16,7 +16,8 @@ load_genotypes(
   missing_rate = NaN,
   seed = 42,
   vcf_dir = NULL,
-  allele = c("alt", "ref")
+  allele = c("alt", "ref"),
+  variants = c("biallelic_snvs", "all")
 )
 }
 \arguments{
@@ -26,10 +27,10 @@ rather than making another copy.}
 
 \item{gds}{Optional GDS path; derived from \code{vcf} if \code{NULL}.}
 
-\item{prune}{LD-prune (default \code{TRUE}). \code{FALSE} returns \strong{every} biallelic SNP,
-unpruned -- use this for the genotype matrix fed to \code{\link[=pop_diff]{pop_diff()}} /
-\code{\link[=pop_diff_table]{pop_diff_table()}}, since LD-pruning removes the very SNPs that carry the
-differentiation signal.}
+\item{prune}{LD-prune (default \code{TRUE}). \code{FALSE} returns every record \code{variants} admits
+(see \emph{Which records reach the panel}), unpruned -- use this for the genotype matrix fed
+to \code{\link[=pop_diff]{pop_diff()}} / \code{\link[=pop_diff_table]{pop_diff_table()}}, since LD-pruning removes the very SNPs that carry
+the differentiation signal.}
 
 \item{ld_threshold, slide_max_bp, slide_max_n, autosome_only}{Passed to
 \code{\link[SNPRelate:snpgdsLDpruning]{SNPRelate::snpgdsLDpruning()}} (defaults 0.2 / 20000 / 200 / \code{FALSE}); ignored
@@ -47,13 +48,18 @@ Point it somewhere scratch to keep converted copies out of the data directory.}
 rest of the package says it means. Only reported allele frequencies (and the
 arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
 and selection statistic here is symmetric in \code{p} and \code{1 - p}.}
+
+\item{variants}{Which records to read. \code{"biallelic_snvs"} (default) keeps biallelic SNVs
+only; \code{"all"} keeps every record, multiallelic sites and indels included, at the cost of a
+dosage that cannot say which ALT it counts. See the two sections below -- nothing in this
+package handles \code{"all"}, and it warns.}
 }
 \value{
 A list with \code{genotype} (matrix; sample row names and \code{chr:pos0} column names --
 0-based, like every other position in the package),
-\code{sample.id}, \code{snp.id}, and the two facts the matrix itself cannot carry: \code{allele} (which
-allele the dosages count) and \code{pruned}. \link{PopStructure} keeps both, so anything that names
-a call or warns about pruning can ask instead of assuming.
+\code{sample.id}, \code{snp.id}, and the facts the matrix itself cannot carry: \code{allele} (which
+allele the dosages count), \code{pruned}, \code{positions} and \code{variants}. \link{PopStructure} keeps
+them, so anything that names a call or warns about pruning can ask instead of assuming.
 }
 \description{
 Converts a VCF to GDS (only when needed) and returns the genotype matrix
@@ -68,6 +74,64 @@ the correlation between neighbouring SNPs \emph{is} the signal -- differentiatio
 of each correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a
 second call with \code{prune = FALSE} only re-reads it.
 }
+\section{Which records reach the panel}{
+
+\code{prune = FALSE} means unpruned, not every record: the panel is usually smaller than the
+VCF's record count whatever \code{prune} is, because the default \code{variants = "biallelic_snvs"}
+has \pkg{SNPRelate} read the file with \code{method = "biallelic.only"}. Three kinds of record
+are skipped, silently:
+\itemize{
+\item sites with \strong{no ALT allele} (\code{ALT="."}) -- the reference positions an all-sites caller
+emits. Usually the biggest share by far, and the easiest to miss, since nothing about them
+says "variant": \verb{bcftools view --exclude-types indels} leaves every one of them in place,
+because they are not indels.
+\item \strong{indels} and other non-SNV records.
+\item sites with \strong{more than one ALT}.
+}
+
+So a VCF of 28,927 records carrying 9,158 \code{ALT="."} positions and 48 multiallelic sites
+loads as 19,721 SNPs. When a panel comes out short, count what is actually there rather than
+the total, and drop the no-ALT records upstream if you would rather the two numbers agree:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{bcftools view -H -m2 -M2 -v snps file.vcf.gz | wc -l   # what will load
+bcftools view -e 'ALT="."' -Ob -o out.bcf in.bcf       # or --min-ac 1
+}\if{html}{\out{</div>}}
+
+Sites that are \strong{invariant across the loaded samples are kept}, as long as the VCF lists an
+ALT allele there: \code{"biallelic.only"} asks how many alleles the record declares, not whether
+these samples differ. A site every sample calls \code{1/1}, or every sample calls \code{0/0}, comes
+through -- which is why the functions needing variable sites (\code{\link[=parasite_haplotypes]{parasite_haplotypes()}},
+\code{\link[=run_ihs]{run_ihs()}}) apply their own \code{maf} cutoff instead of trusting the panel. SNPRelate's own help
+calls this "excluding monomorphic variants", which is easy to read as the stronger promise.
+}
+
+\section{Keeping every variant}{
+
+\code{variants = "all"} reads the VCF with \code{method = "copy.num.of.ref"} instead, which keeps
+every record -- multiallelic sites, indels and \code{ALT="."} positions included -- and stores
+the \strong{copy number of the reference allele}. Nothing in this package reads that correctly,
+so it warns; the switch is here to hand the matrix to something that does.
+
+What breaks is the coding, not the reading. A dosage says how many reference copies a sample
+has and nothing about \emph{which} alternate allele makes up the rest, so at \verb{C -> T,G} a sample
+called \code{1/1} and a sample called \code{2/2} are both 0 reference copies and land on the same
+number despite carrying different alleles:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{variants = "biallelic_snvs"        variants = "all"
+  pos  allele  s1 s2 s3              pos  allele  s1 s2 s3
+  100  A/G      2  0  1              100  A/G      2  0  1
+  500  G/A      0  0  0              200  T/.      2  2  2   <- no ALT
+                                     300  AT/A     2  0  2   <- indel
+                                     400  C/T,G    2  0  0   <- 1/1 and 2/2 both 0
+                                     500  G/A      0  0  0
+}\if{html}{\out{</div>}}
+
+The allele strings themselves survive in the GDS (\code{SNPRelate::snpgdsSNPList()$allele} gives
+\code{"C/T,G"}), so which alleles exist is recoverable even though the dosage cannot express
+them. The returned list records the choice as \code{variants}, and the GDS is tagged with it, so
+the two panels never get confused for one another through a reused \code{.gds}.
+}
+
 \seealso{
 \link{PopStructure}, \code{\link[=pop_structure]{pop_structure()}}
 }

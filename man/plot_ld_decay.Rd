@@ -4,14 +4,14 @@
 \alias{plot_ld_decay}
 \title{Linkage-disequilibrium decay curve}
 \usage{
-plot_ld_decay(ld, show_half_decay = TRUE, colours = NULL)
+plot_ld_decay(ld, show_half_decay = TRUE, colours = NULL, colors = NULL)
 }
 \arguments{
 \item{ld}{The tibble from \code{\link[=read_ld_decay]{read_ld_decay()}} (or \verb{plasgenomicsutils ld_decay}).}
 
 \item{show_half_decay}{Mark each group's half-decay distance with a vertical segment.}
 
-\item{colours}{Optional named colour vector for the groups.}
+\item{colours, colors}{Optional named colour vector for the groups.}
 }
 \value{
 A ggplot object.

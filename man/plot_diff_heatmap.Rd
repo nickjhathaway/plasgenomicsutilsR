@@ -20,7 +20,9 @@ plot_diff_heatmap(
   digits = 2,
   colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
   trans = "identity",
-  base_size = 11
+  base_size = 11,
+  annotate_colors = NULL,
+  colours = NULL
 )
 
 plot_jost_d_heatmap(pd, stat = "mean", ...)
@@ -55,14 +57,14 @@ strips/legends). Each strip aligns to the clustered column order.}
 
 \item{meta}{Metadata data frame for resolving \code{annotate} column names.}
 
-\item{annotate_colours}{Named list \code{annotation -> (value -> colour)} giving custom
+\item{annotate_colours, annotate_colors}{Named list \code{annotation -> (value -> colour)} giving custom
 colours per annotation (unlisted annotations get an automatic palette).}
 
 \item{label}{Print the value in each cell (default \code{FALSE}; the text can distract).}
 
 \item{digits}{Cell-label digits.}
 
-\item{colors}{Fill ramp (low -> high differentiation).}
+\item{colors, colours}{Fill ramp (low -> high differentiation).}
 
 \item{trans}{Fill transform, e.g. \code{"identity"} (default) or \code{"sqrt"} to lift a scale
 dominated by near-zero values.}

@@ -277,8 +277,16 @@ pop_diff_table <- function(x, group = NULL,
   out
 }
 
+# Legend stacking: the statistic being plotted first, then the annotations in the order
+# they were asked for. ggplot orders guides by their `order`, and with the default 0 on all
+# of them it falls back to a hash of the guide -- which depends on the labels, so the stack
+# moved with the data and ignored the order the caller gave `annotate`.
+.DIFF_LEGEND_FILL <- 1L
+.DIFF_LEGEND_ANN <- 2L
+
 # one annotation colour strip aligned above the heatmap columns
-.annotation_panel <- function(name, vals, ord, cols, base_size, show_legend = TRUE) {
+.annotation_panel <- function(name, vals, ord, cols, base_size, show_legend = TRUE,
+                              order = .DIFF_LEGEND_ANN) {
   # the columns follow `ord` (the clustering), but the annotation's own levels set the
   # colour assignment and legend order, so a value keeps its colour however the axis runs
   adf <- data.frame(col = factor(ord, levels = ord), y = 1,
@@ -287,7 +295,8 @@ pop_diff_table <- function(x, group = NULL,
   if (is.null(cols)) cols <- meta_colors(data.frame(value = adf$value))$value
   ggplot2::ggplot(adf, ggplot2::aes(.data$col, .data$y, fill = .data$value)) +
     ggplot2::geom_tile(colour = "white", show.legend = show_legend) +
-    ggplot2::scale_fill_manual(values = cols, name = name) +
+    ggplot2::scale_fill_manual(values = cols, name = name,
+                               guide = ggplot2::guide_legend(order = order)) +
     ggplot2::scale_x_discrete(drop = FALSE) +
     ggplot2::theme_void(base_size = base_size) +
     ggplot2::theme(legend.position = if (show_legend) "right" else "none")
@@ -296,7 +305,7 @@ pop_diff_table <- function(x, group = NULL,
 # Give `p` an extra fill scale purely so its legend renders on that panel: one fully
 # transparent tile per level, at a single cell, with the keys forced opaque. Used to move
 # the annotation-strip legends onto the heatmap, where the empty triangle has room.
-.add_legend_only_scale <- function(p, name, vals, cols, x, y) {
+.add_legend_only_scale <- function(p, name, vals, cols, x, y, order = .DIFF_LEGEND_ANN) {
   .need_package("ggnewscale", "annotation legends inside the triangle")
   lev <- .levels_of(vals)
   if (!length(lev)) return(p)
@@ -310,7 +319,7 @@ pop_diff_table <- function(x, group = NULL,
                        inherit.aes = FALSE, alpha = 0, width = 0, height = 0) +
     ggplot2::scale_fill_manual(
       values = cols, name = name, drop = FALSE,
-      guide = ggplot2::guide_legend(order = 2,
+      guide = ggplot2::guide_legend(order = order,
                                     override.aes = list(alpha = 1, colour = "grey60")))
 }
 
@@ -373,15 +382,17 @@ pop_diff_snps <- function(pd) {
 #'   combines all pairs per SNP.
 #' @param combine How to collapse pairs per SNP when `pair` is `NULL`: `"max"` (default)
 #'   or `"mean"`.
-#' @param reference Reference id for the chromosome layout (default `"pf3d7"`).
+#' @param reference Reference id for the chromosome layout (default `DEFAULT_REFERENCE`).
 #' @param chroms,skip_chr Optional chromosomes to keep / drop (the rest re-laid-out).
 #' @param point_size,point_alpha Point aesthetics.
-#' @param colours Optional length-2 colour vector for the alternating chromosome bands.
+#' @param colours,colors Optional length-2 colour vector for the alternating chromosome bands.
 #' @return A ggplot object.
 #' @export
 plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
-                                reference = "pf3d7", chroms = NULL, skip_chr = NULL,
-                                point_size = 0.6, point_alpha = 0.6, colours = NULL) {
+                                reference = DEFAULT_REFERENCE, chroms = NULL, skip_chr = NULL,
+                                point_size = 0.6, point_alpha = 0.6, colours = NULL,
+                                colors = NULL) {
+  colours <- .alias_arg("colours", "colors")
   .need_package("ggplot2", "plot_diff_manhattan()")
   long <- pop_diff_snps(pd)
   long <- long[is.finite(long$value) & is.finite(long$pos), , drop = FALSE]
@@ -439,7 +450,7 @@ plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
 #'   named `group -> value` vector, or a named list mixing these (the names label the
 #'   strips/legends). Each strip aligns to the clustered column order.
 #' @param meta Metadata data frame for resolving `annotate` column names.
-#' @param annotate_colours Named list `annotation -> (value -> colour)` giving custom
+#' @param annotate_colours,annotate_colors Named list `annotation -> (value -> colour)` giving custom
 #'   colours per annotation (unlisted annotations get an automatic palette).
 #' @param legend_inside Put the legends in the empty half of the matrix rather than in a
 #'   margin column (default: on whenever `triangle` is `TRUE`, since that is what leaves
@@ -448,7 +459,7 @@ plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
 #'   and the legends would sit over the cells.
 #' @param label Print the value in each cell (default `FALSE`; the text can distract).
 #' @param digits Cell-label digits.
-#' @param colors Fill ramp (low -> high differentiation).
+#' @param colors,colours Fill ramp (low -> high differentiation).
 #' @param trans Fill transform, e.g. `"identity"` (default) or `"sqrt"` to lift a scale
 #'   dominated by near-zero values.
 #' @param base_size Base font size.
@@ -461,7 +472,10 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
                               annotate = NULL, meta = NULL, annotate_colours = NULL,
                               label = FALSE, digits = 2,
                               colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
-                              trans = "identity", base_size = 11) {
+                              trans = "identity", base_size = 11,
+                              annotate_colors = NULL, colours = NULL) {
+  annotate_colours <- .alias_arg("annotate_colours", "annotate_colors")
+  colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_diff_heatmap()")
   stat <- match.arg(stat)
   M <- pop_diff_matrix(pd, stat, top)
@@ -492,7 +506,8 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
                 top_mean = sprintf("top %g%% mean", top * 100))[[stat]]
   lab <- sprintf("%s\n(%s)", STATISTIC_LABELS[[pd$statistic]], stat_lab)
 
-  fill_args <- list(colours = colors, name = lab, limits = c(0, max(df$D, na.rm = TRUE)))
+  fill_args <- list(colours = colors, name = lab, limits = c(0, max(df$D, na.rm = TRUE)),
+                    guide = ggplot2::guide_colourbar(order = .DIFF_LEGEND_FILL))
   if (!identical(trans, "identity")) {
     tn <- if (utils::packageVersion("ggplot2") >= "3.5.0") "transform" else "trans"
     fill_args[[tn]] <- trans
@@ -517,16 +532,20 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
   # the annotation strips themselves (one thin panel each, aligned above the columns)
   ann_panels <- NULL
   if (!is.null(ann_list)) {
-    ann_panels <- lapply(names(ann_list), function(nm)
+    ann_panels <- lapply(seq_along(ann_list), function(k) {
+      nm <- names(ann_list)[k]
       .annotation_panel(nm, ann_list[[nm]], ord, annotate_colours[[nm]], base_size,
-                        show_legend = !legend_inside))
+                        show_legend = !legend_inside, order = .DIFF_LEGEND_ANN + k - 1L)
+    })
     # A strip is its own thin panel, so its legend would sit out beside it. Re-key each
     # one onto the heatmap instead, where the empty triangle already holds the fill
     # legend -- one legend area, and no wasted margin column.
     if (legend_inside) {
-      for (nm in names(ann_list)) {
+      for (k in seq_along(ann_list)) {
+        nm <- names(ann_list)[k]
         hm <- .add_legend_only_scale(hm, nm, ann_list[[nm]], annotate_colours[[nm]],
-                                     x = ord[1], y = utils::tail(ord, 1))
+                                     x = ord[1], y = utils::tail(ord, 1),
+                                     order = .DIFF_LEGEND_ANN + k - 1L)
       }
     }
   }

@@ -27,7 +27,9 @@ plot_structure_figure(
   umap_ratio = 1,
   file = NULL,
   width = NULL,
-  height = NULL
+  height = NULL,
+  color = NULL,
+  border_color = NULL
 )
 }
 \arguments{
@@ -36,7 +38,7 @@ plot_structure_figure(
 \item{group}{Metadata column to facet/colour the admixture by (default the first
 non-\code{sample} metadata column).}
 
-\item{colour}{Metadata column supplying the shared region colours (default \code{group}).}
+\item{colour, color}{Metadata column supplying the shared region colours (default \code{group}).}
 
 \item{K}{Number of ancestral populations: an integer for a specific K, or \code{NULL} /
 \code{"best_k"} to use the cross-entropy best K (\link{PopStructure}'s \code{best_k()}).}
@@ -63,7 +65,7 @@ region strip / K-cluster fills.}
 \item{border}{Outline each sample's admixture bar (default \code{TRUE}) so neighbours with
 nearly identical ancestry stay distinct.}
 
-\item{border_colour, border_linewidth}{Colour and width of the per-sample outline.}
+\item{border_colour, border_color, border_linewidth}{Colour and width of the per-sample outline.}
 
 \item{legend}{Where to collect the shared legends (\code{"right"}, \code{"left"}, \code{"bottom"},
 \code{"top"}).}

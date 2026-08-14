@@ -1079,3 +1079,43 @@ test_that(".first_level keeps the factor, which is what stops the facet re-sort"
   expect_identical(levels(got), levs)
   expect_identical(as.character(got), "Northwest")
 })
+
+test_that("the NA shape never collides with a real shape_group level", {
+  skip_if_no_ggplot()
+  testthat::skip_if_not_installed("igraph")
+  testthat::skip_if_not_installed("ggraph")
+  # 12 levels plus genuine NAs: 4 ("x") is the 7th palette entry, so a hardcoded NA shape of 4
+  # made missing values indistinguishable from the 7th group
+  n <- 14
+  genes <- data.frame(name = "pfcrt", chr = "7", start = 403000, end = 406000)
+  blocks <- data.frame(sample1 = paste0("s", 1:(n - 1)), sample2 = paste0("s", 2:n),
+                       chr = "Pf3D7_07_v3", start = 403500, end = 405500, different = 0)
+  meta <- data.frame(sample = paste0("s", 1:n),
+                     marker = c(paste0("g", sprintf("%02d", 1:12)), NA, NA))
+  ibd <- ibd_results(genes = genes, blocks = blocks, meta = meta,
+                     min_block_snp = 0, min_block_kb = 0, reference = "pf3d7")
+
+  shape_info <- function(p) {
+    s <- ggplot2::ggplot_build(p)$plot$scales$get_scales("shape")
+    lv <- s$get_limits(); lv <- lv[!is.na(lv)]
+    list(values = unname(s$map(lv)), na = s$na.value)
+  }
+
+  i <- shape_info(plot_ibd_network(ibd, gene = "pfcrt", shape_group = "marker",
+                                  include_isolated = TRUE))
+  expect_length(i$values, 12L)
+  expect_length(unique(i$values), 12L)          # the 12 levels are distinguishable
+  expect_false(i$na %in% i$values)              # ... and NA is none of them
+  expect_equal(i$na, 1)                         # hollow circle, outside the palette
+
+  # settable
+  expect_equal(shape_info(plot_ibd_network(ibd, gene = "pfcrt", shape_group = "marker",
+                                          na_shape = 21, include_isolated = TRUE))$na, 21)
+  # and a collision is reported rather than drawn silently
+  expect_warning(plot_ibd_network(ibd, gene = "pfcrt", shape_group = "marker", na_shape = 4,
+                                  include_isolated = TRUE),
+                 "also used by g07")
+  # na_colour likewise
+  expect_silent(plot_ibd_network(ibd, gene = "pfcrt", color_group = "marker",
+                                 na_colour = "black", include_isolated = TRUE))
+})

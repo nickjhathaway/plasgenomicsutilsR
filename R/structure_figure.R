@@ -39,7 +39,7 @@
 #' @param x A [PopStructure] with a UMAP (`run_umap()`) and an sNMF fit (`run_snmf()`).
 #' @param group Metadata column to facet/colour the admixture by (default the first
 #'   non-`sample` metadata column).
-#' @param colour Metadata column supplying the shared region colours (default `group`).
+#' @param colour,color Metadata column supplying the shared region colours (default `group`).
 #' @param K Number of ancestral populations: an integer for a specific K, or `NULL` /
 #'   `"best_k"` to use the cross-entropy best K ([PopStructure]'s `best_k()`).
 #' @param rows A list of character vectors giving which `group` levels sit on each
@@ -56,7 +56,7 @@
 #' @param base_size Base font size shared by every panel.
 #' @param border Outline each sample's admixture bar (default `TRUE`) so neighbours with
 #'   nearly identical ancestry stay distinct.
-#' @param border_colour,border_linewidth Colour and width of the per-sample outline.
+#' @param border_colour,border_color,border_linewidth Colour and width of the per-sample outline.
 #' @param legend Where to collect the shared legends (`"right"`, `"left"`, `"bottom"`,
 #'   `"top"`).
 #' @param legend_point_size Size of the region dots in the UMAP legend (default `3.5`, so
@@ -87,7 +87,10 @@ plot_structure_figure <- function(x, group = NULL, colour = group, K = NULL, row
                                   border_linewidth = 0.15, legend = "right",
                                   legend_point_size = 3.5, point_size = 1.6,
                                   point_alpha = 0.8, umap_ratio = 1, file = NULL,
-                                  width = NULL, height = NULL) {
+                                  width = NULL, height = NULL,
+                                  color = NULL, border_color = NULL) {
+  colour <- .alias_arg("colour", "color")
+  border_colour <- .alias_arg("border_colour", "border_color")
   .need_package("ggplot2", "plot_structure_figure()")
   .need_package("patchwork", "plot_structure_figure()")
   if (!inherits(x, "PopStructure")) stop("`x` must be a PopStructure", call. = FALSE)

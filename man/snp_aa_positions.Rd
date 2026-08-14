@@ -4,7 +4,13 @@
 \alias{snp_aa_positions}
 \title{The amino acid a SNP falls in}
 \usage{
-snp_aa_positions(snps, gff, keep = c("all", "hits"), one_based_snps = FALSE)
+snp_aa_positions(
+  snps,
+  gff,
+  keep = c("all", "hits"),
+  one_based_snps = FALSE,
+  fasta = NULL
+)
 }
 \arguments{
 \item{snps}{A data frame with \code{snp_id} (\code{"chr:pos"}) or \code{chr} and \code{pos} columns; any other
@@ -18,10 +24,15 @@ only those in a CDS.}
 \item{one_based_snps}{The positions in \code{snps} are 1-based (VCF \code{POS}). Genotype-matrix column
 names from \code{\link[=load_genotypes]{load_genotypes()}} are, so set this when feeding those in; the package's own
 tables are 0-based, which is the default.}
+
+\item{fasta}{Optional reference sequence, for the \code{ref_codon} / \code{ref_aa} columns: a path or
+URL to a FASTA, or a named character vector of sequences. Defaults to whatever \code{gff}
+carried; \code{NULL} with a GFF holding no sequence leaves the two columns off.}
 }
 \value{
 \code{snps} with \code{transcript_id}, \code{gene_id}, \code{aa_position} (1-based), \code{codon_base}
-(1/2/3 in transcript orientation), \code{strand} and \code{coding} added.
+(1/2/3 in transcript orientation), \code{strand} and \code{coding} added, plus \code{ref_codon} and
+\code{ref_aa} when there is sequence to read them from.
 }
 \description{
 The reverse of \code{\link[=aa_intervals]{aa_intervals()}}: given SNP positions and a GFF, which codon of which
@@ -40,14 +51,74 @@ intergenic space are all simply non-coding here. A SNP inside overlapping isofor
 row per transcript, since the codon it hits can differ between them.
 
 Being in a codon says nothing about whether the residue actually changes: that needs the
-alleles and the reading frame's other two bases, which are not part of this.
+alleles, which are not part of this. What reference sequence does buy you is the residue the
+codon currently codes for -- see below.
 }
+\section{The reference residue}{
+
+Given sequence, the result also carries \code{ref_codon} (the codon's three bases, in transcript
+orientation, complemented on the minus strand) and \code{ref_aa} (its residue, one letter, \code{*} for
+a stop). Sequence can come from either place:
+\itemize{
+\item \verb{fasta =} -- a path or URL to a genome FASTA (plain or gzipped), or a named vector of
+sequences you already have in hand.
+\item the GFF itself, when it ends with a \verb{##FASTA} section. \code{\link[=read_gff_cds]{read_gff_cds()}} keeps those
+sequences, so nothing extra needs passing.
+}
+
+Without either, both columns are simply absent: the reference base cannot be inferred from an
+annotation alone. Some GFFs do carry a translated protein in a feature attribute, but too few
+agree on how to make it worth reading, so it is not used.
+
+Names are matched through \code{\link[=normalise_chr]{normalise_chr()}}, so a FASTA headed \code{Pf3D7_07_v3} lines up with a
+GFF spelling it the same way or differently. If nothing matches, both columns come back \code{NA}
+with a warning naming what was compared -- silence there would look like a genome with no
+coding SNPs.
+
+This is worth doing even when you think you know the answer. \code{ref_aa} is what the \emph{reference}
+carries, and a reference is one isolate's genome -- not a consensus, and not the ancestral or
+wild-type sequence. Pf3D7 reads \code{G} at \emph{pfdhps} 437, the residue A437G is named for changing
+\emph{to}, so a callset aligned to 3D7 shows no variant at that position precisely because the
+reference is already the mutant. This is not a quirk of one locus: across \emph{Plasmodium} species
+the reference is sometimes the non-wild-type allele, so "REF" means "what this isolate has",
+never "what came first".
+
+Two conventions here follow from that. \code{load_genotypes()} records which allele its dosages
+count rather than letting REF stand in for a baseline, and \code{\link[=run_ihs]{run_ihs()}} and \code{\link[=plot_ehh]{plot_ehh()}} default
+to \code{polarized = FALSE}, treating the two states as simply the two states, since ancestral
+versus derived cannot be read off REF and ALT.
+}
+
 \examples{
+cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
+                                package = "plasgenomicsutilsR"))
+
+# the three bases of pfkelch13 codon 580, on the minus strand: base 1 is the highest
+snp_aa_positions(data.frame(chr = "Pf3D7_13_v3", pos = c(1725260, 1725259, 1725258)),
+                 cds, keep = "hits", one_based_snps = TRUE)[
+  , c("pos", "aa_position", "codon_base", "strand")]
+
+# `ref_codon` / `ref_aa` need sequence. A GFF ending in a `##FASTA` section carries its own,
+# so nothing extra is passed:
+gff <- tempfile(fileext = ".gff")
+writeLines(c("##gff-version 3",
+             "demo\t.\tCDS\t11\t25\t.\t+\t0\tID=c1;Parent=T.1;gene_id=T",
+             "##FASTA", ">demo", "CCCCCCCCCCATGAAATTTGGGTAAC"), gff)
+snp_aa_positions(data.frame(chr = "demo", pos = 11:22), read_gff_cds(gff),
+                 keep = "hits", one_based_snps = TRUE)[
+  , c("pos", "aa_position", "codon_base", "ref_codon", "ref_aa")]
+
 \dontrun{
-cds <- read_gff_cds("Pf3D7.gff")
-# every genotyped SNP in pfdhps, and the residues they sit on
-snps <- data.frame(snp_id = colnames(ps$genotype("full")))
-snp_aa_positions(snps, cds, keep = "hits", one_based_snps = TRUE)
+# every genotyped SNP that is coding, and the residue it sits on. Genotype-matrix ids
+# are 0-based, so no `one_based_snps` here.
+snp_aa_positions(data.frame(snp_id = colnames(ps$genotype("full"))), cds, keep = "hits")
+
+# or point `fasta` at the released genome, read straight from the web like the GFF is.
+# pfcrt codon 76 comes back "AAA" / "K".
+genome <- paste0("https://plasmodb.org/common/downloads/Current_Release/",
+                 "Pfalciparum3D7/fasta/data/PlasmoDB-68_Pfalciparum3D7_Genome.fasta")
+snp_aa_positions(data.frame(chr = "Pf3D7_07_v3", pos = 403625), cds, keep = "hits",
+                 one_based_snps = TRUE, fasta = genome)
 }
 }
 \seealso{

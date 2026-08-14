@@ -66,3 +66,30 @@ that **most differentiate the sites** — the top per-pair Jost's D markers
 unpruned biallelic SNPs (an intentional, documented ascertainment for illustration).
 Contents: a list of `genotype` (258 × 2000 integer matrix) and `meta` (`sample`,
 `country`, `site`, `region`).
+
+`pf3d7_drug_gene_cds.gff` is the CDS features of six *P. falciparum* 3D7 drug-resistance
+genes, copied verbatim out of `PlasmoDB-55_Pfalciparum3D7.gff` (VEuPathDB): *pfdhfr*
+`PF3D7_0417200`, *pfmdr1* `PF3D7_0523000`, *pfaat1* `PF3D7_0629500`, *pfcrt* `PF3D7_0709000`,
+*pfdhps* `PF3D7_0810800` and *pfkelch13* `PF3D7_1343700`. Real coordinates, so codon intervals
+computed from it are the published ones (*pfcrt* 76 at `Pf3D7_07_v3:403,624-403,626`).
+
+The six were chosen to cover what the conversion has to get right: *pfcrt* has 13 coding
+exons, four of whose codons straddle an intron; *pfkelch13* and *pfaat1* are on the minus
+strand; and every gene carries markers quoted by residue in the literature. Used by
+`read_gff_cds()` / `aa_intervals()` / `snp_aa_positions()` examples and the
+*Amino acids and genomic coordinates* article.
+
+`pf3d7_drug_gene_regions.fasta.gz` exists so the **tests** can check `snp_aa_positions()`'s
+`ref_codon` / `ref_aa` against real published residues without touching the network. It is not
+the documented way to supply sequence — the docs point `fasta =` at the released genome by URL,
+which is what an analysis should use, since a fixture only ever covers the genes someone thought
+to put in it. Each chromosome record keeps its **full length and true coordinates**, with real
+bases across the span of the gene's CDS and `N` everywhere else, which costs almost nothing once
+gzipped (35 KB for 23 Mb of nominal genome). Positions outside those spans return `NA` rather
+than a base. Built from `Pf3D7.fasta` (PlasmoDB 3D7, 2015-06-18 assembly), matching the GFF
+above.
+
+The reference residues it yields are the published ones — *pfcrt* 76 `AAA`/K, *pfkelch13* 580
+`TGT`/C, *pfdhfr* 108 `AGC`/S, *pfmdr1* 86 `AAT`/N. *pfdhps* 437 reads `GGT`/G, because 3D7 itself
+carries the 437G allele the A437G marker is named for — the reference is not the wild type, here
+or in general, so the test asserts `G` deliberately rather than treating it as a failure.

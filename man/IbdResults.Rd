@@ -48,6 +48,8 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
     \item \href{#method-IbdResults-get_thresholds}{\code{IbdResults$get_thresholds()}}
     \item \href{#method-IbdResults-get_genes}{\code{IbdResults$get_genes()}}
     \item \href{#method-IbdResults-get_blocks}{\code{IbdResults$get_blocks()}}
+    \item \href{#method-IbdResults-get_pair_fraction}{\code{IbdResults$get_pair_fraction()}}
+    \item \href{#method-IbdResults-set_pair_fraction}{\code{IbdResults$set_pair_fraction()}}
     \item \href{#method-IbdResults-get_analyzed_samples}{\code{IbdResults$get_analyzed_samples()}}
     \item \href{#method-IbdResults-get_meta}{\code{IbdResults$get_meta()}}
     \item \href{#method-IbdResults-set_meta}{\code{IbdResults$set_meta()}}
@@ -64,6 +66,8 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
     \item \href{#method-IbdResults-gene_ibd_pairs}{\code{IbdResults$gene_ibd_pairs()}}
     \item \href{#method-IbdResults-add_ibd_clusters}{\code{IbdResults$add_ibd_clusters()}}
     \item \href{#method-IbdResults-plot_ibd_network}{\code{IbdResults$plot_ibd_network()}}
+    \item \href{#method-IbdResults-plot_ibd_pair_network}{\code{IbdResults$plot_ibd_pair_network()}}
+    \item \href{#method-IbdResults-pair_fraction_summary}{\code{IbdResults$pair_fraction_summary()}}
     \item \href{#method-IbdResults-pos_selection_genes}{\code{IbdResults$pos_selection_genes()}}
     \item \href{#method-IbdResults-clone}{\code{IbdResults$clone()}}
   }
@@ -84,10 +88,11 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
   blocks = NULL,
   meta = NULL,
   gene_overlap = NULL,
+  pair_fraction = NULL,
   group_col_in_meta = NULL,
   min_block_snp = IBD_MIN_BLOCK_SNP,
   min_block_kb = IBD_MIN_BLOCK_KB,
-  reference = "pf3d7"
+  reference = DEFAULT_REFERENCE
 )}
     \if{html}{\out{</div>}}
   }
@@ -111,6 +116,10 @@ grouping columns), used to group \code{blocks} pairs.}
       \item{\code{gene_overlap}}{Optional precomputed per-gene per-group-pair block-overlap table
 (from \verb{plasgenomicsutils ibd_gene_overlap}: \code{gene}, \code{group_a}, \code{group_b},
 \code{frac_pairs_ibd}, ...), used directly by the gene triangles.}
+      \item{\code{pair_fraction}}{Optional genome-wide per-pair IBD fraction table (path or data
+frame) from \verb{plasgenomicsutils ibd_fraction_and_snp_density}, for
+\code{\link[=plot_ibd_pair_network]{plot_ibd_pair_network()}}. Sample-keyed, so it narrows with the samples when groups
+are dropped.}
       \item{\code{group_col_in_meta}}{Name of the \code{meta} column that defines the grouping. It
 becomes the default \code{group} for the block-based tools, and if the column is a
 factor its levels set the group order for every loaded table (equivalent to
@@ -123,7 +132,7 @@ pre-filtered. \code{0} disables either criterion. Only the IBD evidence is filte
 the analyzed-sample set (the denominator behind every fraction) still comes from
 every row of the blocks file, so a pair whose only segment is short still counts
 as compared. The SNP criterion needs the \code{Nsnp} column hmmibd-rs writes.}
-      \item{\code{reference}}{Reference id for chromosome lengths (default \code{"pf3d7"}).}
+      \item{\code{reference}}{Reference id for chromosome lengths (default \code{DEFAULT_REFERENCE}).}
     }
     \if{html}{\out{</div>}}
   }
@@ -306,6 +315,37 @@ the usual "everything except these" form.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{IbdResults$get_blocks()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-get_pair_fraction"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-get_pair_fraction}{}}}
+\subsection{\code{IbdResults$get_pair_fraction()}}{
+  Genome-wide per-pair IBD fraction table, or \code{NULL}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$get_pair_fraction()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-set_pair_fraction"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-set_pair_fraction}{}}}
+\subsection{\code{IbdResults$set_pair_fraction()}}{
+  Attach (or replace) the per-pair IBD fraction table.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$set_pair_fraction(pair_fraction)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{pair_fraction}}{A path or data frame, as \code{ibd_results(pair_fraction = )} takes.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -578,6 +618,48 @@ the usual "everything except these" form.}
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{...}}{Passed to \code{\link[=plot_ibd_network]{plot_ibd_network()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_ibd_pair_network"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_ibd_pair_network}{}}}
+\subsection{\code{IbdResults$plot_ibd_pair_network()}}{
+  Genome-wide IBD relatedness network from the attached pair table
+(see \code{\link[=plot_ibd_pair_network]{plot_ibd_pair_network()}}). Needs \code{ibd_results(pair_fraction = )} or
+\verb{$set_pair_fraction()}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_ibd_pair_network(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_ibd_pair_network]{plot_ibd_pair_network()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-pair_fraction_summary"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-pair_fraction_summary}{}}}
+\subsection{\code{IbdResults$pair_fraction_summary()}}{
+  Genome-wide IBD sharing summarised over the sample pairs spanning each
+pair of metadata groups (see \code{\link[=pair_fraction_summary]{pair_fraction_summary()}}). Needs the pair table.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$pair_fraction_summary(group = NULL, ...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{group}}{Metadata column defining the groups (default the declared group column).}
+      \item{\code{...}}{Passed to \code{\link[=pair_fraction_summary]{pair_fraction_summary()}}.}
     }
     \if{html}{\out{</div>}}
   }

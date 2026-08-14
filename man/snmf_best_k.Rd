@@ -4,18 +4,34 @@
 \alias{snmf_best_k}
 \title{Pick the best K from an sNMF fit by cross-entropy}
 \usage{
-snmf_best_k(x, K = NULL, stat = c("mean", "min"))
+snmf_best_k(x, K = NULL, stat = c("min", "mean"))
 }
 \arguments{
 \item{x}{An \code{\link[=run_snmf]{run_snmf()}} result (or a raw LEA project, with \code{K} given).}
 
 \item{K}{Candidate K values (defaults to the fitted range from \code{\link[=run_snmf]{run_snmf()}}).}
 
-\item{stat}{Combine replicates by \code{"mean"} (default) or \code{"min"} cross-entropy.}
+\item{stat}{Combine replicates by \code{"min"} (default) or \code{"mean"} cross-entropy.}
 }
 \value{
 The K minimising the summarised cross-entropy.
 }
 \description{
-Pick the best K from an sNMF fit by cross-entropy
+sNMF fits \code{rep} replicates at each K, so a K has a spread of cross-entropies rather than
+one. They are summarised by their \strong{minimum} across replicates, which is what
+\pkg{LEA}'s own \code{plot()} of an sNMF project shows, and the criterion its vignette reads a
+best K off. It is also the replicate \code{\link[=snmf_q]{snmf_q()}} returns: sNMF's objective is non-convex,
+replicates land in different local optima, and the best-fitting one is the model whose
+ancestry you go on to plot -- so comparing minima compares the models actually used at
+each K.
+}
+\details{
+\code{stat = "mean"} averages the replicates instead. Reach for it when the replicate count
+differs between K values (\code{n_runs} in \code{\link[=snmf_cross_entropy]{snmf_cross_entropy()}}), since a minimum over more
+replicates is expected to be smaller whether or not that K fits better; averaging is not
+sensitive to how many were run.
+}
+\seealso{
+\code{\link[=snmf_cross_entropy]{snmf_cross_entropy()}} for the per-K spread, \code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}} for the
+elbow.
 }

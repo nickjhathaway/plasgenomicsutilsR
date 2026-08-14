@@ -37,10 +37,12 @@ test_that("the focal SNP can be named three ways", {
   by_pos <- ehh_panel(plot_ehh(hap, hap$map$pos[10], span = 5e5))$data
   expect_equal(by_id$ehh, by_pos$ehh)
 
-  # a gene holding several SNPs picks the most balanced one and says which
+  # a gene holding several SNPs picks the most balanced one, saying which and how many it
+  # chose between; the shortlist itself comes from ehh_candidates()
   g <- data.frame(name = "wide", chr = normalise_chr(hap$map$chr[10]),
                   start = min(hap$map$pos) - 1, end = max(hap$map$pos) + 1)
-  expect_message(plot_ehh(hap, "wide", genes = g, span = 5e5), "holds several SNPs")
+  expect_message(plot_ehh(hap, "wide", genes = g, span = 5e5), "holds [0-9]+ SNPs")
+  expect_message(plot_ehh(hap, "wide", genes = g, span = 5e5), "ehh_candidates")
 
   expect_error(plot_ehh(hap, "nowhere"), "not a SNP in the haplotypes")
   expect_error(plot_ehh(hap, 1), "no SNP at position 1")
@@ -126,4 +128,64 @@ test_that("the frequency note can be moved or turned off", {
   expect_null(note(show_freq = FALSE))
   expect_error(plot_ehh(hap, hap$map$snp_id[10], freq_position = "middle"),
                "should be one of")
+})
+
+test_that("ehh_candidates lists the shortlist with the chosen SNP on top", {
+  testthat::skip_if_not_installed("rehh")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+
+  cand <- ehh_candidates(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES)
+  expect_true(nrow(cand) > 1)
+  expect_true(all(c("snp_id", "chr", "pos", "maf", "n_hap", "chosen") %in% names(cand)))
+  expect_equal(sum(cand$chosen), 1L)
+  expect_true(cand$chosen[1])                              # chosen first
+  expect_equal(cand$maf[-1], sort(cand$maf[-1], decreasing = TRUE))   # then by maf
+  expect_equal(cand$maf[1], max(cand$maf))                 # and it is the most balanced
+})
+
+test_that("the SNP ehh_candidates marks chosen is the one plot_ehh measures from", {
+  testthat::skip_if_not_installed("rehh")
+  testthat::skip_if_not_installed("ggplot2")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+
+  chosen <- ehh_candidates(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES)$snp_id[1]
+  msg <- testthat::capture_messages(
+    plot_ehh(hap, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES, span = 30000))
+  expect_true(any(grepl(chosen, msg, fixed = TRUE)))
+})
+
+test_that("naming a chr:pos leaves a single candidate, already chosen", {
+  testthat::skip_if_not_installed("rehh")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+
+  one <- ehh_candidates(hap, hap$map$snp_id[1], genes = PF_EXAMPLE_DRUG_GENES)
+  expect_equal(nrow(one), 1L)
+  expect_true(one$chosen)
+  expect_equal(one$snp_id, hap$map$snp_id[1])
+})
+
+test_that("per-group columns show a SNP that is balanced overall but flat within a group", {
+  testthat::skip_if_not_installed("rehh")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+
+  cand <- ehh_candidates(hap, "pfcrt", group = "country", genes = PF_EXAMPLE_DRUG_GENES)
+  expect_true(all(c("maf_Ghana", "maf_Cambodia", "n_groups_variable") %in% names(cand)))
+  expect_true(all(cand$n_groups_variable <= 2))
+  # the fixture's most balanced pfcrt SNP separates the two countries, so it is monomorphic
+  # inside each -- which is the case that leaves plot_ehh(group=) with no curve to draw
+  expect_equal(cand$n_groups_variable[cand$chosen], 0L)
+  expect_true(any(cand$n_groups_variable > 0))     # ... and better choices do exist
+  # a group MAF can never beat the pooled one
+  expect_true(all(cand$maf_Ghana <= cand$maf + 1e-9, na.rm = TRUE))
+})
+
+test_that("ehh_candidates accepts a PopStructure and rejects anything else", {
+  testthat::skip_if_not_installed("rehh")
+  ps <- example_pop_structure(umap = FALSE)
+  expect_s3_class(ehh_candidates(ps, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES), "tbl_df")
+  expect_error(ehh_candidates(list(a = 1), "pfcrt"), "parasite_haplotypes")
 })

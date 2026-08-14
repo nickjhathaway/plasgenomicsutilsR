@@ -5,6 +5,12 @@
 # Distinguishable point shapes, solid ones first so a small node still reads clearly.
 .SHAPE_PALETTE <- c(16, 17, 15, 18, 8, 3, 4, 7, 9, 10, 12, 13, 14)
 
+# Shape for samples with no value in the shape column. Deliberately NOT one of the palette
+# shapes -- a hollow circle reads as "unknown" and cannot be confused with a real level, which
+# it would be if it were an x (4): that is the 7th palette entry, so it collided with a real
+# group as soon as the column had 7 or more levels.
+.NA_SHAPE <- 1L
+
 .shape_palette <- function(n) {
   if (n > length(.SHAPE_PALETTE)) {
     stop("shape_group has ", n, " levels but only ", length(.SHAPE_PALETTE),
@@ -107,10 +113,10 @@
 #'   are 0-based half-open (see [plasgenomicsutilsR-coordinates]), so `"chr:1000-2000"` is
 #'   the 1000 bases from 0-based 1000 up to but not including 2000, and a bare `"chr:1000"`
 #'   is the single base at 0-based 1000.
-#' @param color_group Optional metadata column to colour nodes by (needs `meta`). To colour
+#' @param color_group,colour_group Optional metadata column to colour nodes by (needs `meta`). To colour
 #'   by the graph's own connected components, add them to the metadata first with
 #'   [add_ibd_clusters()] and name the column it creates.
-#' @param colors Colours for `color_group`. A **named** `level -> colour` vector maps by
+#' @param colors,colours Colours for `color_group`. A **named** `level -> colour` vector maps by
 #'   name and may cover only some levels (the rest keep their automatic colour); an
 #'   unnamed vector is taken positionally, in the column's level order. `NULL` (default)
 #'   uses [meta_colors()], so the same mapping can be shared with other plots.
@@ -120,6 +126,14 @@
 #' @param shapes Shapes for `shape_group`, named or positional exactly like `colors`
 #'   (values are \pkg{ggplot2} shape codes). `NULL` picks distinguishable defaults and
 #'   errors if the column has more levels than there are distinct shapes.
+#' @param na_shape,na_colour,na_color What a sample with **no value** in `shape_group` / `color_group`
+#'   gets: by default a hollow circle (shape `1`) and grey. The default shape is deliberately
+#'   outside the automatic palette so it cannot be mistaken for a real level; if you set it to
+#'   one that a level also uses, the plot says so rather than letting two things look alike.
+#'
+#'   The legends stack in a fixed order -- colour, then shape -- so two plots of the same cohort
+#'   are comparable. \pkg{ggplot2} otherwise orders guides by an internal hash that changes with
+#'   the labels. Override per plot with `+ ggplot2::guides(shape = ggplot2::guide_legend(order = 1))`.
 #' @param within Pad the interval by this many bp on both sides (default `0`).
 #' @param sharing What an edge requires of a pair's IBD segment:
 #'   \describe{
@@ -148,7 +162,7 @@
 #'   the cost of them taking up more of the canvas. Applies to weight-aware layouts
 #'   (`"fr"`, `"kk"`, `"drl"`, `"stress"`, ...); others are unaffected.
 #' @param node_size,node_alpha Node point aesthetics.
-#' @param edge_colour,edge_width Edge aesthetics (default width `1`).
+#' @param edge_colour,edge_color,edge_width Edge aesthetics (default width `1`).
 #' @param edge_alpha Edge opacity (default `0.5`). `NULL` instead scales opacity down with
 #'   edge count (`~120 / n_edges`, clamped to \[0.06, 0.6]).
 #' @param title Plot title: `NULL` (default) uses `"IBD network: <label>"`, a string sets a
@@ -171,12 +185,18 @@
 #' @export
 plot_ibd_network <- function(x, gene = NULL, locus = NULL,
                              color_group = NULL, colors = NULL,
-                             shape_group = NULL, shapes = NULL, within = 0,
+                             shape_group = NULL, shapes = NULL,
+                             na_shape = .NA_SHAPE, na_colour = "grey70", within = 0,
                              sharing = c("overlap", "complete"),
                              include_isolated = FALSE, layout = "fr", spread = 1.5,
                              node_size = 3, node_alpha = 0.9,
                              edge_colour = "grey65", edge_alpha = 0.5, edge_width = 1,
-                             title = NULL, subtitle = TRUE, seed = 42) {
+                             title = NULL, subtitle = TRUE, seed = 42,
+                             colour_group = NULL, colours = NULL, na_color = NULL, edge_color = NULL) {
+  color_group <- .alias_arg("color_group", "colour_group")
+  colors <- .alias_arg("colors", "colours")
+  na_colour <- .alias_arg("na_colour", "na_color")
+  edge_colour <- .alias_arg("edge_colour", "edge_color")
   .need_package("ggplot2", "plot_ibd_network()")
   .need_package("igraph", "plot_ibd_network()")
   .need_package("ggraph", "plot_ibd_network()")
@@ -205,12 +225,72 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL,
   meta <- x$get_meta()
   analyzed <- x$get_analyzed_samples()
   if (is.null(analyzed)) analyzed <- unique(c(bl$sample1, bl$sample2))
-  connected <- unique(c(edges$from, edges$to))
-  isolated <- if (include_isolated) setdiff(analyzed, connected) else character(0)
-  if (!length(connected) && !length(isolated)) {
+  if (!nrow(edges) && !include_isolated) {
     stop("no samples share an IBD block over ", iv$label,
          " (set include_isolated = TRUE to still show the samples)", call. = FALSE)
   }
+  .draw_ibd_network(
+    edges = edges, analyzed = analyzed, meta = meta,
+    color_group = color_group, colors = colors, shape_group = shape_group, shapes = shapes,
+    na_shape = na_shape, na_colour = na_colour, include_isolated = include_isolated,
+    layout = layout, spread = spread, node_size = node_size, node_alpha = node_alpha,
+    edge_colour = edge_colour, edge_alpha = edge_alpha, edge_width = edge_width,
+    title = if (is.null(title)) paste0("IBD network: ", iv$label) else title,
+    subtitle = subtitle,
+    subtitle_text = function(n_nodes, n_edges, n_iso)
+      sprintf("%d samples, %d IBD pairs sharing %s%s", n_nodes, n_edges,
+              if (sharing == "complete") "the whole interval" else "part of the interval",
+              if (n_iso) sprintf(" (%d unconnected)", n_iso) else ""),
+    seed = seed)
+}
+
+# Which legend sits above which. ggplot orders guides by their `order`, and with the default 0
+# it falls back to a hash of the guide -- so the order changes with the labels, and two plots of
+# the same cohort can stack their legends differently. Fixed here so figures stay comparable;
+# override per plot with `+ guides(linewidth = guide_legend(order = 1))`.
+.LEGEND_ORDER <- c(colour = 1L, shape = 2L, weight = 3L)
+
+# Powers of two spanning the observed weights. IBD fraction runs over orders of magnitude --
+# most pairs share a little, a few share almost everything -- so a linear legend collapses the
+# interesting end into a single key.
+.ibd_weight_breaks <- function(w, max_breaks = 6L) {
+  w <- w[is.finite(w) & w > 0]
+  if (!length(w)) return(ggplot2::waiver())
+  lo <- min(w); hi <- max(w)
+  # Keep the powers of two that fall *inside* the data rather than rounding the ends outwards.
+  # An IBD fraction of 1.0000006 -- the callable map rounds a fully-shared pair a hair over 1 --
+  # otherwise rounds up to a 2 break, which ggplot censors for being past the data, and the
+  # octave it added pushed the smallest real break off the bottom of the legend.
+  br <- 2^seq(floor(log2(lo)), ceiling(log2(hi)))
+  br <- br[br >= lo & br <= hi]
+  if (length(br) < 2L) return(ggplot2::waiver())      # too narrow a range to label this way
+  # thin from the dense end but always keep the largest, so the legend still spans the range
+  if (length(br) > max_breaks)
+    br <- rev(rev(br)[seq(1L, length(br), by = ceiling(length(br) / max_breaks))])
+  br
+}
+
+# Shared drawing half of the IBD networks: layout, the grid of unconnected samples underneath,
+# node aesthetics and the labels. `edges` is from/to plus an optional `weight`; when weight is
+# present the edge width maps to it, which is what separates a genome-wide sharing network from
+# a per-gene one where every edge means the same thing.
+.draw_ibd_network <- function(edges, analyzed, meta,
+                              color_group = NULL, colors = NULL,
+                              shape_group = NULL, shapes = NULL,
+                              na_shape = .NA_SHAPE, na_colour = "grey70",
+                              include_isolated = FALSE, layout = "fr", spread = 1.5,
+                              node_size = 3, node_alpha = 0.9,
+                              edge_colour = "grey65", edge_alpha = 0.5, edge_width = 1,
+                              weight_name = "IBD", weight_range = c(0.15, 2.6),
+                              weight_breaks = NULL, weight_trans = "log2",
+                              title = NULL, subtitle = TRUE, subtitle_text = NULL,
+                              seed = 42) {
+  weighted <- "weight" %in% names(edges)
+  connected <- unique(c(edges$from, edges$to))
+  isolated <- if (include_isolated) setdiff(analyzed, connected) else character(0)
+  if (!length(connected) && !length(isolated))
+    stop("no samples to draw: no pair is connected and none were kept as unconnected",
+         call. = FALSE)
   # sample -> value lookups for each aesthetic, keeping the column's own level order
   lookup <- function(col, what) {
     if (is.null(col)) return(NULL)
@@ -269,6 +349,7 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL,
     edf <- data.frame(
       x  = main$x[match(edges$from, main$name)], y  = main$y[match(edges$from, main$name)],
       xe = main$x[match(edges$to,   main$name)], ye = main$y[match(edges$to,   main$name)])
+    if (weighted) edf$weight <- edges$weight
     edf <- edf[stats::complete.cases(edf), , drop = FALSE]
   }
   # scale edge opacity down with edge count when not set explicitly
@@ -276,9 +357,21 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL,
 
   p <- ggplot2::ggplot()
   if (!is.null(edf) && nrow(edf)) {
-    p <- p + ggplot2::geom_segment(
-      data = edf, ggplot2::aes(.data$x, .data$y, xend = .data$xe, yend = .data$ye),
-      colour = edge_colour, alpha = edge_alpha, linewidth = edge_width)
+    if (weighted) {
+      p <- p + ggplot2::geom_segment(
+        data = edf, ggplot2::aes(.data$x, .data$y, xend = .data$xe, yend = .data$ye,
+                                 linewidth = .data$weight),
+        colour = edge_colour, alpha = edge_alpha) +
+        ggplot2::scale_linewidth_continuous(
+          name = weight_name, range = weight_range, transform = weight_trans,
+          breaks = weight_breaks %||% .ibd_weight_breaks(edf$weight),
+          labels = function(v) format(round(v, 3), trim = TRUE),
+          guide = ggplot2::guide_legend(order = .LEGEND_ORDER[["weight"]]))
+    } else {
+      p <- p + ggplot2::geom_segment(
+        data = edf, ggplot2::aes(.data$x, .data$y, xend = .data$xe, yend = .data$ye),
+        colour = edge_colour, alpha = edge_alpha, linewidth = edge_width)
+    }
   }
   # nodes: colour and shape are independent, so either, both or neither can be mapped
   aes_args <- list(x = quote(.data$x), y = quote(.data$y))
@@ -294,14 +387,23 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL,
                                      function(n) meta_colors(
                                        data.frame(g = factor(col_of$levels,
                                                              levels = col_of$levels)))[["g"]])
-    p <- p + ggplot2::scale_colour_manual(values = node_cols, name = color_group,
-                                          na.value = "grey70", drop = FALSE)
+    p <- p + ggplot2::scale_colour_manual(
+      values = node_cols, name = color_group, na.value = na_colour, drop = FALSE,
+      guide = ggplot2::guide_legend(order = .LEGEND_ORDER[["colour"]]))
   }
   if (!is.null(shp_of)) {
     node_shapes <- .match_scale_values(shapes, shp_of$levels, "shapes",
                                        function(n) .shape_palette(n))
-    p <- p + ggplot2::scale_shape_manual(values = node_shapes, name = shape_group,
-                                         na.value = 4, drop = FALSE)
+    # An NA drawn with a shape a real level also uses is indistinguishable from that level,
+    # and silently so -- the reader has no way to tell which points are which.
+    clash <- names(node_shapes)[node_shapes == na_shape]
+    if (length(clash))
+      warning("`na_shape` (", na_shape, ") is also used by ", paste(clash, collapse = ", "),
+              ", so missing values look like that group. Pick another `na_shape`, or set ",
+              "`shapes` to avoid ", na_shape, ".", call. = FALSE)
+    p <- p + ggplot2::scale_shape_manual(
+      values = node_shapes, name = shape_group, na.value = na_shape, drop = FALSE,
+      guide = ggplot2::guide_legend(order = .LEGEND_ORDER[["shape"]]))
   }
   # dashed separator + label between the connected component (y >= 0) and the isolated grid
   if (!is.null(iso)) {
@@ -315,15 +417,11 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL,
                         size = 3, colour = "grey45")
   }
 
-  ttl <- if (is.null(title)) paste0("IBD network: ", iv$label)
-         else if (isFALSE(title) || (length(title) == 1 && is.na(title))) NULL
-         else as.character(title)
-  sub_lab <- if (isTRUE(subtitle)) {
-    # name the criterion: the same gene gives very different graphs under the two
-    sprintf("%d samples, %d IBD pairs sharing %s%s", nrow(nodes), nrow(edges),
-            if (sharing == "complete") "the whole interval" else "part of the interval",
-            if (length(isolated)) sprintf(" (%d unconnected)", length(isolated)) else "")
-  } else NULL
+  ttl <- if (is.null(title) || isFALSE(title) ||
+             (length(title) == 1 && is.na(title))) NULL else as.character(title)
+  sub_lab <- if (isTRUE(subtitle) && !is.null(subtitle_text)) {
+    subtitle_text(nrow(nodes), nrow(edges), length(isolated))
+  } else if (is.character(subtitle)) subtitle else NULL
 
   p <- p +
     ggplot2::labs(title = ttl, subtitle = sub_lab) +
