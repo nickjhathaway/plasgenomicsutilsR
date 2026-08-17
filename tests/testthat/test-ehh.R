@@ -189,3 +189,37 @@ test_that("ehh_candidates accepts a PopStructure and rejects anything else", {
   expect_s3_class(ehh_candidates(ps, "pfcrt", genes = PF_EXAMPLE_DRUG_GENES), "tbl_df")
   expect_error(ehh_candidates(list(a = 1), "pfcrt"), "parasite_haplotypes")
 })
+
+test_that("the title is set on the curves, not on the gene track underneath", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("rehh")
+  skip_if_not_installed("patchwork")
+  hap <- hap_for_ehh()
+  snp <- hap$map$snp_id[10]
+  args <- list(hap, snp, span = 5e5, genes = PF_EXAMPLE_DRUG_GENES, gene_track = TRUE)
+
+  # NULL keeps the written title, a string replaces it, NA/FALSE drops it
+  expect_equal(ehh_panel(do.call(plot_ehh, args))$labels$title, paste0("EHH around ", snp))
+  custom <- do.call(plot_ehh, c(args, list(title = "EHH around A675V")))
+  expect_equal(ehh_panel(custom)$labels$title, "EHH around A675V")
+  expect_null(ehh_panel(do.call(plot_ehh, c(args, list(title = NA))))$labels$title)
+  expect_null(ehh_panel(do.call(plot_ehh, c(args, list(title = FALSE))))$labels$title)
+  expect_equal(ehh_panel(do.call(plot_ehh, c(args, list(subtitle = "north vs south"))))$labels$subtitle,
+               "north vs south")
+
+  # the point of the argument: `+ labs()` on the returned patchwork would land on the gene
+  # track, so the title has to be on the panel that sits on top
+  track <- custom[[2]]
+  expect_null(track$labels$title)
+  outer <- patchwork::patchworkGrob(custom)
+  cells <- outer$layout[outer$layout$name %in% c("panel-1", "panel-2"), ]
+  expect_lt(cells$t[cells$name == "panel-1"], cells$t[cells$name == "panel-2"])
+  g <- ggplot2::ggplotGrob(custom[[1]])
+  expect_lt(g$layout$t[g$layout$name == "title"],
+            min(g$layout$t[grepl("^panel", g$layout$name)]))
+
+  # and without a track it is a plain ggplot carrying the same title
+  plain <- plot_ehh(hap, snp, span = 5e5, title = "plain")
+  expect_false(inherits(plain, "patchwork"))
+  expect_equal(plain$labels$title, "plain")
+})

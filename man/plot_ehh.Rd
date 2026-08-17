@@ -19,6 +19,8 @@ plot_ehh(
   show_freq = TRUE,
   freq_position = c("topleft", "topright", "bottomleft", "bottomright"),
   reference = DEFAULT_REFERENCE,
+  title = NULL,
+  subtitle = NULL,
   colors = NULL
 )
 }
@@ -64,6 +66,13 @@ would crowd a hundred names under it, so this is opt-in.}
 the focal SNP and both curves have flattened along the bottom by the window's edges.}
 
 \item{reference}{Reference id, used when \code{focal} names a whole chromosome.}
+
+\item{title}{Plot title: \code{NULL} (default) uses \code{"EHH around <snp>"}, a string sets a custom
+one, and \code{NA}/\code{FALSE} draws none. Set it here rather than adding \code{labs(title = )} to the
+result -- with \code{gene_track = TRUE} the result is a patchwork, and \code{+ labs()} lands on the
+gene track at the bottom, putting the title in the middle of the figure.}
+
+\item{subtitle}{Line under the title; \code{NULL} (default) draws none.}
 }
 \value{
 A patchwork of the curves over the gene track, or a plain ggplot without one.

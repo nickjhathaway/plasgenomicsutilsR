@@ -145,6 +145,8 @@ reference:
   - snp_aa_positions
   - read_gff_cds
   - bed_intersect
+  - bed_subtract
+  - write_bed
   - plasgenomicsutilsR-coordinates
 - title: Example & reference data
   contents:

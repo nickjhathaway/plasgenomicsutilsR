@@ -177,6 +177,11 @@ ehh_candidates <- function(x, focal, group = NULL, genes = NULL, min_haplotypes 
 #'   `"bottomleft"` or `"bottomright"`. The top corners are usually clear, since EHH is 1 at
 #'   the focal SNP and both curves have flattened along the bottom by the window's edges.
 #' @param reference Reference id, used when `focal` names a whole chromosome.
+#' @param title Plot title: `NULL` (default) uses `"EHH around <snp>"`, a string sets a custom
+#'   one, and `NA`/`FALSE` draws none. Set it here rather than adding `labs(title = )` to the
+#'   result -- with `gene_track = TRUE` the result is a patchwork, and `+ labs()` lands on the
+#'   gene track at the bottom, putting the title in the middle of the figure.
+#' @param subtitle Line under the title; `NULL` (default) draws none.
 #' @return A patchwork of the curves over the gene track, or a plain ggplot without one.
 #' @examples
 #' ps <- example_pop_structure(umap = FALSE)
@@ -187,7 +192,7 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
                      polarized = FALSE, limehh = 0.05, genes = NULL, gene_track = NULL,
                      gene_label_angle = 0, colours = NULL, show_freq = TRUE,
                      freq_position = c("topleft", "topright", "bottomleft", "bottomright"),
-                     reference = DEFAULT_REFERENCE,
+                     reference = DEFAULT_REFERENCE, title = NULL, subtitle = NULL,
                      colors = NULL) {
   colours <- .alias_arg("colours", "colors")
   .need_package("ggplot2", "plot_ehh()")
@@ -258,7 +263,9 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
     ggplot2::scale_colour_manual(values = fills, drop = FALSE, name = "allele at focal SNP") +
     ggplot2::scale_y_continuous(limits = c(0, 1), expand = ggplot2::expansion(mult = 0.02)) +
     .region_axis(iv, 0) +
-    ggplot2::labs(y = "EHH", title = paste0("EHH around ", map$snp_id[cand])) +
+    ggplot2::labs(y = "EHH",
+                  title = .ehh_title(title, map$snp_id[cand]),
+                  subtitle = if (is.character(subtitle)) subtitle else NULL) +
     ggplot2::coord_cartesian(xlim = xlim) +
     .manhattan_theme() +
     ggplot2::theme(legend.position = "right")
@@ -308,4 +315,12 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
   g <- g[g$chr == iv$chr & as.numeric(g$end) >= iv$start & as.numeric(g$start) <= iv$end, ,
          drop = FALSE]
   if (!nrow(g)) NULL else g
+}
+
+# `NULL` keeps the written title, a string replaces it, `NA`/`FALSE` drops it -- the same
+# three cases the network plots take.
+.ehh_title <- function(title, snp_id) {
+  if (is.null(title)) return(paste0("EHH around ", snp_id))
+  if (isFALSE(title) || (length(title) == 1 && is.na(title))) return(NULL)
+  as.character(title)
 }
