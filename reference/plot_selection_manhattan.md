@@ -108,11 +108,10 @@ plot_selection_manhattan(
   a permutation line where it disagrees with a parametric one: it is
   built by re-shuffling the IBD segments themselves, so it needs no
   chi-square(1) reference and it accounts for one segment spanning many
-  SNPs. On real data it lands several times higher than Bonferroni's.
-  `lambda_gc` says how far that reference is from fitting; the further
-  from 1, the less the parametric lines mean. Naming a kind the run did
-  not write is an error; `"all"` draws whichever kinds the threshold
-  table carries.
+  SNPs, and it can land well above Bonferroni's. `lambda_gc` says how
+  far that reference is from fitting; the further from 1, the less the
+  parametric lines mean. Naming a kind the run did not write is an
+  error; `"all"` draws whichever kinds the threshold table carries.
 
 - point_size, point_alpha:
 
@@ -125,3 +124,9 @@ plot_selection_manhattan(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+plot_selection_manhattan(example_ibd_results(), genes = PF_EXAMPLE_DRUG_GENES)
+```

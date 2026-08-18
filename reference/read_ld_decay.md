@@ -44,3 +44,19 @@ stays here, being linear and quick.
 
 [`ld_index()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ld_index.md),
 [`plot_ld_decay()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ld_decay.md)
+
+## Examples
+
+``` r
+f <- tempfile(fileext = ".tsv")
+write.table(data.frame(group = "north", bin_mid = c(500, 1500, 2500),
+                       mean_r2 = c(0.40, 0.22, 0.14)),
+            f, sep = "\t", quote = FALSE, row.names = FALSE)
+read_ld_decay(f)
+#> # A tibble: 3 × 3
+#>   group bin_mid mean_r2
+#>   <fct>   <dbl>   <dbl>
+#> 1 north     500    0.4 
+#> 2 north    1500    0.22
+#> 3 north    2500    0.14
+```

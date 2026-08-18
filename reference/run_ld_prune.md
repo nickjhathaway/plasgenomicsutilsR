@@ -23,3 +23,12 @@ run_ld_prune(...)
 
 See
 [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md).
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# deprecated: use load_genotypes()
+geno <- run_ld_prune("clean.vcf.gz", gds = "clean.gds")
+} # }
+```

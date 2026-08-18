@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,11 @@
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
     <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Working with the data</h6></li>
+    <li><a class="dropdown-item" href="../articles/cohorts-and-subsets.html">Cohorts and subsets</a></li>
+    <li><a class="dropdown-item" href="../articles/filling-in-missed-calls.html">Filling in missed calls</a></li>
+    <li><a class="dropdown-item" href="../articles/coverage-qc.html">Coverage QC</a></li>
   </ul>
 </li>
       </ul>
@@ -65,7 +70,7 @@
       <h1>Amino acids and genomic coordinates</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/vignettes/amino-acid-coordinates.Rmd" class="external-link"><code>vignettes/amino-acid-coordinates.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/vignettes/amino-acid-coordinates.Rmd" class="external-link"><code>vignettes/amino-acid-coordinates.Rmd</code></a></small>
       <div class="d-none name"><code>amino-acid-coordinates.Rmd</code></div>
     </div>
 
@@ -425,6 +430,14 @@ things this makes easy:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">gene_id</span> <span class="op">==</span> <span class="st">"PF3D7_0810800"</span><span class="op">)</span></span></code></pre></div>
 <p>On a real callset that last step resolves ~28,000 genotyped SNPs to
 ~17,000 coding ones across ~3,400 genes in about a second.</p>
+</div>
+<div class="section level2">
+<h2 id="calling-the-residues-a-panel-is-missing">Calling the residues a panel is missing<a class="anchor" aria-label="anchor" href="#calling-the-residues-a-panel-is-missing"></a>
+</h2>
+<p>Filtering removes SNPs, and some of what it removes is a residue you
+meant to keep. Going the other way – codons minus what the panel already
+holds – gives a BED to re-call from the BAMs. See
+<code><a href="../articles/filling-in-missed-calls.html">vignette("filling-in-missed-calls")</a></code>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

@@ -68,3 +68,12 @@ statistics like iHS lose power.
 Sabeti, P. C. et al. (2007) Genome-wide detection and characterization
 of positive selection in human populations. *Nature* 449, 913-918.
 [doi:10.1038/nature06250](https://doi.org/10.1038/nature06250)
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+hap <- parasite_haplotypes(ps, fws = fws, min_fws = 0.95)
+xp <- run_xpehh(hap, group = "region", pop1 = "north", pop2 = "south")
+} # }
+```

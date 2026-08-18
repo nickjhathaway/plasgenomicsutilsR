@@ -177,3 +177,15 @@ reused `.gds`.
 
 [PopStructure](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.md),
 [`pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_structure.md)
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# LD-pruned for PCA / UMAP / admixture
+geno <- load_genotypes("clean.vcf.gz", gds = "clean.gds")
+
+# and the full panel for anything where SNP correlation IS the signal
+full <- load_genotypes("clean.vcf.gz", gds = "clean.gds", prune = FALSE)
+} # }
+```

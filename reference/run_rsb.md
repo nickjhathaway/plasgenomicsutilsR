@@ -89,3 +89,14 @@ Tang, K., Thornton, K. R. & Stoneking, M. (2007) A new approach for
 using genome scans to detect recent positive selection in the human
 genome. *PLoS Biology* 5, e171.
 [doi:10.1371/journal.pbio.0050171](https://doi.org/10.1371/journal.pbio.0050171)
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Rsb contrasts two groups' haplotype homozygosity at the same SNP
+hap <- parasite_haplotypes(ps, fws = fws, min_fws = 0.95)
+rsb <- run_rsb(hap, group = "region", pop1 = "north", pop2 = "south")
+plot_ihs(rsb)
+} # }
+```

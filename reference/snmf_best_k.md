@@ -54,3 +54,12 @@ run.
 for the per-K spread,
 [`plot_snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.md)
 for the elbow.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+snmf_best_k(fit)                  # minimum cross-entropy, as LEA plots it
+snmf_best_k(fit, stat = "mean")   # for an uneven number of replicates per K
+} # }
+```

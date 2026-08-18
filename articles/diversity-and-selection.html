@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,11 @@
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
     <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Working with the data</h6></li>
+    <li><a class="dropdown-item" href="../articles/cohorts-and-subsets.html">Cohorts and subsets</a></li>
+    <li><a class="dropdown-item" href="../articles/filling-in-missed-calls.html">Filling in missed calls</a></li>
+    <li><a class="dropdown-item" href="../articles/coverage-qc.html">Coverage QC</a></li>
   </ul>
 </li>
       </ul>
@@ -65,7 +70,7 @@
       <h1>Diversity, linkage and selection</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
       <div class="d-none name"><code>diversity-and-selection.Rmd</code></div>
     </div>
 
@@ -244,6 +249,9 @@ haplotypes rather than one:</p>
 the population allele frequency. <code>seed</code> makes a run
 reproducible – and a signal worth reporting should survive repeating the
 whole thing under a different seed.</p>
+<p>Which samples came through is worth checking before quoting a cohort
+size, and the same set is usually wanted by the rest of the analysis –
+see <code><a href="../articles/cohorts-and-subsets.html">vignette("cohorts-and-subsets")</a></code>.</p>
 </div>
 <div class="section level3">
 <h3 id="ihs-rsb-and-xp-ehh">iHS, Rsb and XP-EHH<a class="anchor" aria-label="anchor" href="#ihs-rsb-and-xp-ehh"></a>
@@ -462,38 +470,6 @@ per-gene table these scans are usually reported as – mean beta beside
 the iHS peak and Tajima’s D from
 <code>pop_diversity(by = "gene")</code>.</p>
 </div>
-</div>
-<div class="section level2">
-<h2 id="coverage-qc">Coverage QC<a class="anchor" aria-label="anchor" href="#coverage-qc"></a>
-</h2>
-<p>The depth tables come from the Python package
-(<code>plasgenomicsutils coverage_depth_stats</code> and
-<code>coverage_dropout_regions</code>, which read the BAMs); this
-package reads and plots them.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cov</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_coverage.html">read_coverage</a></span><span class="op">(</span><span class="st">"coverage_by_sample.tsv.gz"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/coverage_qc.html">coverage_qc</a></span><span class="op">(</span><span class="va">cov</span>, threshold <span class="op">=</span> <span class="fl">10</span>, min_mean <span class="op">=</span> <span class="fl">5</span>, min_breadth <span class="op">=</span> <span class="fl">80</span><span class="op">)</span>   <span class="co"># one row per sample</span></span>
-<span><span class="fu"><a href="../reference/plot_coverage_summary.html">plot_coverage_summary</a></span><span class="op">(</span><span class="va">cov</span><span class="op">)</span>     <span class="co"># mean vs breadth, failures labelled</span></span>
-<span><span class="fu"><a href="../reference/plot_coverage_by_chrom.html">plot_coverage_by_chrom</a></span><span class="op">(</span><span class="va">cov</span><span class="op">)</span>    <span class="co"># sample x chromosome, relative to each sample's own mean</span></span>
-<span></span>
-<span><span class="fu"><a href="../reference/plot_coverage_dropout.html">plot_coverage_dropout</a></span><span class="op">(</span><span class="fu"><a href="../reference/read_coverage.html">read_coverage</a></span><span class="op">(</span><span class="st">"coverage_windows.tsv.gz"</span><span class="op">)</span>,</span>
-<span>                      genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
-<p>Breadth matters more than mean depth: selective whole-genome
-amplification can give a respectable average while leaving much of the
-genome at zero, and only the <code>pct_ge_10x</code>-style column shows
-that. On one real cohort the sample that failed QC had a mean of 122x —
-and a median of 33x with a quarter of the core genome under 10x.</p>
-<p>Two things to keep straight when generating those tables. The depth
-engines do not agree by definition: <code>mosdepth</code> counts
-<strong>fragments</strong> (an overlapping mate pair once) while
-<code>pysam</code>/<code>samtools depth</code> count
-<strong>reads</strong>, which puts mosdepth a couple of percent lower
-everywhere. Fragment depth is the better measure of independent
-evidence; either is fine as long as a cohort uses one, and the
-<code>engine</code> column records which. And
-<code><a href="../reference/plot_coverage_dropout.html">plot_coverage_dropout()</a></code> earns its place on the cross-sample
-question — a window empty in <em>everyone</em> is not missing data, it
-silently reads as invariant.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

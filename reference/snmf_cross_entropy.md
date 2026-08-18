@@ -53,3 +53,11 @@ mostly failed has its minimum taken over fewer of them.
 [`plot_snmf_cross_entropy()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.md),
 [`snmf_best_k()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_best_k.md),
 [`snmf_q()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_q.md)
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+snmf_cross_entropy(fit)           # one row per K: min, mean, and n_runs
+} # }
+```

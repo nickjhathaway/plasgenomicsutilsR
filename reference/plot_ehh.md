@@ -26,6 +26,8 @@ plot_ehh(
   show_freq = TRUE,
   freq_position = c("topleft", "topright", "bottomleft", "bottomright"),
   reference = DEFAULT_REFERENCE,
+  title = NULL,
+  subtitle = NULL,
   colors = NULL
 )
 ```
@@ -112,6 +114,18 @@ plot_ehh(
 - reference:
 
   Reference id, used when `focal` names a whole chromosome.
+
+- title:
+
+  Plot title: `NULL` (default) uses `"EHH around <snp>"`, a string sets
+  a custom one, and `NA`/`FALSE` draws none. Set it here rather than
+  adding `labs(title = )` to the result – with `gene_track = TRUE` the
+  result is a patchwork, and `+ labs()` lands on the gene track at the
+  bottom, putting the title in the middle of the figure.
+
+- subtitle:
+
+  Line under the title; `NULL` (default) draws none.
 
 ## Value
 

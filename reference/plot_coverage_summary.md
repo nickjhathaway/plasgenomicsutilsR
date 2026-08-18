@@ -40,3 +40,11 @@ plot_coverage_summary(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+cov <- data.frame(sample = paste0("s", 1:4), chrom = "genome",
+                  mean = c(60, 45, 30, 3), pct_ge_10x = c(96, 91, 41, 7))
+plot_coverage_summary(cov)
+```

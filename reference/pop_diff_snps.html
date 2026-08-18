@@ -11,7 +11,7 @@ SNP or feed it to plot_diff_manhattan()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,11 @@ SNP or feed it to plot_diff_manhattan()."></head><body>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
     <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Working with the data</h6></li>
+    <li><a class="dropdown-item" href="../articles/cohorts-and-subsets.html">Cohorts and subsets</a></li>
+    <li><a class="dropdown-item" href="../articles/filling-in-missed-calls.html">Filling in missed calls</a></li>
+    <li><a class="dropdown-item" href="../articles/coverage-qc.html">Coverage QC</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -43,7 +48,7 @@ SNP or feed it to plot_diff_manhattan()."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Per-SNP differentiation in long form</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
       <div class="d-none name"><code>pop_diff_snps.Rd</code></div>
     </div>
 
@@ -73,6 +78,22 @@ SNP or feed it to <code><a href="plot_diff_manhattan.html">plot_diff_manhattan()
 (one row per SNP x pair).</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span><span class="st">"africa"</span>, umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">sn</span> <span class="op">&lt;-</span> <span class="fu">pop_diff_snps</span><span class="op">(</span><span class="fu"><a href="pop_diff.html">pop_diff</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sn</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">sn</span><span class="op">$</span><span class="va">value</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snp"</span>, <span class="st">"chr"</span>, <span class="st">"pos"</span>, <span class="st">"value"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 6 × 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   snp                chr            pos value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Pf3D7_08_v3:549992 Pf3D7_08_v3 <span style="text-decoration: underline;">549</span>992 0.582</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Pf3D7_08_v3:544528 Pf3D7_08_v3 <span style="text-decoration: underline;">544</span>528 0.565</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Pf3D7_08_v3:546840 Pf3D7_08_v3 <span style="text-decoration: underline;">546</span>840 0.539</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> Pf3D7_08_v3:536890 Pf3D7_08_v3 <span style="text-decoration: underline;">536</span>890 0.437</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Pf3D7_04_v3:242142 Pf3D7_04_v3 <span style="text-decoration: underline;">242</span>142 0.404</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> Pf3D7_01_v3:469121 Pf3D7_01_v3 <span style="text-decoration: underline;">469</span>121 0.335</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

@@ -50,3 +50,13 @@ plot_coverage_dropout(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+win <- expand.grid(sample = paste0("s", 1:5), chrom = "Pf3D7_01_v3",
+                   start = seq(0, 3e5, by = 1e5), stringsAsFactors = FALSE)
+win$end <- win$start + 1e5
+win$mean_depth <- c(rep(30, 15), rep(1, 5))    # the last window is empty in everyone
+plot_coverage_dropout(win)
+```

@@ -1,6 +1,6 @@
 # plasgenomicsutilsR
 
-> **Version 0.3.2** — early development; APIs, defaults, and outputs may
+> **Version 0.3.3** — early development; APIs, defaults, and outputs may
 > change between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** —
@@ -415,6 +415,16 @@ paths, not just the CRAN ones.)
   Breadth matters more than mean depth: sWGA can give a respectable
   average while leaving much of the genome at zero, and only the breadth
   column shows it.
+
+- **Within-host mixtures** —
+  [`plot_wsaf()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_wsaf.md)
+  draws the per-sample heterozygous allele fractions written by
+  `plasgenomicsutils wsaf_profile --sites-out`, one small histogram per
+  sample, coloured by whether the sample is monoclonal, has a dominant
+  clone worth filtering to, or carries a strain too large to remove.
+  Mass against zero is one dominant strain, a band near 0.5 is a
+  co-dominant one. `scales = "fixed"` shares one y axis so panel heights
+  compare how *many* heterozygous sites each sample has.
 
 - **Genomic intervals** —
   [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md)

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,11 @@
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
     <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Working with the data</h6></li>
+    <li><a class="dropdown-item" href="../articles/cohorts-and-subsets.html">Cohorts and subsets</a></li>
+    <li><a class="dropdown-item" href="../articles/filling-in-missed-calls.html">Filling in missed calls</a></li>
+    <li><a class="dropdown-item" href="../articles/coverage-qc.html">Coverage QC</a></li>
   </ul>
 </li>
       </ul>
@@ -65,7 +70,7 @@
       <h1>IBD analysis</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/vignettes/ibd.Rmd" class="external-link"><code>vignettes/ibd.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/vignettes/ibd.Rmd" class="external-link"><code>vignettes/ibd.Rmd</code></a></small>
       <div class="d-none name"><code>ibd.Rmd</code></div>
     </div>
 
@@ -530,6 +535,42 @@ raise it to loosen the densest groups further, or use
 <code>spread = 0</code> for plain <code>fr</code>.</p>
 </div>
 <div class="section level2">
+<h2 id="relatedness-over-the-whole-genome">Relatedness over the whole genome<a class="anchor" aria-label="anchor" href="#relatedness-over-the-whole-genome"></a>
+</h2>
+<p>The networks above ask who shares one locus, where every edge means
+the same thing. <code><a href="../reference/plot_ibd_pair_network.html">plot_ibd_pair_network()</a></code> asks who is related
+<em>overall</em>: an edge joins a pair sharing more than
+<code>min_ibd</code> of the accessible genome, and its width is how
+much. It reads the pair table from
+<code>plasgenomicsutils ibd_fraction_and_snp_density</code>, attached
+with <code>ibd_results(pair_fraction = )</code>:</p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_ibd_pair_network.html">plot_ibd_pair_network</a></span><span class="op">(</span><span class="va">ibd</span>, color_group <span class="op">=</span> <span class="st">"region"</span>, min_ibd <span class="op">=</span> <span class="fl">0.03</span><span class="op">)</span></span></code></pre></div>
+<p>Samples with no edge are drawn as a grid underneath and counted,
+rather than dropped – an unrelated sample is a result, and leaving it
+out would overstate how connected a cohort is. Legend breaks default to
+powers of two, because sharing runs over orders of magnitude and a
+linear legend collapses the interesting end into one key.</p>
+<p><code><a href="../reference/pair_fraction_summary.html">pair_fraction_summary()</a></code> is the same table read as
+numbers: one row per pair of metadata groups, over every sample pair
+spanning them.</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ibd</span><span class="op">$</span><span class="fu">pair_fraction_summary</span><span class="op">(</span>group <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span></code></pre></div>
+<p>Two groups’ row covers all <code>n_a x n_b</code> cross-group pairs;
+a group’s row against itself covers its <code>choose(n, 2)</code>
+within-group pairs, which is what says whether a group is internally
+related at all – so the within- and between-group rows are meant to be
+read against each other.</p>
+<p>The quartiles come as standard because relatedness is skewed: most
+pairs share almost nothing and a few share a great deal, so a mean alone
+reads as a far more related cohort than any pair actually is.
+<code>n_samples_a</code> / <code>n_samples_b</code> sit beside
+<code>n_pairs</code> so the denominator is checkable – short of
+<code>n_a * n_b</code> (or <code>choose(n, 2)</code> within a group)
+means the pair table is missing pairs rather than the groups being
+small.</p>
+</div>
+<div class="section level2">
 <h2 id="saving">Saving<a class="anchor" aria-label="anchor" href="#saving"></a>
 </h2>
 <p><code><a href="../reference/save_plot.html">save_plot()</a></code> sizes the canvas to the drawing. Plots with
@@ -540,12 +581,12 @@ Give one dimension and the other is computed from the built plot’s panel
 ratio and the space its titles, legends and margins actually need; give
 neither and both are worked out; give both and they are used as-is.
 <code>fit = FALSE</code> opts out.</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span><span class="op">)</span>                 <span class="co"># both worked out, no leftover margin</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, width <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>     <span class="co"># height follows from the contents</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, height <span class="op">=</span> <span class="fl">6</span><span class="op">)</span>     <span class="co"># width follows instead</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"network.pdf"</span>, <span class="va">p</span>, width <span class="op">=</span> <span class="fl">9</span>, height <span class="op">=</span> <span class="fl">9</span><span class="op">)</span>   <span class="co"># exactly as asked</span></span></code></pre></div>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"ibd_tugofwar.pdf"</span>, <span class="fu"><a href="../reference/plot_ibd_tugofwar.html">plot_ibd_tugofwar</a></span><span class="op">(</span><span class="va">ibd</span><span class="op">)</span><span class="op">)</span>   <span class="co"># auto-sized; cairo PDF by default</span></span>
 <span><span class="fu"><a href="../reference/save_plot.html">save_plot</a></span><span class="op">(</span><span class="st">"triangles.pdf"</span>, <span class="fu"><a href="../reference/plot_pairwise_ibd_for_genes.html">plot_pairwise_ibd_for_genes</a></span><span class="op">(</span><span class="va">ibd</span>, individual <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>  <span class="co"># multi-page</span></span></code></pre></div>
 </div>

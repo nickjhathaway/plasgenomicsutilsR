@@ -78,3 +78,9 @@ plot_ibd_pairwise_group_heatmap(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+plot_ibd_pairwise_group_heatmap(example_ibd_results())
+```

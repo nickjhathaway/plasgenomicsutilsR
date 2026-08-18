@@ -31,8 +31,9 @@ add_ibd_clusters(
 
 - genes:
 
-  Gene names in the object's track, or `NULL` for every gene in it.
-  Ignored when `locus` is given.
+  Gene names in the object's track, a gene-interval data frame (`name`,
+  `chr`/`chrom`, `start`, `end`) to use instead of that track, or `NULL`
+  for every gene in it. Ignored when `locus` is given.
 
 - locus:
 

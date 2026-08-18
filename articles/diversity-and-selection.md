@@ -208,6 +208,11 @@ the population allele frequency. `seed` makes a run reproducible – and a
 signal worth reporting should survive repeating the whole thing under a
 different seed.
 
+Which samples came through is worth checking before quoting a cohort
+size, and the same set is usually wanted by the rest of the analysis –
+see
+[`vignette("cohorts-and-subsets")`](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/cohorts-and-subsets.md).
+
 ### iHS, Rsb and XP-EHH
 
 ``` r
@@ -478,38 +483,3 @@ needs a far wider window just to find any neighbours.
 summarises per gene, giving the per-gene table these scans are usually
 reported as – mean beta beside the iHS peak and Tajima’s D from
 `pop_diversity(by = "gene")`.
-
-## Coverage QC
-
-The depth tables come from the Python package
-(`plasgenomicsutils coverage_depth_stats` and
-`coverage_dropout_regions`, which read the BAMs); this package reads and
-plots them.
-
-``` r
-
-cov <- read_coverage("coverage_by_sample.tsv.gz")
-coverage_qc(cov, threshold = 10, min_mean = 5, min_breadth = 80)   # one row per sample
-plot_coverage_summary(cov)     # mean vs breadth, failures labelled
-plot_coverage_by_chrom(cov)    # sample x chromosome, relative to each sample's own mean
-
-plot_coverage_dropout(read_coverage("coverage_windows.tsv.gz"),
-                      genes = PF_EXAMPLE_DRUG_GENES)
-```
-
-Breadth matters more than mean depth: selective whole-genome
-amplification can give a respectable average while leaving much of the
-genome at zero, and only the `pct_ge_10x`-style column shows that. On
-one real cohort the sample that failed QC had a mean of 122x — and a
-median of 33x with a quarter of the core genome under 10x.
-
-Two things to keep straight when generating those tables. The depth
-engines do not agree by definition: `mosdepth` counts **fragments** (an
-overlapping mate pair once) while `pysam`/`samtools depth` count
-**reads**, which puts mosdepth a couple of percent lower everywhere.
-Fragment depth is the better measure of independent evidence; either is
-fine as long as a cohort uses one, and the `engine` column records
-which. And
-[`plot_coverage_dropout()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_dropout.md)
-earns its place on the cross-sample question — a window empty in
-*everyone* is not missing data, it silently reads as invariant.

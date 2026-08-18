@@ -28,3 +28,12 @@ snmf_q(x, K, run = NULL)
 
 A samples-by-K matrix of ancestry proportions, with sample ids as row
 names when available.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+q <- snmf_q(fit, K = 5)           # the best-fitting replicate at K = 5
+dim(q)
+} # }
+```

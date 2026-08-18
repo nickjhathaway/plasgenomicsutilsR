@@ -74,3 +74,12 @@ run_snmf(
 
 An `snmf_fit` object: a list with the LEA `project`, the fitted `K`
 range, and `samples`.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+fit <- run_snmf(geno, K = 1:10, rep = 10, cache_dir = "snmf_cache")
+snmf_best_k(fit)
+} # }
+```

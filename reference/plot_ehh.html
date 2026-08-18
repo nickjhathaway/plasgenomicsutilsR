@@ -13,7 +13,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,11 @@ picture behind a single point on an run_ihs() scan."></head><body>
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
     <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Working with the data</h6></li>
+    <li><a class="dropdown-item" href="../articles/cohorts-and-subsets.html">Cohorts and subsets</a></li>
+    <li><a class="dropdown-item" href="../articles/filling-in-missed-calls.html">Filling in missed calls</a></li>
+    <li><a class="dropdown-item" href="../articles/coverage-qc.html">Coverage QC</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -45,7 +50,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>EHH decay around one SNP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
       <div class="d-none name"><code>plot_ehh.Rd</code></div>
     </div>
 
@@ -73,6 +78,8 @@ picture behind a single point on an <code><a href="run_ihs.html">run_ihs()</a></
 <span>  show_freq <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  freq_position <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"topleft"</span>, <span class="st">"topright"</span>, <span class="st">"bottomleft"</span>, <span class="st">"bottomright"</span><span class="op">)</span>,</span>
 <span>  reference <span class="op">=</span> <span class="va">DEFAULT_REFERENCE</span>,</span>
+<span>  title <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  subtitle <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -149,6 +156,17 @@ the focal SNP and both curves have flattened along the bottom by the window's ed
 
 <dt id="arg-reference">reference<a class="anchor" aria-label="anchor" href="#arg-reference"></a></dt>
 <dd><p>Reference id, used when <code>focal</code> names a whole chromosome.</p></dd>
+
+
+<dt id="arg-title">title<a class="anchor" aria-label="anchor" href="#arg-title"></a></dt>
+<dd><p>Plot title: <code>NULL</code> (default) uses <code>"EHH around &lt;snp&gt;"</code>, a string sets a custom
+one, and <code>NA</code>/<code>FALSE</code> draws none. Set it here rather than adding <code>labs(title = )</code> to the
+result – with <code>gene_track = TRUE</code> the result is a patchwork, and <code>+ labs()</code> lands on the
+gene track at the bottom, putting the title in the middle of the figure.</p></dd>
+
+
+<dt id="arg-subtitle">subtitle<a class="anchor" aria-label="anchor" href="#arg-subtitle"></a></dt>
+<dd><p>Line under the title; <code>NULL</code> (default) draws none.</p></dd>
 
 </dl></div>
     <div class="section level2">

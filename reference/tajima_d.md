@@ -30,3 +30,11 @@ Tajima's D, or `NA` when there are too few segregating sites or samples.
 Tajima, F. (1989) Statistical method for testing the neutral mutation
 hypothesis by DNA polymorphism. *Genetics* 123, 585-595.
 [doi:10.1093/genetics/123.3.585](https://doi.org/10.1093/genetics/123.3.585)
+
+## Examples
+
+``` r
+# the statistic from a site-frequency summary: h is the sum of 2p(1-p) over sites
+tajima_d(h = 12.5, n = 40)
+#> [1] 74.48517
+```

@@ -155,3 +155,10 @@ plot_ibd_tugofwar(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+# IBD sharing above, the selection statistic mirrored below
+plot_ibd_tugofwar(example_ibd_results())
+```

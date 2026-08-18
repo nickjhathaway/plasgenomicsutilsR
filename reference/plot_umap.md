@@ -47,3 +47,11 @@ plot_umap(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+ps <- example_pop_structure(umap = FALSE)
+ps$run_umap(pca_components = 5)
+plot_umap(ps, colour = "country")
+```

@@ -207,6 +207,16 @@ and the regions almost no sample amplifies.
 - [`plot_coverage_dropout()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_dropout.md)
   : Coverage dropouts along the genome
 
+## Within-host mixtures
+
+Read the per-site table from `plasgenomicsutils wsaf_profile` and draw
+each sample’s heterozygous allele fractions, which separate a dominant
+clone with minor companions from a mixture of comparable strains – two
+things one Fws value cannot tell apart.
+
+- [`plot_wsaf()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_wsaf.md)
+  : Per-sample heterozygous allele-fraction distributions
+
 ## Colours
 
 Colour-blind-friendly palettes and a shared level-to-colour map.
@@ -242,6 +252,14 @@ convention.
   : Read the CDS features of a GFF
 - [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md)
   : Intersect two sets of genomic intervals
+- [`bed_subtract()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_subtract.md)
+  : Subtract one set of genomic intervals from another
+- [`write_bed()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed.md)
+  : Write an interval table as a BED file
+- [`haplotype_samples()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/haplotype_samples.md)
+  : The samples a haplotype set kept
+- [`subset_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_genotypes.md)
+  : Restrict a genotype panel to a set of samples
 - [`plasgenomicsutilsR-coordinates`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)
   : Genomic coordinate conventions
 

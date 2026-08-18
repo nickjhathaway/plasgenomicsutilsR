@@ -60,3 +60,22 @@ pop_structure(
 
 A `pop_structure` object (a list with `samples`, `pca` scores,
 `pca_var`, `umap`, `meta`).
+
+## Examples
+
+``` r
+# PCA (and optionally UMAP) from a genotype matrix
+G <- matrix(stats::rbinom(30 * 80, 2, 0.4), 30, 80)
+rownames(G) <- paste0("s", 1:30)
+ps <- pop_structure(G, umap = FALSE)
+dim(ps$pca)
+#> [1] 30 30
+head(ps$pca_var)
+#>   PC var_explained cumulative
+#> 1  1          7.86       7.86
+#> 2  2          7.45      15.31
+#> 3  3          6.91      22.22
+#> 4  4          6.55      28.76
+#> 5  5          5.90      34.66
+#> 6  6          5.44      40.10
+```

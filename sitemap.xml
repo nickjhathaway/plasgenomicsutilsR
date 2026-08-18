@@ -2,8 +2,11 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/404.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/LICENSE-text.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/amino-acid-coordinates.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/cohorts-and-subsets.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/coverage-qc.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/differentiation.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/diversity-and-selection.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/filling-in-missed-calls.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/ibd.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/index.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/plasgenomicsutilsR.html</loc></url>
@@ -25,6 +28,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/available_references.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_subtract.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palette.html</loc></url>
@@ -35,6 +39,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_overlap.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_pairs.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/get_reference.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/haplotype_samples.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_results.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/index.html</loc></url>
@@ -76,6 +81,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_snmf_cross_entropy.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_structure_figure.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_umap.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_wsaf.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_matrix.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diff_snps.html</loc></url>
@@ -97,9 +103,11 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_cross_entropy.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snmf_q.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snp_aa_positions.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_genotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_haplotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d_pvalue.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed.html</loc></url>
 </urlset>
 

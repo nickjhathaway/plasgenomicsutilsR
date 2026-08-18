@@ -13,6 +13,7 @@ plot_ibd_network(
   x,
   gene = NULL,
   locus = NULL,
+  genes = NULL,
   color_group = NULL,
   colors = NULL,
   shape_group = NULL,
@@ -60,6 +61,14 @@ plot_ibd_network(
   so `"chr:1000-2000"` is the 1000 bases from 0-based 1000 up to but not
   including 2000, and a bare `"chr:1000"` is the single base at 0-based
   1000.
+
+- genes:
+
+  Gene table to resolve `gene` against (`name`, `chr`/`chrom`, `start`,
+  `end`), overriding the track the object was built with – so a gene
+  outside that track can be drawn without rebuilding the object. A
+  character vector selects from the object's own track instead. `NULL`
+  (default) uses that track as before.
 
 - color_group, colour_group:
 
@@ -208,5 +217,7 @@ plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
 plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
                  colors = c(North = "#1f78b4", East = "#33a02c"))
 plot_ibd_network(ibd, locus = "Pf3D7_07_v3:403500", include_isolated = TRUE)
+# a gene the object was not built with, resolved against a fuller track
+plot_ibd_network(ibd, gene = "pfama1", genes = PF3D7_GENES)
 } # }
 ```

@@ -44,6 +44,6 @@ pdf_device()
 #>         72 * height, pointsize, bg, NA_integer_, antialias, onefile, 
 #>         family, fallback_resolution, checkSymbolFont(symbolfamily)))
 #> }
-#> <bytecode: 0x564092f5f8a0>
+#> <bytecode: 0x5610c286b230>
 #> <environment: namespace:grDevices>
 ```

@@ -36,3 +36,11 @@ jost_d(x, group = NULL, meta = NULL, clamp = TRUE)
 ## Value
 
 A `pop_diff` object (of Jost's D).
+
+## Examples
+
+``` r
+ps <- example_pop_structure("africa", umap = FALSE)
+jost_d(ps, group = "region")$groups
+#> [1] "Central Africa" "East Africa"   
+```

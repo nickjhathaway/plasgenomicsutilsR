@@ -94,3 +94,12 @@ Bhatia, G., Patterson, N., Sankararaman, S. & Price, A. L. (2013)
 Estimating and interpreting F_ST: the impact of rare variants. *Genome
 Research* 23, 1514-1521.
 [doi:10.1101/gr.154831.113](https://doi.org/10.1101/gr.154831.113)
+
+## Examples
+
+``` r
+ps <- example_pop_structure("africa", umap = FALSE)
+pd <- pop_diff(ps, group = "region")     # Jost's D by default
+dim(pd$D)                                # SNPs x group pairs
+#> [1] 2000    1
+```

@@ -53,3 +53,12 @@ plot_pca(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+ps <- example_pop_structure(umap = FALSE)
+plot_pca(ps, colour = "country")
+
+plot_pca(ps, colour = "country", pcs = c(2, 3))
+```

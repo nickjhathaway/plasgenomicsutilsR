@@ -9,7 +9,7 @@ as a dashed line when plotting neg_log10_p and thresholds are available."></head
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,6 +28,11 @@ as a dashed line when plotting neg_log10_p and thresholds are available."></head
     <li><a class="dropdown-item" href="../articles/differentiation.html">Population differentiation</a></li>
     <li><a class="dropdown-item" href="../articles/diversity-and-selection.html">Diversity, linkage and selection</a></li>
     <li><a class="dropdown-item" href="../articles/amino-acid-coordinates.html">Amino acids and genomic coordinates</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Working with the data</h6></li>
+    <li><a class="dropdown-item" href="../articles/cohorts-and-subsets.html">Cohorts and subsets</a></li>
+    <li><a class="dropdown-item" href="../articles/filling-in-missed-calls.html">Filling in missed calls</a></li>
+    <li><a class="dropdown-item" href="../articles/coverage-qc.html">Coverage QC</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -41,7 +46,7 @@ as a dashed line when plotting neg_log10_p and thresholds are available."></head
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>IBD selection-statistic Manhattan plot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.2/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
       <div class="d-none name"><code>plot_selection_manhattan.Rd</code></div>
     </div>
 
@@ -148,8 +153,8 @@ blue long-dash). Also <code>"both"</code> for the first two, <code>"all"</code> 
 <code>FALSE</code> for none.
 Prefer a permutation line where it disagrees with a parametric one: it is built by
 re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
-it accounts for one segment spanning many SNPs. On real data it lands several times
-higher than Bonferroni's. <code>lambda_gc</code> says how far that reference is from fitting;
+it accounts for one segment spanning many SNPs, and it can land well above
+Bonferroni's. <code>lambda_gc</code> says how far that reference is from fitting;
 the further from 1, the less the parametric lines mean.
 Naming a kind the run did not write is an error; <code>"all"</code> draws whichever kinds the
 threshold table carries.</p></dd>
@@ -168,6 +173,12 @@ threshold table carries.</p></dd>
     <p>A ggplot object.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">plot_selection_manhattan</span><span class="op">(</span><span class="fu"><a href="example_ibd_results.html">example_ibd_results</a></span><span class="op">(</span><span class="op">)</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></span>
+<span class="r-plt img"><img src="plot_selection_manhattan-1.png" alt="" width="700" height="433"></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

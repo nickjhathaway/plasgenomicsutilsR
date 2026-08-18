@@ -100,3 +100,9 @@ plot_ibd_sharing_manhattan(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+plot_ibd_sharing_manhattan(example_ibd_results())
+```

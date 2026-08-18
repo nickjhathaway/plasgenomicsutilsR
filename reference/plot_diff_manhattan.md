@@ -61,3 +61,10 @@ plot_diff_manhattan(
 ## Value
 
 A ggplot object.
+
+## Examples
+
+``` r
+ps <- example_pop_structure("africa", umap = FALSE)
+plot_diff_manhattan(pop_diff(ps, group = "region"))
+```

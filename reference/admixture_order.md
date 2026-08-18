@@ -29,3 +29,13 @@ admixture_order(q, samples = NULL, meta = NULL, group = NULL)
 ## Value
 
 An ordered character vector of sample ids.
+
+## Examples
+
+``` r
+q <- matrix(c(0.9, 0.1, 0.2, 0.8, 0.85, 0.15, 0.1, 0.9), ncol = 2, byrow = TRUE)
+rownames(q) <- paste0("s", 1:4)
+meta <- data.frame(sample = rownames(q), region = c("A", "A", "B", "B"))
+admixture_order(q, meta = meta, group = "region")
+#> [1] "s1" "s2" "s3" "s4"
+```

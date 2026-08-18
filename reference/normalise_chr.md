@@ -17,3 +17,12 @@ normalise_chr(c)
 ## Value
 
 Character vector of normalised chromosome ids.
+
+## Examples
+
+``` r
+# every spelling of a chromosome collapses to the same key, so tables from
+# different tools join
+normalise_chr(c("Pf3D7_07_v3", "chr7", "7", "Pf3D7_API_v3"))
+#> [1] "7"            "7"            "7"            "Pf3D7_API_v3"
+```

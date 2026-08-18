@@ -36,3 +36,16 @@ jost_d_matrix(pd, stat = "mean", top = 0.05)
 ## Value
 
 A symmetric numeric matrix (0 on the diagonal).
+
+## Examples
+
+``` r
+ps <- example_pop_structure("africa", umap = FALSE)
+pd <- pop_diff(ps, group = "site")
+# the genome-wide mean is near zero between neighbours; the tail separates them
+round(pop_diff_matrix(pd, "top_mean", top = 0.05)[1:3, 1:3], 4)
+#>               DRC Kenya_East Kenya_West
+#> DRC        0.0000     0.2486     0.2781
+#> Kenya_East 0.2486     0.0000     0.2483
+#> Kenya_West 0.2781     0.2483     0.0000
+```

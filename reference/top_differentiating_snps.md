@@ -36,3 +36,12 @@ top_differentiating_snps(jd, n, method = c("roundrobin", "max"))
 ## Value
 
 A character vector of SNP ids (a subset of the result's SNPs).
+
+## Examples
+
+``` r
+ps <- example_pop_structure("africa", umap = FALSE)
+top_differentiating_snps(pop_diff(ps, group = "site"), 5)
+#> [1] "Pf3D7_08_v3:549992"  "Pf3D7_08_v3:544528"  "Pf3D7_08_v3:587930" 
+#> [4] "Pf3D7_04_v3:1083335" "Pf3D7_07_v3:895873" 
+```

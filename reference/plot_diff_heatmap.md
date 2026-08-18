@@ -123,3 +123,11 @@ plot_jost_d_heatmap(pd, stat = "mean", ...)
 ## Value
 
 A ggplot (or patchwork) object.
+
+## Examples
+
+``` r
+ps <- example_pop_structure("africa", umap = FALSE)
+pd <- pop_diff(ps, group = "site")
+plot_diff_heatmap(pd, stat = "top_mean", dendrogram = FALSE)
+```
