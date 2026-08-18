@@ -34,6 +34,8 @@ DEFAULT_REFERENCE <- "pf3d7"
 
 #' List available reference ids
 #' @return Character vector of registered reference ids.
+#' @examples
+#' available_references()
 #' @export
 available_references <- function() {
   sort(names(.REFERENCES))
@@ -44,6 +46,10 @@ available_references <- function() {
 #' @param ref_id Reference id (case-insensitive), e.g. "pf3d7".
 #' @return A list with `ref_id`, `species`, `assembly`, `core_chrom_lengths_bp`,
 #'   and `bp_per_cm`.
+#' @examples
+#' ref <- get_reference("pf3d7")
+#' ref$bp_per_cm
+#' head(ref$core_chrom_lengths_bp)
 #' @export
 get_reference <- function(ref_id = DEFAULT_REFERENCE) {
   key <- tolower(ref_id)
@@ -61,6 +67,10 @@ get_reference <- function(ref_id = DEFAULT_REFERENCE) {
 #'
 #' @param c A chromosome name (character or numeric), scalar or vector.
 #' @return Character vector of normalised chromosome ids.
+#' @examples
+#' # every spelling of a chromosome collapses to the same key, so tables from
+#' # different tools join
+#' normalise_chr(c("Pf3D7_07_v3", "chr7", "7", "Pf3D7_API_v3"))
 #' @export
 normalise_chr <- function(c) {
   s <- as.character(c)

@@ -8,6 +8,7 @@ plot_ibd_network(
   x,
   gene = NULL,
   locus = NULL,
+  genes = NULL,
   color_group = NULL,
   colors = NULL,
   shape_group = NULL,
@@ -43,6 +44,11 @@ frame with \code{chr}, \code{start}, \code{end}. Give exactly one of \code{gene}
 are 0-based half-open (see \link{plasgenomicsutilsR-coordinates}), so \code{"chr:1000-2000"} is
 the 1000 bases from 0-based 1000 up to but not including 2000, and a bare \code{"chr:1000"}
 is the single base at 0-based 1000.}
+
+\item{genes}{Gene table to resolve \code{gene} against (\code{name}, \code{chr}/\code{chrom}, \code{start},
+\code{end}), overriding the track the object was built with -- so a gene outside that
+track can be drawn without rebuilding the object. A character vector selects from
+the object's own track instead. \code{NULL} (default) uses that track as before.}
 
 \item{color_group, colour_group}{Optional metadata column to colour nodes by (needs \code{meta}). To colour
 by the graph's own connected components, add them to the metadata first with
@@ -140,5 +146,7 @@ plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
 plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
                  colors = c(North = "#1f78b4", East = "#33a02c"))
 plot_ibd_network(ibd, locus = "Pf3D7_07_v3:403500", include_isolated = TRUE)
+# a gene the object was not built with, resolved against a fuller track
+plot_ibd_network(ibd, gene = "pfama1", genes = PF3D7_GENES)
 }
 }

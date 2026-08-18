@@ -47,6 +47,9 @@ DIVERSITY_MIN_SNPS <- 3L
 #' @references Tajima, F. (1989) Statistical method for testing the neutral mutation
 #'   hypothesis by DNA polymorphism. \emph{Genetics} 123, 585-595.
 #'   \doi{10.1093/genetics/123.3.585}
+#' @examples
+#' # the statistic from a site-frequency summary: h is the sum of 2p(1-p) over sites
+#' tajima_d(h = 12.5, n = 40)
 #' @export
 tajima_d <- function(h, n) {
   h <- h[is.finite(h)]
@@ -285,6 +288,7 @@ pop_diversity <- function(x, group = NULL, by = c("genome", "gene", "window"),
                           accessible = NULL, het = c("missing", "dosage"),
                           min_snps = DIVERSITY_MIN_SNPS, max_missing = 0.1,
                           min_samples = 4, genotype = NULL, meta = NULL) {
+  meta <- .normalise_meta(meta)
   by <- match.arg(by)
   het <- match.arg(het)
   accessible <- .as_regions(accessible)

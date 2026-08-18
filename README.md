@@ -264,6 +264,12 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   from `plasgenomicsutils coverage_depth_stats` / `coverage_dropout_regions`. Breadth
   matters more than mean depth: sWGA can give a respectable average while leaving much of
   the genome at zero, and only the breadth column shows it.
+- **Within-host mixtures** — `plot_wsaf()` draws the per-sample heterozygous allele
+  fractions written by `plasgenomicsutils wsaf_profile --sites-out`, one small histogram per
+  sample, coloured by whether the sample is monoclonal, has a dominant clone worth filtering
+  to, or carries a strain too large to remove. Mass against zero is one dominant strain, a
+  band near 0.5 is a co-dominant one. `scales = "fixed"` shares one y axis so panel heights
+  compare how *many* heterozygous sites each sample has.
 - **Genomic intervals** — `bed_intersect()` overlaps two BED-style interval tables
   (configurable `chr`/`start`/`end` columns, chromosome spellings reconciled) and returns
   `overlap` / `only1` / `only2`. Bundled region tracks `PF3D7_CORE_REGIONS` (core vs.

@@ -72,3 +72,9 @@ Stacked ancestry-proportion bars, one per sample, optionally faceted by a groupi
 column, with an optional group colour strip whose colours can match another plot
 (e.g. UMAP points).
 }
+\examples{
+q <- matrix(c(0.9, 0.1, 0.2, 0.8, 0.85, 0.15, 0.1, 0.9), ncol = 2, byrow = TRUE)
+rownames(q) <- paste0("s", 1:4)
+meta <- data.frame(sample = rownames(q), region = c("A", "A", "B", "B"))
+plot_admixture(q, meta = meta, group = "region")
+}

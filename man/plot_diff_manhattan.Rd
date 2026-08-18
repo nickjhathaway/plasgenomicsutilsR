@@ -43,3 +43,7 @@ plots. By default it collapses the pairwise comparisons to one value per SNP
 (\code{combine = "max"}, the strongest differentiation at that SNP in any pair); pass
 \code{pair} to plot a single group pair instead.
 }
+\examples{
+ps <- example_pop_structure("africa", umap = FALSE)
+plot_diff_manhattan(pop_diff(ps, group = "region"))
+}

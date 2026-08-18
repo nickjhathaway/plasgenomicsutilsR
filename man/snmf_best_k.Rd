@@ -31,6 +31,12 @@ differs between K values (\code{n_runs} in \code{\link[=snmf_cross_entropy]{snmf
 replicates is expected to be smaller whether or not that K fits better; averaging is not
 sensitive to how many were run.
 }
+\examples{
+\dontrun{
+snmf_best_k(fit)                  # minimum cross-entropy, as LEA plots it
+snmf_best_k(fit, stat = "mean")   # for an uneven number of replicates per K
+}
+}
 \seealso{
 \code{\link[=snmf_cross_entropy]{snmf_cross_entropy()}} for the per-K spread, \code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}} for the
 elbow.

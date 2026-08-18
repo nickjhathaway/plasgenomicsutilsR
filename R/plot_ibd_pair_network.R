@@ -75,6 +75,7 @@ plot_ibd_pair_network <- function(pairs, meta = NULL, weight = NULL, min_ibd = 0
                                   weight_range = c(0.15, 2.6), weight_breaks = NULL,
                                   title = NULL, subtitle = TRUE, seed = 42,
                                   colour_group = NULL, colours = NULL, na_color = NULL, edge_color = NULL) {
+  meta <- .normalise_meta(meta)
   color_group <- .alias_arg("color_group", "colour_group")
   colors <- .alias_arg("colors", "colours")
   na_colour <- .alias_arg("na_colour", "na_color")

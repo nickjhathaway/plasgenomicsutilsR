@@ -37,3 +37,10 @@ The fraction of samples below depth in each window, across the genome, with the 
 dropout regions marked. Regions where the line sits near 1 are amplified in almost
 nobody -- they will read as invariant rather than as missing unless they are excluded.
 }
+\examples{
+win <- expand.grid(sample = paste0("s", 1:5), chrom = "Pf3D7_01_v3",
+                   start = seq(0, 3e5, by = 1e5), stringsAsFactors = FALSE)
+win$end <- win$start + 1e5
+win$mean_depth <- c(rep(30, 15), rep(1, 5))    # the last window is empty in everyone
+plot_coverage_dropout(win)
+}

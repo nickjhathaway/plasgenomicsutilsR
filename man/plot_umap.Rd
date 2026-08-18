@@ -34,3 +34,8 @@ A ggplot object.
 \description{
 UMAP scatter plot
 }
+\examples{
+ps <- example_pop_structure(umap = FALSE)
+ps$run_umap(pca_components = 5)
+plot_umap(ps, colour = "country")
+}

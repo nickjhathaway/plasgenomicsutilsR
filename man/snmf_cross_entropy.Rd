@@ -29,6 +29,11 @@ are scored by the same number. A curve that keeps falling or is flat means the d
 support a well-defined K, whatever \code{\link[=snmf_best_k]{snmf_best_k()}} returns; \code{n_runs} is worth a glance
 first, since a K whose replicates mostly failed has its minimum taken over fewer of them.
 }
+\examples{
+\dontrun{
+snmf_cross_entropy(fit)           # one row per K: min, mean, and n_runs
+}
+}
 \seealso{
 \code{\link[=plot_snmf_cross_entropy]{plot_snmf_cross_entropy()}}, \code{\link[=snmf_best_k]{snmf_best_k()}}, \code{\link[=snmf_q]{snmf_q()}}
 }

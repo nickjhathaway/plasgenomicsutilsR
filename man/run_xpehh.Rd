@@ -41,6 +41,12 @@ nearly to fixation, where within-population statistics like iHS lose power.
 The allele-aware sibling of \code{\link[=run_rsb]{run_rsb()}}: it contrasts the integrated EHH of the same
 allele between two populations.
 }
+\examples{
+\dontrun{
+hap <- parasite_haplotypes(ps, fws = fws, min_fws = 0.95)
+xp <- run_xpehh(hap, group = "region", pop1 = "north", pop2 = "south")
+}
+}
 \references{
 Sabeti, P. C. et al. (2007) Genome-wide detection and characterization of
 positive selection in human populations. \emph{Nature} 449, 913-918.

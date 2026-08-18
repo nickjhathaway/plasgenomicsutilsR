@@ -15,3 +15,9 @@ An \link{IbdResults} object.
 \description{
 Convenience wrapper for \code{IbdResults$new()}.
 }
+\examples{
+# every argument is optional -- hold only what you plan to plot
+ibd <- example_ibd_results()
+ibd
+ibd$get_group_order()
+}

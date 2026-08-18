@@ -162,6 +162,14 @@
 #'   allele the dosages count), `pruned`, `positions` and `variants`. [PopStructure] keeps
 #'   them, so anything that names a call or warns about pruning can ask instead of assuming.
 #' @seealso [PopStructure], [pop_structure()]
+#' @examples
+#' \dontrun{
+#' # LD-pruned for PCA / UMAP / admixture
+#' geno <- load_genotypes("clean.vcf.gz", gds = "clean.gds")
+#'
+#' # and the full panel for anything where SNP correlation IS the signal
+#' full <- load_genotypes("clean.vcf.gz", gds = "clean.gds", prune = FALSE)
+#' }
 #' @export
 load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
                          slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
@@ -245,6 +253,11 @@ load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
 #'
 #' @param ... Passed to [load_genotypes()].
 #' @return See [load_genotypes()].
+#' @examples
+#' \dontrun{
+#' # deprecated: use load_genotypes()
+#' geno <- run_ld_prune("clean.vcf.gz", gds = "clean.gds")
+#' }
 #' @export
 run_ld_prune <- function(...) {
   warning("`run_ld_prune()` has been renamed to `load_genotypes()`", call. = FALSE)
@@ -284,9 +297,17 @@ run_ld_prune <- function(...) {
 #' @param seed Random seed for UMAP.
 #' @return A `pop_structure` object (a list with `samples`, `pca` scores,
 #'   `pca_var`, `umap`, `meta`).
+#' @examples
+#' # PCA (and optionally UMAP) from a genotype matrix
+#' G <- matrix(stats::rbinom(30 * 80, 2, 0.4), 30, 80)
+#' rownames(G) <- paste0("s", 1:30)
+#' ps <- pop_structure(G, umap = FALSE)
+#' dim(ps$pca)
+#' head(ps$pca_var)
 #' @export
 pop_structure <- function(geno, samples = NULL, meta = NULL, n_pcs = 50, umap = TRUE,
                           umap_pca = 30, n_neighbors = 15, min_dist = 0.1, seed = 42) {
+  meta <- .normalise_meta(meta)
   if (is.list(geno) && !is.null(geno$genotype)) {
     if (is.null(samples)) samples <- geno$sample.id
     mat <- geno$genotype
@@ -372,6 +393,10 @@ print.pop_structure <- function(x, ...) {
 #' @param legend_point_size Size of the coloured dots in the legend (default `3`, larger
 #'   than the plotted points so the key is easy to read); `NULL` leaves it as-is.
 #' @return A ggplot object.
+#' @examples
+#' ps <- example_pop_structure(umap = FALSE)
+#' plot_pca(ps, colour = "country")
+#' plot_pca(ps, colour = "country", pcs = c(2, 3))
 #' @export
 plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
                      point_size = 1.6, point_alpha = 0.8, legend_point_size = 3,
@@ -405,6 +430,10 @@ plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
 #' @param legend_point_size Size of the coloured dots in the legend (default `3`, larger
 #'   than the plotted points so the key is easy to read); `NULL` leaves it as-is.
 #' @return A ggplot object.
+#' @examples
+#' ps <- example_pop_structure(umap = FALSE)
+#' ps$run_umap(pca_components = 5)
+#' plot_umap(ps, colour = "country")
 #' @export
 plot_umap <- function(x, colour = NULL, colors = NULL, point_size = 1.6,
                       point_alpha = 0.8, legend_point_size = 3,
@@ -468,6 +497,11 @@ plot_umap <- function(x, colour = NULL, colors = NULL, point_size = 1.6,
 #' @param log_file Optional file to write LEA's output to when `verbose = FALSE`.
 #' @return An `snmf_fit` object: a list with the LEA `project`, the fitted `K` range,
 #'   and `samples`.
+#' @examples
+#' \dontrun{
+#' fit <- run_snmf(geno, K = 1:10, rep = 10, cache_dir = "snmf_cache")
+#' snmf_best_k(fit)
+#' }
 #' @export
 run_snmf <- function(geno, K = 1:10, rep = 10, alpha = 10, seed = 42, cpu = 1,
                      cache = TRUE, cache_dir = NULL, verbose = FALSE, log_file = NULL) {
@@ -521,6 +555,11 @@ run_snmf <- function(geno, K = 1:10, rep = 10, alpha = 10, seed = 42, cpu = 1,
 #' @param target Cumulative variance to reach, as a proportion (`0.1`) or a percent
 #'   (`10`).
 #' @return The smallest number of leading PCs whose cumulative variance >= `target`.
+#' @examples
+#' ps <- example_pop_structure(umap = FALSE)
+#' # how many PCs to feed UMAP for a given share of the variance
+#' n_pcs_for_variance(ps$prcomp(), 0.5)
+#' n_pcs_for_variance(ps$prcomp(), 50)     # percent is accepted too
 #' @export
 n_pcs_for_variance <- function(x, target = 0.8) {
   ve <- if (inherits(x, "prcomp")) x$sdev^2 / sum(x$sdev^2)
@@ -561,6 +600,11 @@ print.snmf_fit <- function(x, ...) {
 #' @return The K minimising the summarised cross-entropy.
 #' @seealso [snmf_cross_entropy()] for the per-K spread, [plot_snmf_cross_entropy()] for the
 #'   elbow.
+#' @examples
+#' \dontrun{
+#' snmf_best_k(fit)                  # minimum cross-entropy, as LEA plots it
+#' snmf_best_k(fit, stat = "mean")   # for an uneven number of replicates per K
+#' }
 #' @export
 snmf_best_k <- function(x, K = NULL, stat = c("min", "mean")) {
   .need_package("LEA", "snmf_best_k()")
@@ -594,6 +638,10 @@ snmf_best_k <- function(x, K = NULL, stat = c("min", "mean")) {
 #' @return A tibble, one row per K: `K`, `n_runs`, `min`, `mean`, `max`, and `best_run`
 #'   (the replicate index attaining `min`, i.e. the one [snmf_q()] returns).
 #' @seealso [plot_snmf_cross_entropy()], [snmf_best_k()], [snmf_q()]
+#' @examples
+#' \dontrun{
+#' snmf_cross_entropy(fit)           # one row per K: min, mean, and n_runs
+#' }
 #' @export
 snmf_cross_entropy <- function(x, K = NULL) {
   .need_package("LEA", "snmf_cross_entropy()")
@@ -716,6 +764,7 @@ plot_admixture_multi_k <- function(x, K = NULL, group = NULL,
                                    sample_order = NULL, sample_order_best_k = TRUE,
                                    best_k = NULL, stat = c("min", "mean"),
                                    meta = NULL, samples = NULL, ...) {
+  meta <- .normalise_meta(meta)
   .need_package("ggplot2", "plot_admixture_multi_k()")
   stat <- match.arg(stat)
   is_ps <- inherits(x, "PopStructure")
@@ -763,6 +812,11 @@ plot_admixture_multi_k <- function(x, K = NULL, group = NULL,
 #' @param run Which replicate; defaults to the lowest cross-entropy run.
 #' @return A samples-by-K matrix of ancestry proportions, with sample ids as row names
 #'   when available.
+#' @examples
+#' \dontrun{
+#' q <- snmf_q(fit, K = 5)           # the best-fitting replicate at K = 5
+#' dim(q)
+#' }
 #' @export
 snmf_q <- function(x, K, run = NULL) {
   .need_package("LEA", "snmf_q()")
@@ -803,8 +857,14 @@ snmf_q <- function(x, K, run = NULL) {
 #' @param samples Sample ids (default `rownames(q)`).
 #' @param meta,group Optional metadata + the column to order within.
 #' @return An ordered character vector of sample ids.
+#' @examples
+#' q <- matrix(c(0.9, 0.1, 0.2, 0.8, 0.85, 0.15, 0.1, 0.9), ncol = 2, byrow = TRUE)
+#' rownames(q) <- paste0("s", 1:4)
+#' meta <- data.frame(sample = rownames(q), region = c("A", "A", "B", "B"))
+#' admixture_order(q, meta = meta, group = "region")
 #' @export
 admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
+  meta <- .normalise_meta(meta)
   q <- as.matrix(q)
   if (is.null(samples)) samples <- rownames(q)
   if (is.null(samples)) samples <- as.character(seq_len(nrow(q)))
@@ -864,6 +924,11 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
 #'   rows, which keeps `K` = 15 plus a group strip on the page. The suggested output height
 #'   accounts for whatever this works out to.
 #' @return A ggplot object.
+#' @examples
+#' q <- matrix(c(0.9, 0.1, 0.2, 0.8, 0.85, 0.15, 0.1, 0.9), ncol = 2, byrow = TRUE)
+#' rownames(q) <- paste0("s", 1:4)
+#' meta <- data.frame(sample = rownames(q), region = c("A", "A", "B", "B"))
+#' plot_admixture(q, meta = meta, group = "region")
 #' @export
 plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
                            order_within = TRUE, sample_order = NULL, colours = NULL,
@@ -873,6 +938,7 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
                            legend_position = c("right", "bottom", "top", "left", "none"),
                            legend_rows = NULL,
                            colors = NULL, group_colors = NULL, border_color = NULL) {
+  meta <- .normalise_meta(meta)
   colours <- .alias_arg("colours", "colors")
   group_colours <- .alias_arg("group_colours", "group_colors")
   border_colour <- .alias_arg("border_colour", "border_color")
@@ -1004,6 +1070,7 @@ PopStructure <- R6::R6Class("PopStructure",
                           allele = NULL, pruned = NULL, full = NULL,
                           one_based = FALSE, colours = NULL) {
       colors <- .alias_arg("colors", "colours")
+      meta <- .normalise_meta(meta)
       positions <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(samples)) samples <- geno$sample.id
@@ -1088,6 +1155,7 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param colors Optional colour overrides (`column -> (level -> colour)`).
     add_meta = function(meta, colors = NULL, colours = NULL) {
       colors <- .alias_arg("colors", "colours")
+      meta <- .normalise_meta(meta)
       meta <- as.data.frame(meta, stringsAsFactors = FALSE)
       if (!"sample" %in% names(meta)) stop("`meta` needs a `sample` column", call. = FALSE)
       private$meta_df <- meta
@@ -1589,6 +1657,11 @@ PopStructure <- R6::R6Class("PopStructure",
 #'
 #' @param file Path to the `.rds` file.
 #' @return The [PopStructure] object.
+#' @examples
+#' ps <- example_pop_structure(umap = FALSE)
+#' f <- tempfile(fileext = ".rds")
+#' ps$save(f)
+#' load_pop_structure(f)
 #' @export
 load_pop_structure <- function(file) {
   obj <- readRDS(file)

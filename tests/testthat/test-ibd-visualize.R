@@ -421,6 +421,42 @@ test_that("plot_ibd_network builds, honours include_isolated, and parses a locus
   expect_error(plot_ibd_network(ibd_results(), gene = "x"), "no IBD blocks")
 })
 
+test_that("plot_ibd_network takes a gene-table override for a locus off its own track", {
+  skip_if_no_ggplot()
+  testthat::skip_if_not_installed("igraph")
+  testthat::skip_if_not_installed("ggraph")
+  ibd <- make_block_obj()                     # track is pfcrt + pfdhps only
+  other <- data.frame(name = "pfsomething", chr = "7", start = 403500, end = 405500)
+
+  # without the override the gene is simply not there
+  expect_error(plot_ibd_network(ibd, gene = "pfsomething", include_isolated = TRUE),
+               "not in the track")
+  p <- plot_ibd_network(ibd, gene = "pfsomething", genes = other, include_isolated = TRUE)
+  expect_s3_class(p, "ggplot")
+  expect_silent(ggplot2::ggplotGrob(p))
+
+  # the same interval either way: an override that repeats the track changes nothing
+  same <- data.frame(name = "pfcrt", chr = "7", start = 403000, end = 406000)
+  expect_equal(nrow(plot_ibd_network(ibd, gene = "pfcrt", genes = same)$data),
+               nrow(plot_ibd_network(ibd, gene = "pfcrt")$data))
+  # a character vector still selects from the object's own track
+  expect_s3_class(plot_ibd_network(ibd, gene = "pfcrt", genes = c("pfcrt", "pfdhps")),
+                  "ggplot")
+})
+
+test_that("add_ibd_clusters takes a gene table as well as track names", {
+  ibd <- make_block_obj()
+  by_name <- add_ibd_clusters(make_block_obj(), genes = "pfcrt")$get_meta()
+  by_table <- add_ibd_clusters(make_block_obj(), genes = data.frame(
+    name = "pfcrt", chr = "7", start = 403000, end = 406000))$get_meta()
+  expect_true("pfcrt_cluster_id" %in% names(by_name))
+  expect_equal(by_name$pfcrt_cluster_id, by_table$pfcrt_cluster_id)
+  # a table naming a locus the object was not built with still clusters
+  off <- add_ibd_clusters(make_block_obj(), genes = data.frame(
+    name = "pfsomething", chr = "7", start = 403500, end = 405500))$get_meta()
+  expect_true("pfsomething_cluster_id" %in% names(off))
+})
+
 test_that("gene overlap / triangles accept a gene-table override (not just track names)", {
   skip_if_no_ggplot()
   ibd <- make_block_obj()
@@ -1118,4 +1154,18 @@ test_that("the NA shape never collides with a real shape_group level", {
   # na_colour likewise
   expect_silent(plot_ibd_network(ibd, gene = "pfcrt", color_group = "marker",
                                  na_colour = "black", include_isolated = TRUE))
+})
+
+test_that("resolving one gene against a genome-wide track stays quiet", {
+  skip_if_no_ggplot()
+  testthat::skip_if_not_installed("ggraph")
+  ibd <- make_block_obj()
+  # PF3D7_GENES carries repeated var/rifin names; picking pfcrt out of it says nothing
+  expect_silent(plot_ibd_network(ibd, gene = "pfcrt", genes = PF3D7_GENES,
+                                 include_isolated = TRUE))
+  # ...but an ambiguous request names the problem
+  dup <- data.frame(name = c("var", "var"), chr = c("7", "7"),
+                    start = c(403000, 404000), end = c(404000, 405000))
+  expect_warning(plot_ibd_network(ibd, gene = "var", genes = dup, include_isolated = TRUE),
+                 "2 genes are named var")
 })

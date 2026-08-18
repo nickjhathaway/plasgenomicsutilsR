@@ -19,3 +19,10 @@ sequencing id, or a BAM named after one -- and guessing a type would turn those 
 doubles, printing \code{4089106922} as \code{4.09e+09} and silently failing to join against the
 metadata.
 }
+\examples{
+f <- tempfile(fileext = ".tsv")
+write.table(data.frame(sample = c("s1", "s2"), chrom = "genome",
+                       mean = c(48, 4), pct_ge_10x = c(95, 12)),
+            f, sep = "\t", quote = FALSE, row.names = FALSE)
+read_coverage(f)
+}

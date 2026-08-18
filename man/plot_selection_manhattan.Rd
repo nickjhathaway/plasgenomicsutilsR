@@ -73,8 +73,8 @@ blue long-dash). Also \code{"both"} for the first two, \code{"all"} for every ki
 \code{FALSE} for none.
 Prefer a permutation line where it disagrees with a parametric one: it is built by
 re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
-it accounts for one segment spanning many SNPs. On real data it lands several times
-higher than Bonferroni's. \code{lambda_gc} says how far that reference is from fitting;
+it accounts for one segment spanning many SNPs, and it can land well above
+Bonferroni's. \code{lambda_gc} says how far that reference is from fitting;
 the further from 1, the less the parametric lines mean.
 Naming a kind the run did not write is an error; \code{"all"} draws whichever kinds the
 threshold table carries.}
@@ -89,4 +89,7 @@ A ggplot object.
 \description{
 The selection statistic along the genome, with the Bonferroni threshold drawn
 as a dashed line when plotting \code{neg_log10_p} and thresholds are available.
+}
+\examples{
+plot_selection_manhattan(example_ibd_results(), genes = PF_EXAMPLE_DRUG_GENES)
 }

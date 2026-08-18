@@ -78,6 +78,7 @@ LD_MAX_SNPS <- 3000L
 ld_index <- function(x, group = NULL, maf = 0, max_snps = LD_MAX_SNPS,
                      het = c("missing", "dosage"), min_samples = 4,
                      meta = NULL, genotype = NULL) {
+  meta <- .normalise_meta(meta)
   het <- match.arg(het)
   prep <- .ld_prepare(x, group, meta, genotype, het)
   loci <- .thin_loci(prep$loci, max_snps)
@@ -144,6 +145,12 @@ ld_index <- function(x, group = NULL, maf = 0, max_snps = LD_MAX_SNPS,
 #' @return A tibble of `group`, `bin_start`, `bin_end`, `bin_mid`, `n_pairs`, `mean_r2`,
 #'   `median_r2`.
 #' @seealso [ld_index()], [plot_ld_decay()]
+#' @examples
+#' f <- tempfile(fileext = ".tsv")
+#' write.table(data.frame(group = "north", bin_mid = c(500, 1500, 2500),
+#'                        mean_r2 = c(0.40, 0.22, 0.14)),
+#'             f, sep = "\t", quote = FALSE, row.names = FALSE)
+#' read_ld_decay(f)
 #' @export
 read_ld_decay <- function(path, half_decay = NULL, levels = NULL) {
   .need_package("readr", "read_ld_decay()")

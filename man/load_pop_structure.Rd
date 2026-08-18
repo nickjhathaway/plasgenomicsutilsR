@@ -17,3 +17,9 @@ Reads an \code{.rds} written by \code{PopStructure$save()} (or plain \code{\link
 re-bound to the installed version of the class, so a file written by an older version of
 the package gains the methods added since.
 }
+\examples{
+ps <- example_pop_structure(umap = FALSE)
+f <- tempfile(fileext = ".rds")
+ps$save(f)
+load_pop_structure(f)
+}

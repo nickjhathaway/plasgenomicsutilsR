@@ -20,3 +20,9 @@ when available.
 \description{
 Best-run Q (ancestry proportion) matrix for a given K
 }
+\examples{
+\dontrun{
+q <- snmf_q(fit, K = 5)           # the best-fitting replicate at K = 5
+dim(q)
+}
+}

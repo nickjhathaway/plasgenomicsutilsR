@@ -44,12 +44,34 @@
 }
 
 # Resolve a gene name / locus string / interval to list(chr, start, end, label).
-.resolve_locus <- function(x, gene, locus) {
+.resolve_locus <- function(x, gene, locus, genes = NULL) {
   if (!is.null(gene)) {
-    g <- x$get_genes()
-    if (is.null(g)) stop("gene= given but this IbdResults has no gene track", call. = FALSE)
+    # a supplied table overrides the object's track, so a gene the object was not built
+    # with can still be resolved without rebuilding it. Resolved here rather than through
+    # .gene_track_for(), which relabels a whole track: handing in a genome-wide table to
+    # pick one gene out of should not warn about the var/rifin names it happens to carry.
+    g <- if (is.null(genes) || is.character(genes)) {
+      gt <- x$get_genes()
+      if (is.null(gt))
+        stop("gene= given but this IbdResults has no gene track; pass genes= here or to ",
+             "ibd_results(), or give a locus=", call. = FALSE)
+      if (is.character(genes)) {
+        .check_gene_request(gt, genes)
+        gt <- gt[tolower(gt$name) %in% tolower(genes), , drop = FALSE]
+      }
+      gt
+    } else {
+      .as_gene_track(genes)
+    }
     .check_gene_request(g, gene[1])
-    row <- g[tolower(g$name) == tolower(gene[1]), , drop = FALSE][1, ]
+    hit <- g[tolower(g$name) == tolower(gene[1]), , drop = FALSE]
+    if (nrow(hit) > 1) {
+      # only worth saying when the gene actually asked for is the ambiguous one
+      ids <- if ("gene_id" %in% names(hit)) paste0(" (", hit$gene_id, ")") else ""
+      warning(nrow(hit), " genes are named ", gene[1], ids[1], " was used; give a locus= ",
+              "or a one-row genes= to pick another", call. = FALSE)
+    }
+    row <- hit[1, ]
     return(list(chr = normalise_chr(row$chr), start = as.numeric(row$start),
                 end = as.numeric(row$end), label = as.character(row$name)))
   }
@@ -108,6 +130,10 @@
 #'
 #' @param x An [IbdResults] with IBD `blocks`.
 #' @param gene A single gene name from the object's track (its interval is used).
+#' @param genes Gene table to resolve `gene` against (`name`, `chr`/`chrom`, `start`,
+#'   `end`), overriding the track the object was built with -- so a gene outside that
+#'   track can be drawn without rebuilding the object. A character vector selects from
+#'   the object's own track instead. `NULL` (default) uses that track as before.
 #' @param locus Alternatively, a locus: `"chr:pos"`, `"chr:start-end"`, or a one-row data
 #'   frame with `chr`, `start`, `end`. Give exactly one of `gene` / `locus`. Coordinates
 #'   are 0-based half-open (see [plasgenomicsutilsR-coordinates]), so `"chr:1000-2000"` is
@@ -181,9 +207,11 @@
 #' plot_ibd_network(ibd, gene = "pfcrt", color_group = "region",
 #'                  colors = c(North = "#1f78b4", East = "#33a02c"))
 #' plot_ibd_network(ibd, locus = "Pf3D7_07_v3:403500", include_isolated = TRUE)
+#' # a gene the object was not built with, resolved against a fuller track
+#' plot_ibd_network(ibd, gene = "pfama1", genes = PF3D7_GENES)
 #' }
 #' @export
-plot_ibd_network <- function(x, gene = NULL, locus = NULL,
+plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
                              color_group = NULL, colors = NULL,
                              shape_group = NULL, shapes = NULL,
                              na_shape = .NA_SHAPE, na_colour = "grey70", within = 0,
@@ -206,7 +234,7 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL,
     stop("this IbdResults has no IBD blocks; build it with ibd_results(blocks = , meta = )",
          call. = FALSE)
   }
-  iv <- .resolve_locus(x, gene, locus)
+  iv <- .resolve_locus(x, gene, locus, genes)
 
   bl <- blocks
   bl$chr <- normalise_chr(bl$chr)

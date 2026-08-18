@@ -30,3 +30,8 @@ Mean depth against the fraction of the genome reaching a usable depth, one point
 sample, with the QC floors drawn. The failures separate along whichever axis they
 failed on, which is the quickest way to tell a shallow run from an uneven one.
 }
+\examples{
+cov <- data.frame(sample = paste0("s", 1:4), chrom = "genome",
+                  mean = c(60, 45, 30, 3), pct_ge_10x = c(96, 91, 41, 7))
+plot_coverage_summary(cov)
+}

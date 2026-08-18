@@ -71,3 +71,6 @@ A ggplot object.
 Per-SNP fraction of pairs IBD along the genome. If the table carries a
 \code{group} column the plot is faceted one row per group.
 }
+\examples{
+plot_ibd_sharing_manhattan(example_ibd_results())
+}

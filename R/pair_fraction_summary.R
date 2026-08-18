@@ -57,6 +57,7 @@
 pair_fraction_summary <- function(x, group = NULL, meta = NULL,
                                   value = .PAIR_FRACTION_COL, probs = c(0.25, 0.75),
                                   within = TRUE, min_pairs = 1L) {
+  meta <- .normalise_meta(meta)
   if (inherits(x, "IbdResults")) {
     if (is.null(meta)) meta <- x$get_meta()
     if (is.null(group)) group <- x$get_group_col()

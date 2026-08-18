@@ -293,3 +293,9 @@ snp_aa_positions(snps, cds, keep = "hits") |>
 
 On a real callset that last step resolves ~28,000 genotyped SNPs to ~17,000 coding ones
 across ~3,400 genes in about a second.
+
+## Calling the residues a panel is missing
+
+Filtering removes SNPs, and some of what it removes is a residue you meant to keep. Going
+the other way -- codons minus what the panel already holds -- gives a BED to re-call from
+the BAMs. See `vignette("filling-in-missed-calls")`.

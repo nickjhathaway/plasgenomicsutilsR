@@ -24,3 +24,7 @@ A \code{pop_diff} object (of Jost's D).
 \description{
 Convenience wrapper for \code{pop_diff(..., statistic = "jost_d")}. See \code{\link[=pop_diff]{pop_diff()}}.
 }
+\examples{
+ps <- example_pop_structure("africa", umap = FALSE)
+jost_d(ps, group = "region")$groups
+}

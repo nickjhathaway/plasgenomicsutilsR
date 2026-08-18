@@ -55,3 +55,6 @@ bands and thin boundary lines mark where each chromosome starts and ends, and th
 x-axis spans the \strong{full chromosome lengths} so un-genotyped (empty) regions are
 visible rather than collapsed out.
 }
+\examples{
+plot_ibd_pairwise_group_heatmap(example_ibd_results())
+}

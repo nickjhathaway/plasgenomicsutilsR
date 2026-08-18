@@ -12,3 +12,6 @@ Character vector of registered reference ids.
 \description{
 List available reference ids
 }
+\examples{
+available_references()
+}

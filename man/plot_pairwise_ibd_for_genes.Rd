@@ -89,3 +89,9 @@ spanning the gene even with no genotyped SNP inside it (see \code{\link[=gene_ib
 Without blocks it falls back to aggregating the pairwise IBD of SNPs strictly inside the
 gene. \verb{snps=} always uses the per-SNP path (a single locus is a point, not an interval).
 }
+\examples{
+ibd <- example_ibd_results()
+# `within` widens the selection: the example panel is sparse, and a real gene often
+# carries no SNP of its own, so nearby ones stand in for it
+plot_pairwise_ibd_for_genes(ibd, genes = c("pfcrt", "pfdhps"), within = 20000)
+}

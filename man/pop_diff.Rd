@@ -45,6 +45,11 @@ alt-allele dosages. Run it on the \strong{full, unpruned} genotypes -- LD-prunin
 the differentiating SNPs you want here. Feed the result to \code{\link[=pop_diff_matrix]{pop_diff_matrix()}} /
 \code{\link[=plot_diff_heatmap]{plot_diff_heatmap()}} for a group summary, or \code{\link[=top_differentiating_snps]{top_differentiating_snps()}} for markers.
 }
+\examples{
+ps <- example_pop_structure("africa", umap = FALSE)
+pd <- pop_diff(ps, group = "region")     # Jost's D by default
+dim(pd$D)                                # SNPs x group pairs
+}
 \references{
 Jost, L. (2008) G_ST and its relatives do not measure differentiation.
 \emph{Molecular Ecology} 17, 4015-4026. \doi{10.1111/j.1365-294X.2008.03887.x}

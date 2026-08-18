@@ -65,6 +65,7 @@ parasite_haplotypes <- function(x, samples = NULL, fws = NULL, min_fws = IHS_MIN
                                 het = c("sample", "missing"), maf = IHS_MIN_MAF,
                                 max_snp_missing = 0.1, max_sample_missing = 0.2,
                                 impute = TRUE, seed = 42, meta = NULL, genotype = NULL) {
+  meta <- .normalise_meta(meta)
   het <- match.arg(het)
   if (inherits(x, "PopStructure")) {
     G <- .geno_for(x, genotype)
@@ -239,8 +240,8 @@ print.parasite_haplotypes <- function(x, ...) {
   if (!polarized && freqbin < 1) {
     warning("freqbin = ", freqbin, " bins an unpolarized scan by major-allele frequency, ",
             "which is not the derived-allele frequency the standardisation is for. ",
-            "freqbin = 1 (the default here) is what rehh recommends; on real data the two ",
-            "share only half their top hits.", call. = FALSE)
+            "freqbin = 1 (the default here) is what rehh recommends. The two can rank ",
+            "loci quite differently, so this is not a cosmetic choice.", call. = FALSE)
   }
   freqbin
 }
@@ -293,6 +294,7 @@ print.parasite_haplotypes <- function(x, ...) {
 #' @export
 run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin = NULL,
                     min_maf = 0.05, min_samples = 4, threads = 1) {
+  meta <- .normalise_meta(meta)
   .need_package("rehh", "run_ihs()")
   stopifnot(inherits(hap, "parasite_haplotypes"))
   freqbin <- .resolve_freqbin(freqbin, polarized)
@@ -390,9 +392,17 @@ run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin =
 #' @references Tang, K., Thornton, K. R. & Stoneking, M. (2007) A new approach for using
 #'   genome scans to detect recent positive selection in the human genome.
 #'   \emph{PLoS Biology} 5, e171. \doi{10.1371/journal.pbio.0050171}
+#' @examples
+#' \dontrun{
+#' # Rsb contrasts two groups' haplotype homozygosity at the same SNP
+#' hap <- parasite_haplotypes(ps, fws = fws, min_fws = 0.95)
+#' rsb <- run_rsb(hap, group = "region", pop1 = "north", pop2 = "south")
+#' plot_ihs(rsb)
+#' }
 #' @export
 run_rsb <- function(hap, group, meta = NULL, pairs = NULL, polarized = FALSE,
                     min_samples = 4, threads = 1) {
+  meta <- .normalise_meta(meta)
   .cross_pop(hap, group, meta, pairs, polarized, min_samples, threads,
              rehh::ines2rsb, "^RSB", "run_rsb()")
 }
@@ -411,9 +421,15 @@ run_rsb <- function(hap, group, meta = NULL, pairs = NULL, polarized = FALSE,
 #' @references Sabeti, P. C. et al. (2007) Genome-wide detection and characterization of
 #'   positive selection in human populations. \emph{Nature} 449, 913-918.
 #'   \doi{10.1038/nature06250}
+#' @examples
+#' \dontrun{
+#' hap <- parasite_haplotypes(ps, fws = fws, min_fws = 0.95)
+#' xp <- run_xpehh(hap, group = "region", pop1 = "north", pop2 = "south")
+#' }
 #' @export
 run_xpehh <- function(hap, group, meta = NULL, pairs = NULL, polarized = FALSE,
                       min_samples = 4, threads = 1) {
+  meta <- .normalise_meta(meta)
   .cross_pop(hap, group, meta, pairs, polarized, min_samples, threads,
              rehh::ies2xpehh, "^XPEHH", "run_xpehh()")
 }
@@ -515,6 +531,7 @@ ihs_genes <- function(scan, genes = NULL, within = 0, min_snps = 1) {
 #' subset_haplotypes(hap, country = "Ghana")
 #' @export
 subset_haplotypes <- function(x, samples = NULL, meta = NULL, ...) {
+  meta <- .normalise_meta(meta)
   if (!inherits(x, "parasite_haplotypes"))
     stop("`x` must be a parasite_haplotypes() object", call. = FALSE)
   ids <- rownames(x$hap)

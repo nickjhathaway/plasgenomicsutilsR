@@ -29,6 +29,13 @@ The decay scan lives in the Python package because it is quadratic in the number
 SNPs inside each window; on a 249-sample, 28k-SNP callset it runs in about 7 seconds
 there. \code{ld_index()} stays here, being linear and quick.
 }
+\examples{
+f <- tempfile(fileext = ".tsv")
+write.table(data.frame(group = "north", bin_mid = c(500, 1500, 2500),
+                       mean_r2 = c(0.40, 0.22, 0.14)),
+            f, sep = "\t", quote = FALSE, row.names = FALSE)
+read_ld_decay(f)
+}
 \seealso{
 \code{\link[=ld_index]{ld_index()}}, \code{\link[=plot_ld_decay]{plot_ld_decay()}}
 }

@@ -43,3 +43,31 @@
   a <- get(alias, envir = env)
   if (is.null(a)) get(canonical, envir = env) else a
 }
+
+#' Accept any capitalisation of a metadata table's `sample` column
+#'
+#' Metadata arrives from whoever assembled it, and `Sample`, `sample` and `SAMPLE` are the
+#' same column to everyone except a string comparison. Renames whichever case-variant a
+#' table uses to the canonical name, so nothing downstream has to ask twice.
+#'
+#' Two columns differing only in case is an error rather than a coin toss: which one holds
+#' the ids is not ours to guess. A table with neither is left alone -- the function that
+#' needs the column raises its own error, which knows what it is for.
+#'
+#' @param meta A data frame, or `NULL`.
+#' @param want The canonical column name (default `"sample"`).
+#' @return `meta`, with the column renamed if it needed it.
+#' @noRd
+.normalise_meta <- function(meta, want = "sample") {
+  if (is.null(meta) || !is.data.frame(meta)) return(meta)
+  nms <- names(meta)
+  if (want %in% nms) return(meta)
+  hit <- which(tolower(nms) == tolower(want))
+  if (!length(hit)) return(meta)
+  if (length(hit) > 1)
+    stop("`meta` has ", length(hit), " columns differing only in case for `", want, "`: ",
+         paste(nms[hit], collapse = ", "), ". Rename all but one.", call. = FALSE)
+  message("reading metadata column `", nms[hit], "` as `", want, "`")
+  names(meta)[hit] <- want
+  meta
+}

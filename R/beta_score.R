@@ -97,6 +97,7 @@ beta_score <- function(x, group = NULL, window = BETA_WINDOW, p = BETA_P,
                        min_freq = 0, min_window_snps = 2,
                        het = c("missing", "dosage"), min_samples = 4,
                        meta = NULL, genotype = NULL) {
+  meta <- .normalise_meta(meta)
   het <- match.arg(het)
   prep <- .ld_prepare(x, group, meta, genotype, het)
   half <- window / 2

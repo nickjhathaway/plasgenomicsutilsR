@@ -51,3 +51,9 @@ Writes a \code{.geno} file (missing coded as 9) and runs \code{\link[LEA:snmf]{L
 \code{K}, returning the sNMF project. Cross-entropy is computed so \code{\link[=snmf_best_k]{snmf_best_k()}} can
 pick \code{K}.
 }
+\examples{
+\dontrun{
+fit <- run_snmf(geno, K = 1:10, rep = 10, cache_dir = "snmf_cache")
+snmf_best_k(fit)
+}
+}

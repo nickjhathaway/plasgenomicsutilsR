@@ -19,3 +19,8 @@ Unpacks a \code{\link[=pop_diff]{pop_diff()}} result (a SNP x pair matrix) into 
 \code{chr:pos} SNP ids into genomic coordinates -- so you can look at differentiation SNP by
 SNP or feed it to \code{\link[=plot_diff_manhattan]{plot_diff_manhattan()}}.
 }
+\examples{
+ps <- example_pop_structure("africa", umap = FALSE)
+sn <- pop_diff_snps(pop_diff(ps, group = "region"))
+head(sn[order(-sn$value), c("snp", "chr", "pos", "value")])
+}

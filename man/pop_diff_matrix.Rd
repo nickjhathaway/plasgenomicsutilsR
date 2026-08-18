@@ -26,3 +26,9 @@ most of the genome is barely differentiated in \emph{P. falciparum}, a genome-wi
 looks near-zero; \code{"top_mean"} (mean of the top \code{top} fraction of SNPs per pair) or
 \code{"max"} surface the differentiation that lives in a minority of loci.
 }
+\examples{
+ps <- example_pop_structure("africa", umap = FALSE)
+pd <- pop_diff(ps, group = "site")
+# the genome-wide mean is near zero between neighbours; the tail separates them
+round(pop_diff_matrix(pd, "top_mean", top = 0.05)[1:3, 1:3], 4)
+}

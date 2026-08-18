@@ -109,10 +109,15 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
 #' Bhatia, G., Patterson, N., Sankararaman, S. & Price, A. L. (2013) Estimating and
 #' interpreting F_ST: the impact of rare variants. \emph{Genome Research} 23, 1514-1521.
 #' \doi{10.1101/gr.154831.113}
+#' @examples
+#' ps <- example_pop_structure("africa", umap = FALSE)
+#' pd <- pop_diff(ps, group = "region")     # Jost's D by default
+#' dim(pd$D)                                # SNPs x group pairs
 #' @export
 pop_diff <- function(x, group = NULL,
                      statistic = c("jost_d", "gst_hedrick", "fst"),
                      meta = NULL, clamp = TRUE, genotype = NULL) {
+  meta <- .normalise_meta(meta)
   statistic <- match.arg(statistic)
   if (inherits(x, "PopStructure")) {
     G <- .geno_for(x, genotype)
@@ -155,8 +160,12 @@ pop_diff <- function(x, group = NULL,
 #'
 #' @inheritParams pop_diff
 #' @return A `pop_diff` object (of Jost's D).
+#' @examples
+#' ps <- example_pop_structure("africa", umap = FALSE)
+#' jost_d(ps, group = "region")$groups
 #' @export
 jost_d <- function(x, group = NULL, meta = NULL, clamp = TRUE) {
+  meta <- .normalise_meta(meta)
   pop_diff(x, group = group, statistic = "jost_d", meta = meta, clamp = clamp)
 }
 
@@ -181,6 +190,11 @@ print.pop_diff <- function(x, ...) {
 #' @param top Fraction of highest-value SNPs to average for `stat = "top_mean"`
 #'   (default `0.05`, i.e. the top 5%).
 #' @return A symmetric numeric matrix (0 on the diagonal).
+#' @examples
+#' ps <- example_pop_structure("africa", umap = FALSE)
+#' pd <- pop_diff(ps, group = "site")
+#' # the genome-wide mean is near zero between neighbours; the tail separates them
+#' round(pop_diff_matrix(pd, "top_mean", top = 0.05)[1:3, 1:3], 4)
 #' @export
 pop_diff_matrix <- function(pd, stat = c("mean", "median", "top_mean", "max"), top = 0.05) {
   stat <- match.arg(stat)
@@ -231,6 +245,7 @@ pop_diff_table <- function(x, group = NULL,
                            statistics = c("jost_d", "gst_hedrick", "fst"),
                            stats = c("mean", "top_mean", "max"), top = 0.05,
                            meta = NULL, clamp = TRUE, genotype = NULL) {
+  meta <- .normalise_meta(meta)
   statistics <- match.arg(statistics, c("jost_d", "gst_hedrick", "fst"),
                           several.ok = TRUE)
   stats <- match.arg(stats, c("mean", "median", "top_mean", "max"), several.ok = TRUE)
@@ -351,6 +366,10 @@ pop_diff_table <- function(x, group = NULL,
 #'   [load_genotypes()]).
 #' @return A tibble with `snp`, `chr`, `pos`, `a`, `b`, `pair`, `statistic`, and `value`
 #'   (one row per SNP x pair).
+#' @examples
+#' ps <- example_pop_structure("africa", umap = FALSE)
+#' sn <- pop_diff_snps(pop_diff(ps, group = "region"))
+#' head(sn[order(-sn$value), c("snp", "chr", "pos", "value")])
 #' @export
 pop_diff_snps <- function(pd) {
   ids <- pd$snp
@@ -387,6 +406,9 @@ pop_diff_snps <- function(pd) {
 #' @param point_size,point_alpha Point aesthetics.
 #' @param colours,colors Optional length-2 colour vector for the alternating chromosome bands.
 #' @return A ggplot object.
+#' @examples
+#' ps <- example_pop_structure("africa", umap = FALSE)
+#' plot_diff_manhattan(pop_diff(ps, group = "region"))
 #' @export
 plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
                                 reference = DEFAULT_REFERENCE, chroms = NULL, skip_chr = NULL,
@@ -465,6 +487,10 @@ plot_diff_manhattan <- function(pd, pair = NULL, combine = c("max", "mean"),
 #' @param base_size Base font size.
 #' @param ... For `plot_jost_d_heatmap()`, arguments forwarded to `plot_diff_heatmap()`.
 #' @return A ggplot (or \pkg{patchwork}) object.
+#' @examples
+#' ps <- example_pop_structure("africa", umap = FALSE)
+#' pd <- pop_diff(ps, group = "site")
+#' plot_diff_heatmap(pd, stat = "top_mean", dendrogram = FALSE)
 #' @export
 plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"), top = 0.05,
                               cluster = TRUE, dendrogram = TRUE, triangle = TRUE,
@@ -474,6 +500,7 @@ plot_diff_heatmap <- function(pd, stat = c("mean", "median", "top_mean", "max"),
                               colors = c("white", "#fde0dd", "#fa9fb5", "#c51b8a", "#7a0177"),
                               trans = "identity", base_size = 11,
                               annotate_colors = NULL, colours = NULL) {
+  meta <- .normalise_meta(meta)
   annotate_colours <- .alias_arg("annotate_colours", "annotate_colors")
   colors <- .alias_arg("colors", "colours")
   .need_package("ggplot2", "plot_diff_heatmap()")
@@ -588,6 +615,9 @@ plot_jost_d_heatmap <- function(pd, stat = "mean", ...) plot_diff_heatmap(pd, st
 #' @param n How many SNPs to return.
 #' @param method `"roundrobin"` or `"max"`.
 #' @return A character vector of SNP ids (a subset of the result's SNPs).
+#' @examples
+#' ps <- example_pop_structure("africa", umap = FALSE)
+#' top_differentiating_snps(pop_diff(ps, group = "site"), 5)
 #' @export
 top_differentiating_snps <- function(jd, n, method = c("roundrobin", "max")) {
   method <- match.arg(method)

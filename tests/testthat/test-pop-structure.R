@@ -247,6 +247,26 @@ test_that("plot_structure_figure composes UMAP + admixture in one object", {
   expect_s3_class(figh, "patchwork")
 })
 
+test_that("the old run_ld_prune() name still reaches load_genotypes(), with a warning", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  set.seed(11)
+  hdr <- c("##fileformat=VCFv4.2", "##contig=<ID=chr1,length=100000>",
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste(c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO",
+                   "FORMAT", sprintf("s%d", 1:6)), collapse = "\t"))
+  body <- vapply(1:40, function(i) paste(c("chr1", i * 100, ".", "A", "T", ".", ".", ".",
+    "GT", sample(c("0/0", "0/1", "1/1"), 6, replace = TRUE)), collapse = "\t"), character(1))
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(hdr, body), vcf)
+
+  expect_warning(old <- run_ld_prune(vcf, gds = tempfile(fileext = ".gds"), prune = FALSE),
+                 "renamed to `load_genotypes\\(\\)`")
+  new <- load_genotypes(vcf, gds = tempfile(fileext = ".gds"), prune = FALSE)
+  expect_equal(old$genotype, new$genotype)         # the deprecation is name-only
+  expect_equal(old$sample.id, new$sample.id)
+})
+
 test_that("load_genotypes converts a VCF and returns a genotype matrix", {
   testthat::skip_if_not_installed("SNPRelate")
   testthat::skip_if_not_installed("gdsfmt")

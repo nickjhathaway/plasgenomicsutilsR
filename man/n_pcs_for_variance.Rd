@@ -19,3 +19,9 @@ The smallest number of leading PCs whose cumulative variance >= \code{target}.
 Handy for setting how many principal components feed the UMAP: pass the fraction of
 variance you want the PCA step to capture.
 }
+\examples{
+ps <- example_pop_structure(umap = FALSE)
+# how many PCs to feed UMAP for a given share of the variance
+n_pcs_for_variance(ps$prcomp(), 0.5)
+n_pcs_for_variance(ps$prcomp(), 50)     # percent is accepted too
+}

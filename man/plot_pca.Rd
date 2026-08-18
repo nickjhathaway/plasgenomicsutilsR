@@ -37,3 +37,8 @@ A ggplot object.
 \description{
 PCA scatter plot
 }
+\examples{
+ps <- example_pop_structure(umap = FALSE)
+plot_pca(ps, colour = "country")
+plot_pca(ps, colour = "country", pcs = c(2, 3))
+}

@@ -18,6 +18,10 @@ Tajima's D, or \code{NA} when there are too few segregating sites or samples.
 \description{
 Tajima's D from segregating sites and per-site heterozygosity
 }
+\examples{
+# the statistic from a site-frequency summary: h is the sum of 2p(1-p) over sites
+tajima_d(h = 12.5, n = 40)
+}
 \references{
 Tajima, F. (1989) Statistical method for testing the neutral mutation
 hypothesis by DNA polymorphism. \emph{Genetics} 123, 585-595.

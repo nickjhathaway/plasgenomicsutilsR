@@ -132,6 +132,15 @@ them. The returned list records the choice as \code{variants}, and the GDS is ta
 the two panels never get confused for one another through a reused \code{.gds}.
 }
 
+\examples{
+\dontrun{
+# LD-pruned for PCA / UMAP / admixture
+geno <- load_genotypes("clean.vcf.gz", gds = "clean.gds")
+
+# and the full panel for anything where SNP correlation IS the signal
+full <- load_genotypes("clean.vcf.gz", gds = "clean.gds", prune = FALSE)
+}
+}
 \seealso{
 \link{PopStructure}, \code{\link[=pop_structure]{pop_structure()}}
 }

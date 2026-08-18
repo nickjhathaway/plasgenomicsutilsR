@@ -104,3 +104,7 @@ IBD fraction rises from the bottom (bars ascending), sharing one centred axis so
 peaks of each line up. A single left axis carries both halves, its tick labels
 tinted to their track (selection on top, IBD on the bottom).
 }
+\examples{
+# IBD sharing above, the selection statistic mirrored below
+plot_ibd_tugofwar(example_ibd_results())
+}

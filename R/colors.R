@@ -76,6 +76,7 @@ color_palette <- function(n) {
 #' meta_colors(data.frame(sample = 1:3, region = c("A", "B", "A")))
 #' @export
 meta_colors <- function(meta, cols = NULL, overrides = NULL) {
+  meta <- .normalise_meta(meta)
   if (is.null(cols)) cols <- setdiff(names(meta), "sample")
   auto <- stats::setNames(lapply(cols, function(cc) {
     lv <- .levels_of(meta[[cc]])

@@ -22,3 +22,7 @@ the pairwise comparisons taking each one's next-highest SNP in turn until \code{
 SNPs are collected (so every pair contributes its top differentiators); \code{"max"} ranks
 SNPs by their largest value across all pairs.
 }
+\examples{
+ps <- example_pop_structure("africa", umap = FALSE)
+top_differentiating_snps(pop_diff(ps, group = "site"), 5)
+}

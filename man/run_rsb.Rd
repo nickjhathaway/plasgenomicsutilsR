@@ -59,6 +59,14 @@ Compares the site-specific integrated EHH of two groups. Unlike \code{\link[=run
 sweeps that have gone to completion in one population, because the comparison is
 against the other population rather than against the other allele.
 }
+\examples{
+\dontrun{
+# Rsb contrasts two groups' haplotype homozygosity at the same SNP
+hap <- parasite_haplotypes(ps, fws = fws, min_fws = 0.95)
+rsb <- run_rsb(hap, group = "region", pop1 = "north", pop2 = "south")
+plot_ihs(rsb)
+}
+}
 \references{
 Tang, K., Thornton, K. R. & Stoneking, M. (2007) A new approach for using
 genome scans to detect recent positive selection in the human genome.

@@ -407,6 +407,41 @@ and the group opens into a disc, while edges bridging distinct groups keep full 
 `spread = 1.5` by default; raise it to loosen the densest groups further, or use
 `spread = 0` for plain `fr`.
 
+## Relatedness over the whole genome
+
+The networks above ask who shares one locus, where every edge means the same thing.
+`plot_ibd_pair_network()` asks who is related *overall*: an edge joins a pair sharing more
+than `min_ibd` of the accessible genome, and its width is how much. It reads the pair table
+from `plasgenomicsutils ibd_fraction_and_snp_density`, attached with
+`ibd_results(pair_fraction = )`:
+
+```r
+plot_ibd_pair_network(ibd, color_group = "region", min_ibd = 0.03)
+```
+
+Samples with no edge are drawn as a grid underneath and counted, rather than dropped -- an
+unrelated sample is a result, and leaving it out would overstate how connected a cohort is.
+Legend breaks default to powers of two, because sharing runs over orders of magnitude and a
+linear legend collapses the interesting end into one key.
+
+`pair_fraction_summary()` is the same table read as numbers: one row per pair of metadata
+groups, over every sample pair spanning them.
+
+```r
+ibd$pair_fraction_summary(group = "region")
+```
+
+Two groups' row covers all `n_a x n_b` cross-group pairs; a group's row against itself
+covers its `choose(n, 2)` within-group pairs, which is what says whether a group is
+internally related at all -- so the within- and between-group rows are meant to be read
+against each other.
+
+The quartiles come as standard because relatedness is skewed: most pairs share almost
+nothing and a few share a great deal, so a mean alone reads as a far more related cohort
+than any pair actually is. `n_samples_a` / `n_samples_b` sit beside `n_pairs` so the
+denominator is checkable -- short of `n_a * n_b` (or `choose(n, 2)` within a group) means
+the pair table is missing pairs rather than the groups being small.
+
 ## Saving
 
 `save_plot()` sizes the canvas to the drawing. Plots with a locked panel shape — the

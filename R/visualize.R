@@ -403,6 +403,8 @@
 #'   (default) centres each name under its gene; `45` or `90` runs it down to the left,
 #'   which is what keeps long systematic ids from colliding over a dense annotation.
 #' @return A ggplot object.
+#' @examples
+#' plot_ibd_sharing_manhattan(example_ibd_results())
 #' @export
 plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr = NULL,
                                        zoom = NULL, zoom_pad = 0.05,
@@ -484,8 +486,8 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
 #'   `FALSE` for none.
 #'   Prefer a permutation line where it disagrees with a parametric one: it is built by
 #'   re-shuffling the IBD segments themselves, so it needs no chi-square(1) reference and
-#'   it accounts for one segment spanning many SNPs. On real data it lands several times
-#'   higher than Bonferroni's. `lambda_gc` says how far that reference is from fitting;
+#'   it accounts for one segment spanning many SNPs, and it can land well above
+#'   Bonferroni's. `lambda_gc` says how far that reference is from fitting;
 #'   the further from 1, the less the parametric lines mean.
 #'   Naming a kind the run did not write is an error; `"all"` draws whichever kinds the
 #'   threshold table carries.
@@ -510,6 +512,8 @@ plot_ibd_sharing_manhattan <- function(x, groups = NULL, chroms = NULL, skip_chr
 #'   (default) centres each name under its gene; `45` or `90` runs it down to the left,
 #'   which is what keeps long systematic ids from colliding over a dense annotation.
 #' @return A ggplot object.
+#' @examples
+#' plot_selection_manhattan(example_ibd_results(), genes = PF_EXAMPLE_DRUG_GENES)
 #' @export
 plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "z_score"),
                                      groups = NULL, chroms = NULL, skip_chr = NULL,
@@ -617,6 +621,8 @@ plot_selection_manhattan <- function(x, metric = c("neg_log10_p", "chi2_stat", "
 #' @param label_genes Label the genes above the top panel. `NULL` (default) labels them
 #'   only when `highlight_genes` is given; `TRUE`/`FALSE` forces it.
 #' @return A ggplot object.
+#' @examples
+#' plot_ibd_pairwise_group_heatmap(example_ibd_results())
 #' @export
 plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, skip_chr = NULL,
                                     trans = "identity", colors = NULL, limits = NULL,
@@ -758,6 +764,9 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #'   (default) centres each name under its gene; `45` or `90` runs it down to the left,
 #'   which is what keeps long systematic ids from colliding over a dense annotation.
 #' @return A ggplot object.
+#' @examples
+#' # IBD sharing above, the selection statistic mirrored below
+#' plot_ibd_tugofwar(example_ibd_results())
 #' @export
 plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
                               metric = "neg_log10_p", scan_abs = NULL,
@@ -1113,6 +1122,11 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
 #'   outside are squished). A faceted grid already shares one scale across its panels.
 #' @param fill_scale Optional ggplot2 fill scale that fully overrides the above.
 #' @return A ggplot object (grid), or a named list of ggplot objects when `individual`.
+#' @examples
+#' ibd <- example_ibd_results()
+#' # `within` widens the selection: the example panel is sparse, and a real gene often
+#' # carries no SNP of its own, so nearby ones stand in for it
+#' plot_pairwise_ibd_for_genes(ibd, genes = c("pfcrt", "pfdhps"), within = 20000)
 #' @export
 plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NULL,
                                      within = 0, agg = c("mean", "median", "max"),

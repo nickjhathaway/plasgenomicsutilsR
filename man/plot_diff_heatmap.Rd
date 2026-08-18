@@ -82,3 +82,8 @@ drug-gene triangles: the fill legend sits in the empty upper triangle. Optionall
 a clustering dendrogram across the top and a metadata annotation strip (e.g. colour
 each site by its country).
 }
+\examples{
+ps <- example_pop_structure("africa", umap = FALSE)
+pd <- pop_diff(ps, group = "site")
+plot_diff_heatmap(pd, stat = "top_mean", dendrogram = FALSE)
+}

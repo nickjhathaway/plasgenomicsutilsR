@@ -17,3 +17,9 @@ See \code{\link[=load_genotypes]{load_genotypes()}}.
 mostly does, and reads as a contradiction with \code{prune = FALSE}. Kept so existing scripts
 keep working.
 }
+\examples{
+\dontrun{
+# deprecated: use load_genotypes()
+geno <- run_ld_prune("clean.vcf.gz", gds = "clean.gds")
+}
+}

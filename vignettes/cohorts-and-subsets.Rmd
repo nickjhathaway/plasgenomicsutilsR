@@ -1,0 +1,124 @@
+---
+title: "Cohorts and subsets"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Cohorts and subsets}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4.5)
+```
+
+```{r setup}
+library(plasgenomicsutilsR)
+ps <- example_pop_structure(umap = FALSE)
+```
+
+Most analyses here are run on some subset of a callset -- one region, the monoclonal
+infections, everything except a sample that turned out to be a duplicate. This article is
+about getting that subset right, because two of the ways it can go wrong are silent.
+
+## Narrowing a PopStructure
+
+`$subset()` takes sample ids, metadata filters, or both:
+
+```{r}
+ps$subset(country = "Ghana")
+ps$subset(samples = ps$get_samples()[1:10])
+```
+
+`drop_samples` removes named samples *after* the other filters, so a sample can be taken
+out even though the filter it sits inside keeps it -- a contaminant or a duplicate, without
+having to spell out the whole keep list:
+
+```{r}
+ps$subset(country = "Ghana", drop_samples = ps$get_samples()[1])
+```
+
+Ids that are not in the object are named in a warning rather than passed over, since a typo
+otherwise looks exactly like a sample that had already gone.
+
+## A subset refits on itself
+
+PCA, UMAP and sNMF are *joint* fits: where a sample lands depends on which other samples
+were in the fit. So a refit after subsetting is fit on the subset alone, not on the whole
+cohort with the extra rows filtered out afterwards.
+
+```{r}
+sub <- ps$subset(country = "Ghana")
+sub$run_umap(pca_components = 5)
+c(cohort = length(ps$get_samples()), subset = nrow(sub$umap_df()))
+```
+
+That matters when a sample looks like an outlier: it may only be one by reference to samples
+you have since excluded. Re-running the embedding on the retained cohort is the check.
+
+The object subsetted from is untouched, so the two can be compared.
+
+## Metadata column names
+
+`sample`, `Sample` and `SAMPLE` are the same column to everyone except a string comparison,
+and metadata arrives from whoever assembled it. Any capitalisation is accepted, wherever a
+`meta` table is taken:
+
+```{r}
+caps <- data.frame(Sample = ps$get_samples(), site = rep(c("a", "b"), length.out = 60))
+names(ps$subset(samples = ps$get_samples())$get_meta())
+head(names(PopStructure$new(ps$genotype(), meta = caps)$get_meta()), 3)
+```
+
+An exact `sample` wins outright, so a table holding both `sample` and `Sample` is not
+ambiguous; two non-exact variants is an error, since which one holds the ids is not the
+package's to guess.
+
+## The scans run on the cohort `parasite_haplotypes()` kept. A diversity or differentiation
+estimate that is meant to describe those same parasites has to be given the same set --
+otherwise the paper says "monoclonal infections" while the table was computed over
+everything. `haplotype_samples()` is that set. The example callset carries no Fws, so here is an
+illustrative one to gate on:
+
+```{r}
+set.seed(1)
+fws <- data.frame(sample = rownames(ps$genotype()),
+                  fws = stats::runif(nrow(ps$genotype()), 0.80, 1))
+gated <- parasite_haplotypes(ps, fws = fws, min_fws = 0.95, maf = 0.05)
+
+mono <- haplotype_samples(gated)
+c(genotyped = nrow(ps$genotype()), in_haplotypes = length(mono))
+```
+
+It is what survived *every* filter, not only the Fws gate: samples left too incomplete by
+`max_sample_missing` are gone too. `gated$filtering` says how many went to each cause,
+which is worth a glance before quoting a sample count.
+
+```{r}
+gated$filtering[c("n_dropped_polyclonal", "n_dropped_sample_missing")]
+```
+
+`subset_genotypes()` narrows a panel to them, and gives back the same kind of object it was
+handed -- a `load_genotypes()` list stays a list, with `sample.id` moved to match:
+
+```{r}
+pop_diversity(subset_genotypes(ps, gated), group = "country",
+              accessible = PF3D7_CORE_REGIONS)[, c("group", "n_samples", "pi", "n_hap")]
+```
+
+against the ungated cohort:
+
+```{r}
+pop_diversity(ps, group = "country",
+              accessible = PF3D7_CORE_REGIONS)[, c("group", "n_samples", "pi", "n_hap")]
+```
+
+Two things this is deliberately **not** doing. It subsets samples and keeps every SNP,
+because a diversity estimate wants the whole panel; `hap$hap` is MAF-filtered and imputed
+to the 0/1 matrix \pkg{rehh} needs, so handing that to `pop_diversity()` would quietly
+answer a different question. And metadata needs no subsetting -- it is matched by sample,
+so extra rows are ignored.
+
+The columns that most need this are `n_hap` and `hap_div`: counting distinct haplotypes
+across SNP combinations only means something when each sample is one genome. `pi`, `he` and
+`seg_sites` still read on mixed infections, they just describe a cohort you did not
+describe in the methods.

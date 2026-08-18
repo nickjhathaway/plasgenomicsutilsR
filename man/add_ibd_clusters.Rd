@@ -17,7 +17,9 @@ add_ibd_clusters(
 \arguments{
 \item{x}{An \link{IbdResults} with \code{blocks} and \code{meta} loaded.}
 
-\item{genes}{Gene names in the object's track, or \code{NULL} for every gene in it. Ignored
+\item{genes}{Gene names in the object's track, a gene-interval data frame (\code{name},
+\code{chr}/\code{chrom}, \code{start}, \code{end}) to use instead of that track, or \code{NULL} for every gene
+in it. Ignored
 when \code{locus} is given.}
 
 \item{locus}{A locus instead of a gene: \code{"chr:pos"}, \code{"chr:start-end"}, or a data frame

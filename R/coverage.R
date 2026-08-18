@@ -20,6 +20,12 @@ COVERAGE_MIN_BREADTH <- 80
 #' @param path TSV(.gz) written by `plasgenomicsutils coverage_depth_stats`
 #'   (per-sample/per-chromosome), or by `coverage_dropout_regions`.
 #' @return A tibble.
+#' @examples
+#' f <- tempfile(fileext = ".tsv")
+#' write.table(data.frame(sample = c("s1", "s2"), chrom = "genome",
+#'                        mean = c(48, 4), pct_ge_10x = c(95, 12)),
+#'             f, sep = "\t", quote = FALSE, row.names = FALSE)
+#' read_coverage(f)
 #' @export
 read_coverage <- function(path) {
   .need_package("readr", "read_coverage()")
@@ -82,6 +88,10 @@ coverage_qc <- function(cov, threshold = COVERAGE_QC_THRESHOLD,
 #' @inheritParams coverage_qc
 #' @param label_failures Name the samples that fail.
 #' @return A ggplot object.
+#' @examples
+#' cov <- data.frame(sample = paste0("s", 1:4), chrom = "genome",
+#'                   mean = c(60, 45, 30, 3), pct_ge_10x = c(96, 91, 41, 7))
+#' plot_coverage_summary(cov)
 #' @export
 plot_coverage_summary <- function(cov, threshold = COVERAGE_QC_THRESHOLD,
                                   min_mean = COVERAGE_MIN_MEAN,
@@ -126,6 +136,13 @@ plot_coverage_summary <- function(cov, threshold = COVERAGE_QC_THRESHOLD,
 #'   shows relative rather than absolute depth and deep samples do not dominate.
 #' @param sample_order Optional sample order; defaults to increasing genome-wide mean.
 #' @return A ggplot object.
+#' @examples
+#' cov <- expand.grid(sample = paste0("s", 1:4),
+#'                    chrom = sprintf("Pf3D7_%02d_v3", 1:3), stringsAsFactors = FALSE)
+#' cov$mean <- c(40, 38, 12, 44, 41, 39, 15, 43, 42, 40, 13, 45)
+#' cov <- rbind(cov, data.frame(sample = paste0("s", 1:4), chrom = "genome",
+#'                              mean = c(41, 40, 13, 44)))
+#' plot_coverage_by_chrom(cov)
 #' @export
 plot_coverage_by_chrom <- function(cov, metric = "mean", relative = TRUE,
                                    sample_order = NULL) {
@@ -176,6 +193,12 @@ plot_coverage_by_chrom <- function(cov, metric = "mean", relative = TRUE,
 #' @param genes,highlight_genes,label_genes Optional gene track, as in [plot_ihs()].
 #' @param chroms,skip_chr,reference As in [plot_ihs()].
 #' @return A ggplot object.
+#' @examples
+#' win <- expand.grid(sample = paste0("s", 1:5), chrom = "Pf3D7_01_v3",
+#'                    start = seq(0, 3e5, by = 1e5), stringsAsFactors = FALSE)
+#' win$end <- win$start + 1e5
+#' win$mean_depth <- c(rep(30, 15), rep(1, 5))    # the last window is empty in everyone
+#' plot_coverage_dropout(win)
 #' @export
 plot_coverage_dropout <- function(windows, min_depth = 5, min_frac_samples = 0.9,
                                   genes = NULL, highlight_genes = NULL,

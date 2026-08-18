@@ -44,7 +44,9 @@
 #' with, or the colours will not match the components.
 #'
 #' @param x An [IbdResults] with `blocks` and `meta` loaded.
-#' @param genes Gene names in the object's track, or `NULL` for every gene in it. Ignored
+#' @param genes Gene names in the object's track, a gene-interval data frame (`name`,
+#'   `chr`/`chrom`, `start`, `end`) to use instead of that track, or `NULL` for every gene
+#'   in it. Ignored
 #'   when `locus` is given.
 #' @param locus A locus instead of a gene: `"chr:pos"`, `"chr:start-end"`, or a data frame
 #'   with `chr`/`start`/`end`. Its `name` (or the coordinate string) labels the column.
@@ -85,12 +87,11 @@ add_ibd_clusters <- function(x, genes = NULL, locus = NULL, within = 0,
   ivs <- if (!is.null(locus)) {
     list(.resolve_locus(x, NULL, locus))
   } else {
-    g <- x$get_genes()
-    if (is.null(g)) stop("no gene track; pass genes= to ibd_results() or give a locus=",
-                         call. = FALSE)
-    want <- if (is.null(genes)) as.character(g$name) else as.character(genes)
-    .check_gene_request(g, want)
-    lapply(want, function(nm) .resolve_locus(x, nm, NULL))
+    # names select from the object's track; a table replaces it, so a gene the object was
+    # not built with can be clustered without rebuilding it
+    g <- .gene_track_for(x, genes)
+    supplied <- if (is.null(genes) || is.character(genes)) NULL else g
+    lapply(as.character(g$name), function(nm) .resolve_locus(x, nm, NULL, supplied))
   }
 
   samples <- as.character(meta$sample)

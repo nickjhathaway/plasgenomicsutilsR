@@ -16,3 +16,8 @@ and \code{bp_per_cm}.
 \description{
 Look up a reference genome's facts by id
 }
+\examples{
+ref <- get_reference("pf3d7")
+ref$bp_per_cm
+head(ref$core_chrom_lengths_bp)
+}

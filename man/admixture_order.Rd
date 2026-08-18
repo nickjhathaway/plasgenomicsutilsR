@@ -21,3 +21,9 @@ Orders samples within each \code{group} by hierarchical clustering of their ance
 vectors. Compute it once (e.g. at the best K) and pass it as \code{sample_order} to
 \code{\link[=plot_admixture]{plot_admixture()}} for every K, so bars stay in the same position across K.
 }
+\examples{
+q <- matrix(c(0.9, 0.1, 0.2, 0.8, 0.85, 0.15, 0.1, 0.9), ncol = 2, byrow = TRUE)
+rownames(q) <- paste0("s", 1:4)
+meta <- data.frame(sample = rownames(q), region = c("A", "A", "B", "B"))
+admixture_order(q, meta = meta, group = "region")
+}

@@ -29,3 +29,11 @@ A sample-by-chromosome tile of mean depth (or any other column in the table). A
 chromosome that is systematically low across samples is a reference or amplification
 problem, not a sample problem -- the two read very differently here.
 }
+\examples{
+cov <- expand.grid(sample = paste0("s", 1:4),
+                   chrom = sprintf("Pf3D7_\%02d_v3", 1:3), stringsAsFactors = FALSE)
+cov$mean <- c(40, 38, 12, 44, 41, 39, 15, 43, 42, 40, 13, 45)
+cov <- rbind(cov, data.frame(sample = paste0("s", 1:4), chrom = "genome",
+                             mean = c(41, 40, 13, 44)))
+plot_coverage_by_chrom(cov)
+}

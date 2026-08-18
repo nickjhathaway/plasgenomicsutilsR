@@ -193,6 +193,7 @@ IbdResults <- R6::R6Class(
                           min_block_snp = IBD_MIN_BLOCK_SNP,
                           min_block_kb = IBD_MIN_BLOCK_KB,
                           reference = DEFAULT_REFERENCE) {
+      meta <- .normalise_meta(meta)
       private$reference <- reference
       private$layout <- .chrom_layout(reference)
 
@@ -608,6 +609,11 @@ IbdResults <- R6::R6Class(
 #'
 #' @param ... Passed to [IbdResults]'s constructor; see there for the arguments.
 #' @return An [IbdResults] object.
+#' @examples
+#' # every argument is optional -- hold only what you plan to plot
+#' ibd <- example_ibd_results()
+#' ibd
+#' ibd$get_group_order()
 #' @export
 ibd_results <- function(...) {
   IbdResults$new(...)

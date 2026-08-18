@@ -34,3 +34,18 @@ the analyzed-sample set), so pairs that are never IBD still count against the fr
 Needs an \link{IbdResults} built with \verb{blocks =} and \verb{meta =} (or use the Python
 \code{ibd_gene_overlap} tool and pass its table as \verb{gene_overlap =}).
 }
+\examples{
+# needs IBD segments, so build a small object that has them
+# segments shorter than 15 kb or carrying under 15 SNPs are discarded as spurious,
+# so these are long enough to survive that
+blocks <- data.frame(
+  sample1 = c("s1", "s1", "s2"), sample2 = c("s2", "s3", "s3"),
+  chr = "7", start = c(395000, 100000, 395000), end = c(415000, 130000, 415000),
+  different = 0, Nsnp = 40)
+meta <- data.frame(sample = paste0("s", 1:3), region = c("north", "north", "south"))
+ibd <- ibd_results(blocks = blocks, meta = meta, group_col_in_meta = "region",
+                   genes = PF_EXAMPLE_DRUG_GENES)
+
+# the fraction of pairs sharing the gene by IBD block, per group pair
+gene_ibd_overlap(ibd, genes = "pfcrt")
+}

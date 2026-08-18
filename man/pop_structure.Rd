@@ -44,3 +44,11 @@ Mean-imputes missing genotypes, runs PCA (\code{\link[stats:prcomp]{stats::prcom
 UMAP embedding (\pkg{uwot}) with PCA initialisation. Returns a \code{pop_structure}
 object the \verb{plot_*()} functions read.
 }
+\examples{
+# PCA (and optionally UMAP) from a genotype matrix
+G <- matrix(stats::rbinom(30 * 80, 2, 0.4), 30, 80)
+rownames(G) <- paste0("s", 1:30)
+ps <- pop_structure(G, umap = FALSE)
+dim(ps$pca)
+head(ps$pca_var)
+}
