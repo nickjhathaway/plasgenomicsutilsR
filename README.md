@@ -370,6 +370,20 @@ devtools::test()
 devtools::document()
 ```
 
+`scripts/check.sh` runs everything CI runs, so a pull request does not have to be the thing
+that tells you `_pkgdown.yml` names a topic that no longer exists or that `man/` is behind
+the roxygen comments:
+
+```bash
+scripts/check.sh          # + R CMD check, a couple of minutes
+scripts/check.sh --fast   # roxygen freshness, pkgdown config and testthat, under a minute
+```
+
+`--fast` is the loop between edits. It checks that `man/` and `NAMESPACE` match the roxygen
+comments (CI checks whatever was *pushed*, so a forgotten `document()` fails there and
+nowhere else), runs `pkgdown::check_pkgdown()`, and runs the test suite — leaving only
+`R CMD check` for the full run.
+
 ## License
 
 GPL-3.
