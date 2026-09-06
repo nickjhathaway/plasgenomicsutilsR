@@ -43,6 +43,7 @@ reference:
   contents:
   - PopStructure
   - load_genotypes
+  - merge_genotypes
   - run_ld_prune
   - pop_structure
   - plot_pca
@@ -101,9 +102,11 @@ reference:
   contents:
   - parasite_haplotypes
   - subset_haplotypes
+  - add_haplotype_markers
   - run_ihs
   - run_rsb
   - run_xpehh
+  - ihs_windows
   - ihs_genes
   - plot_ihs
   - plot_ehh
@@ -132,10 +135,16 @@ reference:
   contents:
   - plot_wsaf
 - title: Colours
-  desc: Colour-blind-friendly palettes and a shared level-to-colour map.
+  desc: >
+    Colour-blind-friendly palettes, a shared level-to-colour map, and the check that
+    shows -- rather than asserts -- how a figure's colours read under each dichromacy.
   contents:
   - meta_colors
   - color_palette
+  - colour_blind_distance
+  - color_blind_distance
+  - plot_colour_blind_check
+  - plot_color_blind_check
 - title: Saving and sizing
   contents:
   - save_plot
@@ -151,6 +160,10 @@ reference:
   - aa_intervals
   - snp_aa_positions
   - read_gff_cds
+  - ensembl_gff_url
+  - ensembl_genome_url
+  - ensembl_species
+  - ENSEMBL_PROTISTS_RELEASE
   - bed_intersect
   - bed_subtract
   - write_bed

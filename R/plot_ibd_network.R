@@ -188,6 +188,12 @@
 #'   the cost of them taking up more of the canvas. Applies to weight-aware layouts
 #'   (`"fr"`, `"kk"`, `"drl"`, `"stress"`, ...); others are unaffected.
 #' @param node_size,node_alpha Node point aesthetics.
+#' @param border Outline colour for the nodes, or `NA` (default) for none. An outline makes
+#'   a dark category legible where it sits over the grey edge bundles, at the cost of the
+#'   shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
+#'   this on draws every node as a filled circle and maps the colour group to the fill. It
+#'   is therefore an error to give both `border` and `shape_group`.
+#' @param border_width Outline width when `border` is set.
 #' @param edge_colour,edge_color,edge_width Edge aesthetics (default width `1`).
 #' @param edge_alpha Edge opacity (default `0.5`). `NULL` instead scales opacity down with
 #'   edge count (`~120 / n_edges`, clamped to \[0.06, 0.6]).
@@ -218,6 +224,7 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
                              sharing = c("overlap", "complete"),
                              include_isolated = FALSE, layout = "fr", spread = 1.5,
                              node_size = 3, node_alpha = 0.9,
+                                  border = NA, border_width = 0.4,
                              edge_colour = "grey65", edge_alpha = 0.5, edge_width = 1,
                              title = NULL, subtitle = TRUE, seed = 42,
                              colour_group = NULL, colours = NULL, na_color = NULL, edge_color = NULL) {
@@ -225,6 +232,13 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
   colors <- .alias_arg("colors", "colours")
   na_colour <- .alias_arg("na_colour", "na_color")
   edge_colour <- .alias_arg("edge_colour", "edge_color")
+  # An outline needs a shape that has one, and only 21-25 do. Honouring `border` alongside
+  # `shape_group` would mean silently replacing the caller's shapes with circles, so it is
+  # refused instead: the two encodings want the same property of the mark.
+  if (!is.null(border) && !is.na(border) && !is.null(shape_group))
+    stop("`border` cannot be combined with `shape_group`: an outline needs a filled shape ",
+         "(21-25), and only those carry a fill separate from the outline, so the shapes you ",
+         "asked for would have to be discarded. Drop one of the two.", call. = FALSE)
   .need_package("ggplot2", "plot_ibd_network()")
   .need_package("igraph", "plot_ibd_network()")
   .need_package("ggraph", "plot_ibd_network()")
@@ -262,6 +276,7 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
     color_group = color_group, colors = colors, shape_group = shape_group, shapes = shapes,
     na_shape = na_shape, na_colour = na_colour, include_isolated = include_isolated,
     layout = layout, spread = spread, node_size = node_size, node_alpha = node_alpha,
+    border = border, border_width = border_width,
     edge_colour = edge_colour, edge_alpha = edge_alpha, edge_width = edge_width,
     title = if (is.null(title)) paste0("IBD network: ", iv$label) else title,
     subtitle = subtitle,
@@ -308,6 +323,7 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
                               na_shape = .NA_SHAPE, na_colour = "grey70",
                               include_isolated = FALSE, layout = "fr", spread = 1.5,
                               node_size = 3, node_alpha = 0.9,
+                              border = NA, border_width = 0.4,
                               edge_colour = "grey65", edge_alpha = 0.5, edge_width = 1,
                               weight_name = "IBD", weight_range = c(0.15, 2.6),
                               weight_breaks = NULL, weight_trans = "log2",
@@ -401,16 +417,37 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
         colour = edge_colour, alpha = edge_alpha, linewidth = edge_width)
     }
   }
-  # nodes: colour and shape are independent, so either, both or neither can be mapped
+  # nodes: colour and shape are independent, so either, both or neither can be mapped.
+  # An outline is a third thing again, and it is not free: only shapes 21-25 carry a fill
+  # separate from their outline, so drawing one means using shape 21 and moving the group
+  # from `colour` (the mark) to `fill` (its inside). That is why `border` and `shape_group`
+  # cannot both be on -- the caller's shapes would have to be thrown away to honour it.
+  bordered <- !is.null(border) && !is.na(border)
   aes_args <- list(x = quote(.data$x), y = quote(.data$y))
-  if (!is.null(col_of)) aes_args$colour <- quote(.data$.colour)
+  if (!is.null(col_of)) aes_args[[if (bordered) "fill" else "colour"]] <- quote(.data$.colour)
   if (!is.null(shp_of)) aes_args$shape <- quote(.data$.shape)
   fixed <- list(data = nodes, mapping = do.call(ggplot2::aes, aes_args),
                 size = node_size, alpha = node_alpha)
-  if (is.null(col_of)) fixed$colour <- "#2166ac"
+  if (bordered) {
+    fixed$shape <- 21L
+    fixed$colour <- border
+    fixed$stroke <- border_width
+    if (is.null(col_of)) fixed$fill <- "#2166ac"
+  } else if (is.null(col_of)) {
+    fixed$colour <- "#2166ac"
+  }
   p <- p + do.call(ggplot2::geom_point, fixed)
 
-  if (!is.null(col_of)) {
+  if (!is.null(col_of) && bordered) {
+    node_cols <- .match_scale_values(colors, col_of$levels, "colors",
+                                     function(n) meta_colors(
+                                       data.frame(g = factor(col_of$levels,
+                                                             levels = col_of$levels)))[["g"]])
+    p <- p + ggplot2::scale_fill_manual(
+      values = node_cols, name = color_group, na.value = na_colour, drop = FALSE,
+      guide = ggplot2::guide_legend(order = .LEGEND_ORDER[["colour"]]))
+  }
+  if (!is.null(col_of) && !bordered) {
     node_cols <- .match_scale_values(colors, col_of$levels, "colors",
                                      function(n) meta_colors(
                                        data.frame(g = factor(col_of$levels,

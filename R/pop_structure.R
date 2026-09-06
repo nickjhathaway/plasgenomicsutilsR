@@ -9,19 +9,34 @@
 # already sitting next to the BCF if there is one, otherwise convert with bcftools into
 # `vcf_dir` (default: alongside the BCF). Reusing rather than re-converting is the point
 # -- these files are large and otherwise accumulate one copy per analysis.
-.as_text_vcf <- function(path, vcf_dir = NULL) {
+.as_text_vcf <- function(path, vcf_dir = NULL, refresh = "stale") {
   if (!grepl("\\.bcf$", path, ignore.case = TRUE)) return(path)
   base <- sub("\\.bcf$", "", path, ignore.case = TRUE)
   out <- if (is.null(vcf_dir)) paste0(base, ".vcf.gz")
          else file.path(vcf_dir, paste0(basename(base), ".vcf.gz"))
 
+  found <- NULL
   for (cand in unique(c(out, paste0(base, ".vcf.gz"), paste0(base, ".vcf")))) {
-    if (!file.exists(cand)) next
-    if (file.mtime(cand) < file.mtime(path))
-      warning(sprintf("%s is older than the BCF beside it; delete it to reconvert",
-                      basename(cand)), call. = FALSE)
-    message("reusing the existing VCF: ", cand)
-    return(cand)
+    if (file.exists(cand)) { found <- cand; break }
+  }
+  if (!is.null(found) && !identical(refresh, "always")) {
+    if (file.mtime(found) >= file.mtime(path)) {
+      message("reusing the existing VCF: ", found)
+      return(found)
+    }
+    # The BCF has moved on. Reusing the VCF here is not a stale cache in the harmless
+    # sense: everything downstream -- the GDS, the pruned panel, every analysis -- is then
+    # built from the old records, and the GDS looks fresh because it is newer than the
+    # stale VCF it came from. So the default is to reconvert, and reusing it anyway has to
+    # be asked for.
+    if (identical(refresh, "never")) {
+      warning(sprintf(paste("%s is older than the BCF beside it, and refresh = \"never\":",
+                            "every result below is built from the older records."),
+                      basename(found)), call. = FALSE)
+      message("reusing the existing VCF: ", found)
+      return(found)
+    }
+    message("the VCF beside the BCF is older than it; reconverting")
   }
 
   bcftools <- Sys.which("bcftools")
@@ -136,6 +151,13 @@
 #'   a BCF is converted first with `bcftools`, reusing any VCF already sitting next to it
 #'   rather than making another copy.
 #' @param gds Optional GDS path; derived from `vcf` if `NULL`.
+#' @param refresh What to do with a derived file older than what it was built from -- the
+#'   text VCF beside a BCF, and the GDS beside either. `"stale"` (default) rebuilds it,
+#'   `"always"` rebuilds regardless, `"never"` reuses it and warns. The default is a
+#'   rebuild because the alternative is silent: update the BCF and every result below comes
+#'   from the old records, with the GDS looking current because it is newer than the stale
+#'   VCF it was built from. A GDS built with a different `variants` is rebuilt whatever
+#'   `refresh` says -- that is a different set of records, not an older one.
 #' @param prune LD-prune (default `TRUE`). `FALSE` returns every record `variants` admits
 #'   (see *Which records reach the panel*), unpruned -- use this for the genotype matrix fed
 #'   to [pop_diff()] / [pop_diff_table()], since LD-pruning removes the very SNPs that carry
@@ -175,21 +197,31 @@ load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
                          slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
                          maf = NaN, missing_rate = NaN, seed = 42, vcf_dir = NULL,
                          allele = c("alt", "ref"),
-                         variants = c("biallelic_snvs", "all")) {
+                         variants = c("biallelic_snvs", "all"),
+                         refresh = c("stale", "never", "always")) {
   .need_package("SNPRelate", "load_genotypes()")
   .need_package("gdsfmt", "load_genotypes()")
   allele <- match.arg(allele)
   variants <- match.arg(variants)
+  refresh <- match.arg(refresh)
   method <- if (identical(variants, "all")) "copy.num.of.ref" else "biallelic.only"
   if (!file.exists(vcf)) stop(sprintf("no such file: %s", vcf), call. = FALSE)
-  vcf <- .as_text_vcf(vcf, vcf_dir)
+  vcf <- .as_text_vcf(vcf, vcf_dir, refresh)
   if (is.null(gds)) gds <- sub("\\.vcf(\\.gz)?$", ".gds", vcf, ignore.case = TRUE)
   if (identical(gds, vcf)) gds <- paste0(vcf, ".gds")
   # A GDS built one way holds a different set of records, so reuse only when it was built the
   # same way -- otherwise asking for `variants = "all"` would silently hand back the cached
   # biallelic panel (or the reverse).
-  stale <- !file.exists(gds) || file.mtime(gds) < file.mtime(vcf) ||
-    !identical(.gds_variants(gds), variants)
+  # A `variants` mismatch is not a staleness question and `refresh` does not reach it: a GDS
+  # built the other way holds a different set of records, so reusing it would answer a
+  # different question rather than an out-of-date one.
+  stale <- !file.exists(gds) || !identical(.gds_variants(gds), variants) ||
+    identical(refresh, "always") ||
+    (file.mtime(gds) < file.mtime(vcf) && !identical(refresh, "never"))
+  if (file.exists(gds) && !stale && file.mtime(gds) < file.mtime(vcf))
+    warning(sprintf(paste("%s is older than %s, and refresh = \"never\": it is being reused",
+                          "rather than rebuilt."), basename(gds), basename(vcf)),
+            call. = FALSE)
   if (stale) {
     # biallelic.only keeps biallelic SNVs and skips ALT="." reference positions, indels and
     # multiallelic sites, so the panel is routinely smaller than the VCF's record count
@@ -429,6 +461,12 @@ plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
 #' @param point_size,point_alpha Point aesthetics.
 #' @param legend_point_size Size of the coloured dots in the legend (default `3`, larger
 #'   than the plotted points so the key is easy to read); `NULL` leaves it as-is.
+#' @param point_border Outline colour for each point (e.g. `"black"`), or `NULL`
+#'   (default) for unoutlined points. Outlined points use shape 21, so the
+#'   categories drive `fill` rather than `colour`.
+#' @param point_stroke Outline width (default `0.3`); ignored when `point_border`
+#'   is `NULL`.
+#' @param legend_title Title for the colour legend (default: the `colour` column name).
 #' @return A ggplot object.
 #' @examples
 #' ps <- example_pop_structure(umap = FALSE)
@@ -437,6 +475,8 @@ plot_pca <- function(x, pcs = c(1, 2), colour = NULL, colors = NULL,
 #' @export
 plot_umap <- function(x, colour = NULL, colors = NULL, point_size = 1.6,
                       point_alpha = 0.8, legend_point_size = 3,
+                      point_border = NULL, point_stroke = 0.3,
+                      legend_title = NULL,
                       color = NULL, colours = NULL) {
   colour <- .alias_arg("colour", "color")
   colors <- .alias_arg("colors", "colours")
@@ -453,23 +493,42 @@ plot_umap <- function(x, colour = NULL, colors = NULL, point_size = 1.6,
     ggplot2::labs(x = "UMAP 1", y = "UMAP 2") +
     ggplot2::coord_equal() +
     ggplot2::theme_minimal(base_size = 11) +
-    .scatter_points(colour, point_size, point_alpha, colors, legend_point_size)
+    .scatter_points(colour, point_size, point_alpha, colors, legend_point_size,
+                    point_border, point_stroke, legend_title)
 }
 
 # shared point + colour layers for the scatter plots
+#
+# `border` outlines each point: that needs shape 21, where the category drives `fill` and
+# the outline owns `colour`, so the whole scale/guide/label set moves from colour to fill.
+# With `border = NULL` (the default) nothing changes -- same shape 19 layer as before.
 .scatter_points <- function(colour, point_size, point_alpha, colors = NULL,
-                            legend_point_size = NULL) {
+                            legend_point_size = NULL, border = NULL, stroke = 0.3,
+                            legend_title = NULL) {
+  bordered <- !is.null(border)
   if (is.null(colour)) {
-    return(list(ggplot2::geom_point(size = point_size, alpha = point_alpha)))
+    return(list(if (bordered)
+      ggplot2::geom_point(size = point_size, alpha = point_alpha, shape = 21,
+                          colour = border, stroke = stroke)
+      else ggplot2::geom_point(size = point_size, alpha = point_alpha)))
   }
+  aes_key <- if (bordered) "fill" else "colour"
   out <- list(
-    ggplot2::geom_point(ggplot2::aes(colour = .data[[colour]]),
-                        size = point_size, alpha = point_alpha),
-    ggplot2::labs(colour = colour))
-  if (!is.null(colors)) out <- c(out, list(ggplot2::scale_colour_manual(values = colors)))
+    if (bordered)
+      ggplot2::geom_point(ggplot2::aes(fill = .data[[colour]]), shape = 21,
+                          colour = border, stroke = stroke,
+                          size = point_size, alpha = point_alpha)
+    else
+      ggplot2::geom_point(ggplot2::aes(colour = .data[[colour]]),
+                          size = point_size, alpha = point_alpha),
+    # the key the category is mapped to differs with `border`, so name the legend by it
+    ggplot2::labs(!!aes_key := if (is.null(legend_title)) colour else legend_title))
+  if (!is.null(colors))
+    out <- c(out, list(if (bordered) ggplot2::scale_fill_manual(values = colors)
+                       else ggplot2::scale_colour_manual(values = colors)))
   if (!is.null(legend_point_size))
     out <- c(out, list(ggplot2::guides(
-      colour = ggplot2::guide_legend(override.aes = list(size = legend_point_size)))))
+      !!aes_key := ggplot2::guide_legend(override.aes = list(size = legend_point_size)))))
   out
 }
 
@@ -923,6 +982,10 @@ admixture_order <- function(q, samples = NULL, meta = NULL, group = NULL) {
 #'   `r plasgenomicsutilsR:::.LEGEND_MAX_KEYS` keys and splits a horizontal one over two
 #'   rows, which keeps `K` = 15 plus a group strip on the page. The suggested output height
 #'   accounts for whatever this works out to.
+#' @param cluster_label Legend title for the ancestry fills. The K components are what
+#'   sNMF calls clusters, but next to a UMAP -- where the visible groupings are also
+#'   clusters -- a legend reading "cluster" invites reading the two as the same thing.
+#'   The default wraps over two lines so the longer wording costs no legend width.
 #' @return A ggplot object.
 #' @examples
 #' q <- matrix(c(0.9, 0.1, 0.2, 0.8, 0.85, 0.15, 0.1, 0.9), ncol = 2, byrow = TRUE)
@@ -936,7 +999,7 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
                            border = TRUE, border_colour = "black",
                            border_linewidth = 0.15,
                            legend_position = c("right", "bottom", "top", "left", "none"),
-                           legend_rows = NULL,
+                           legend_rows = NULL, cluster_label = "Ancestry\ncomponent",
                            colors = NULL, group_colors = NULL, border_color = NULL) {
   meta <- .normalise_meta(meta)
   colours <- .alias_arg("colours", "colors")
@@ -974,7 +1037,7 @@ plot_admixture <- function(q, samples = NULL, meta = NULL, group = NULL,
     ggplot2::scale_fill_manual(values = cl_cols, drop = FALSE,
                                guide = .legend_wrap(ncol(q), legend_rows, legend_position,
                                                     order = 1)) +
-    ggplot2::labs(x = NULL, y = "ancestry", fill = "cluster") +
+    ggplot2::labs(x = NULL, y = "ancestry proportion", fill = cluster_label) +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(axis.text.x = ggplot2::element_blank(),
                    axis.ticks.x = ggplot2::element_blank(),
@@ -1719,4 +1782,138 @@ example_pop_structure <- function(dataset = c("ghana_cambodia", "africa"),
     } else message("install 'uwot' to add a UMAP embedding to the example")
   }
   ps
+}
+
+#' Merge loaded genotype sets into one
+#'
+#' Column-binds the genotype matrices from two or more [load_genotypes()] results, keyed on
+#' the `chr:pos` names the loader assigns.
+#'
+#' Merging here rather than upstream is the point. Two callers write different INFO and
+#' FORMAT fields, and reconciling them so `bcftools merge` will accept both is real work
+#' that changes nothing about the answer -- by the time a callset is a dosage matrix, all
+#' that survives is the calls themselves, and those combine by position. So a variant that
+#' had to be re-called separately, because the original callset arrived already filtered and
+#' the caller's own output was gone, can be added without rebuilding the VCF it came from.
+#'
+#' What is checked, because these are the ways a merge is silently wrong:
+#'
+#' * **`allele`** must agree. One set counting alternate alleles and another counting
+#'   reference alleles are indistinguishable after the fact, and mixing them inverts the
+#'   dosages of whichever half disagrees.
+#' * **Samples** must be the same set, in whatever order; the columns are realigned to the
+#'   first set's order. `samples = "common"` intersects instead, saying how many it dropped.
+#' * **Positions** must not collide. The same `chr:pos` from two callers is two answers to
+#'   one question, and picking silently would hide the disagreement -- name which one wins
+#'   with `on_overlap`.
+#'
+#' The result is sorted by chromosome and position, so it reads like a callset rather than
+#' like the order the files happened to be given in. `snp.id` is renumbered: SNPRelate's ids
+#' are per-file integers starting at 1, so they collide across files and mean nothing once
+#' merged -- `chr:pos` is the identity that survives.
+#'
+#' @param ... Two or more [load_genotypes()] results.
+#' @param samples `"identical"` (default) requires the same sample set in every input;
+#'   `"common"` keeps the intersection.
+#' @param on_overlap What to do when the same `chr:pos` appears in more than one input:
+#'   `"error"` (default), or `"first"` / `"last"` to keep that input's calls.
+#' @return A list shaped like [load_genotypes()]'s: `genotype`, `sample.id`, `snp.id`,
+#'   `allele`, `pruned`, `positions`, `variants`. `pruned` is `TRUE` only when every input
+#'   was pruned -- a SNP added to a pruned set never faced pruning itself, which is usually
+#'   the reason for adding it.
+#' @examples
+#' \dontrun{
+#' main <- load_genotypes("cohort.vcf.gz", gds = "cohort.gds", prune = TRUE)
+#' extra <- load_genotypes("one_recalled_snp.vcf.gz", gds = "extra.gds", prune = FALSE)
+#' both <- merge_genotypes(main, extra)
+#' }
+#' @seealso [load_genotypes()]
+#' @export
+merge_genotypes <- function(..., samples = c("identical", "common"),
+                            on_overlap = c("error", "first", "last")) {
+  sets <- list(...)
+  samples <- match.arg(samples)
+  on_overlap <- match.arg(on_overlap)
+  if (length(sets) == 1 && is.list(sets[[1]]) && is.null(sets[[1]]$genotype))
+    sets <- sets[[1]]                      # a list of sets, rather than several arguments
+  if (length(sets) < 2) stop("give at least two genotype sets to merge", call. = FALSE)
+  for (i in seq_along(sets)) {
+    g <- sets[[i]]
+    if (!is.list(g) || is.null(g$genotype) || is.null(g$sample.id))
+      stop(sprintf("input %d is not a load_genotypes() result", i), call. = FALSE)
+  }
+
+  # `allele` says whether a 2 means two reference copies or two alternate ones, and nothing
+  # in the matrix itself distinguishes them, so a mismatch here is unrecoverable later
+  al <- unique(vapply(sets, function(g) g$allele %||% NA_character_, character(1)))
+  if (length(al) > 1)
+    stop("these sets count different alleles (", paste(al, collapse = ", "),
+         "); reload them with the same `allele` before merging", call. = FALSE)
+  pos <- unique(vapply(sets, function(g) g$positions %||% NA_character_, character(1)))
+  if (length(pos) > 1)
+    stop("these sets use different position conventions (", paste(pos, collapse = ", "), ")",
+         call. = FALSE)
+  vr <- unique(vapply(sets, function(g) g$variants %||% NA_character_, character(1)))
+  if (length(vr) > 1)
+    warning("merging sets loaded with different `variants` (", paste(vr, collapse = ", "),
+            "); a `variants = \"all\"` matrix counts reference copies at multiallelic sites ",
+            "and holds record types the other does not", call. = FALSE)
+
+  keep <- Reduce(if (identical(samples, "common")) intersect else union,
+                 lapply(sets, `[[`, "sample.id"))
+  if (identical(samples, "identical")) {
+    for (i in seq_along(sets)) {
+      miss <- setdiff(keep, sets[[i]]$sample.id)
+      if (length(miss))
+        stop(sprintf(paste("input %d is missing %d of the %d samples (e.g. %s);",
+                           "use samples = \"common\" to merge on the overlap"),
+                     i, length(miss), length(keep),
+                     paste(utils::head(miss, 3), collapse = ", ")), call. = FALSE)
+    }
+  } else {
+    keep <- sets[[1]]$sample.id[sets[[1]]$sample.id %in% keep]   # first set's order
+    if (!length(keep)) stop("the sets share no samples", call. = FALSE)
+    dropped <- length(unique(unlist(lapply(sets, `[[`, "sample.id")))) - length(keep)
+    if (dropped) message("merging on ", length(keep), " shared sample(s); ", dropped,
+                         " not in every set were dropped")
+  }
+  keep <- sets[[1]]$sample.id[sets[[1]]$sample.id %in% keep]
+
+  mats <- lapply(sets, function(g) {
+    m <- g$genotype
+    if (is.null(rownames(m))) rownames(m) <- g$sample.id
+    m[keep, , drop = FALSE]
+  })
+  ids <- lapply(mats, colnames)
+  dup <- unique(unlist(ids)[duplicated(unlist(ids))])
+  if (length(dup)) {
+    if (identical(on_overlap, "error"))
+      stop(sprintf(paste("%d position(s) appear in more than one set (e.g. %s). Two callers",
+                         "answering for one position is a disagreement, not a merge -- pass",
+                         "on_overlap = \"first\" or \"last\" to say which set wins."),
+                   length(dup), paste(utils::head(dup, 3), collapse = ", ")), call. = FALSE)
+    order_seen <- if (identical(on_overlap, "first")) seq_along(mats) else rev(seq_along(mats))
+    taken <- character(0)
+    for (i in order_seen) {
+      drop_here <- intersect(colnames(mats[[i]]), taken)
+      if (length(drop_here))
+        mats[[i]] <- mats[[i]][, setdiff(colnames(mats[[i]]), drop_here), drop = FALSE]
+      taken <- c(taken, colnames(mats[[i]]))
+    }
+    message(length(dup), " overlapping position(s) resolved by keeping the ", on_overlap,
+            " set")
+  }
+
+  out <- do.call(cbind, mats)
+  loc <- .parse_snp_ids(colnames(out))
+  # natural order where the chromosome is a number, alphabetical where it is not, so
+  # chr2 sorts before chr10 rather than after it
+  chr_num <- suppressWarnings(as.numeric(loc$chr))
+  ord <- order(is.na(chr_num), chr_num, loc$chr, loc$pos)
+  out <- out[, ord, drop = FALSE]
+
+  list(genotype = out, sample.id = keep, snp.id = seq_len(ncol(out)),
+       allele = sets[[1]]$allele, pruned = all(vapply(sets, function(g)
+         isTRUE(g$pruned), logical(1))),
+       positions = sets[[1]]$positions, variants = sets[[1]]$variants)
 }

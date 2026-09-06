@@ -21,6 +21,8 @@ plot_ibd_pair_network(
   spread = 1.5,
   node_size = 3,
   node_alpha = 0.9,
+  border = NA,
+  border_width = 0.4,
   edge_colour = "grey65",
   edge_alpha = 0.6,
   weight_range = c(0.15, 2.6),
@@ -66,6 +68,14 @@ comparable; override with \code{+ ggplot2::guides(linewidth = ggplot2::guide_leg
 reproducible.}
 
 \item{node_size, node_alpha, edge_colour, edge_color, edge_alpha}{Node and edge aesthetics.}
+
+\item{border}{Outline colour for the nodes, or \code{NA} (default) for none. An outline makes
+a dark category legible where it sits over the grey edge bundles, at the cost of the
+shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
+this on draws every node as a filled circle and maps the colour group to the fill. It
+is therefore an error to give both \code{border} and \code{shape_group}.}
+
+\item{border_width}{Outline width when \code{border} is set.}
 
 \item{weight_range}{Narrowest and widest edge, in \code{linewidth} units.}
 

@@ -292,3 +292,133 @@ test_that("a subset feeds the scans and the EHH curve", {
   expect_true(nrow(scan) > 0)
   expect_s3_class(plot_ehh(gh, hap$map$snp_id[10], span = 5e5), "ggplot")
 })
+
+test_that("maxgap stops the integration at a hole instead of crossing it", {
+  skip_if_not_installed("rehh")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+  # a SNP-free stretch has nothing to break the haplotype, so EHH runs flat across it and
+  # the integral accrues the width of the hole rather than anything about the haplotypes
+  gaps <- unlist(lapply(split(hap$map$pos, hap$map$chr), function(p) diff(sort(p))))
+  free <- suppressWarnings(run_ihs(hap, group = "country"))
+
+  # hold the border rule fixed so this measures `maxgap` alone: a gap rule that no gap in
+  # the data exceeds has to leave the scan exactly where it was. It has to clear the gaps
+  # *within a group*, which are wider than the map's -- a SNP monomorphic in one group is
+  # dropped from that group's scan, and the hole it leaves is real for that scan.
+  wide <- suppressWarnings(run_ihs(hap, group = "country", maxgap = 1e9,
+                                   discard_at_border = FALSE))
+  expect_equal(wide$ihs, free$ihs)
+  # and one under most of the spacing has to change it, by cutting the integrals short
+  capped <- suppressWarnings(run_ihs(hap, group = "country",
+                                     maxgap = stats::quantile(gaps, 0.25),
+                                     discard_at_border = FALSE))
+  expect_false(isTRUE(all.equal(capped$ihs, free$ihs)))
+})
+
+test_that("a maxgap that leaves nothing to score says so rather than returning NAs", {
+  skip_if_not_installed("rehh")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+  gaps <- unlist(lapply(split(hap$map$pos, hap$map$chr), function(p) diff(sort(p))))
+  # setting `maxgap` turns the border rule on, and on markers this sparse EHH never decays
+  # before the data runs out -- every marker is then at a border and scores NA
+  expect_warning(out <- run_ihs(hap, group = "country",
+                                maxgap = stats::quantile(gaps, 0.25)),
+                 "reached a border")
+  expect_true(all(is.na(out$ihs)))
+})
+
+test_that("discard_at_border follows maxgap unless it is set outright", {
+  expect_false(.resolve_border(NULL, NA))       # no gap rule: keep the telomeric markers
+  expect_true(.resolve_border(NULL, 20000))     # a gap rule makes the border a data hole
+  expect_true(.resolve_border(TRUE, NA))
+  expect_false(.resolve_border(FALSE, 20000))
+})
+
+test_that("ihs_windows counts the extreme SNPs in each window", {
+  scan <- data.frame(
+    group = factor(rep(c("b", "a"), each = 8), levels = c("b", "a")),
+    chr = "Pf3D7_01_v3",
+    pos = rep(c(10, 20, 30, 40, 1010, 1020, 1030, 1040), 2),
+    ihs = c(3, 3, -3, 0.1,   0.1, 0.2, 0.3, 0.4,      # group b: 3/4 then 0/4
+            0, 0, 0, 0,      3, -3, 0.1, 0.2))        # group a: 0/4 then 2/4
+  w <- ihs_windows(scan, window = 1000, min_snps = 4)
+  expect_equal(nrow(w), 4)
+  expect_equal(w$n_snps, rep(4L, 4))
+  expect_equal(w$frac_extreme[w$group == "b"], c(0.75, 0))
+  expect_equal(w$frac_extreme[w$group == "a"], c(0, 0.5))
+  # the magnitude is what counts, so a negative iHS is extreme too
+  expect_equal(w$n_extreme[w$group == "a"], c(0L, 2L))
+  expect_equal(w$max_abs[w$group == "b"], c(3, 0.4))
+  # the window midpoint plots inside the data, never past the last SNP
+  expect_true(all(w$pos <= max(scan$pos)))
+  expect_equal(levels(w$group), c("b", "a"))   # the scan's order, not the alphabet
+})
+
+test_that("ihs_windows drops thin windows rather than letting them read 100%", {
+  scan <- data.frame(chr = "Pf3D7_01_v3", pos = c(10, 20, 5010),
+                     ihs = c(0.1, 0.2, 9))
+  # the lone SNP in the second window is extreme, which would be a 100% window
+  expect_equal(nrow(ihs_windows(scan, window = 1000, min_snps = 1)), 2)
+  w <- ihs_windows(scan, window = 1000, min_snps = 2)
+  expect_equal(nrow(w), 1)
+  expect_equal(w$frac_extreme, 0)
+  expect_error(ihs_windows(scan, window = 1000, min_snps = 5), "no window holds")
+})
+
+test_that("ihs_windows slides when given a step, and reports what it summarised", {
+  scan <- data.frame(chr = "Pf3D7_01_v3", pos = seq(0, 900, by = 100),
+                     ihs = c(rep(0.1, 5), rep(3, 5)))
+  tiled <- ihs_windows(scan, window = 500, min_snps = 1)
+  slid <- ihs_windows(scan, window = 500, step = 250, min_snps = 1)
+  expect_gt(nrow(slid), nrow(tiled))
+  expect_true(all(slid$end - slid$start == 500))
+  # a window straddling the switch has to land between the two flat halves
+  expect_true(any(slid$frac_extreme > 0 & slid$frac_extreme < 1))
+  expect_equal(sum(tiled$n_extreme), 5L)
+})
+
+test_that("ihs_windows says which column it cannot find", {
+  scan <- data.frame(chr = "Pf3D7_01_v3", pos = 1:10, ihs = 0)
+  expect_error(ihs_windows(scan, metric = "rsb"), "no 'rsb' column")
+  expect_error(ihs_windows(scan[, c("chr", "ihs")]), "no 'pos' column")
+  expect_error(ihs_windows(scan, window = -1), "positive width")
+  expect_error(ihs_windows(transform(scan, ihs = NA_real_)), "no finite")
+})
+
+test_that("maf_bands standardises within frequency bands rather than over all of them", {
+  skip_if_not_installed("rehh")
+  ps <- example_pop_structure(umap = FALSE)
+  hap <- parasite_haplotypes(ps, maf = 0.05)
+  one <- suppressWarnings(run_ihs(hap, group = "country"))
+  banded <- suppressWarnings(run_ihs(hap, group = "country", maf_bands = 4))
+
+  # same SNPs, different scores
+  expect_equal(nrow(banded), nrow(one))
+  expect_equal(banded$pos, one$pos)
+  expect_false(isTRUE(all.equal(banded$ihs, one$ihs)))
+
+  # a standardised score is centred and scaled -- within each band now, not just overall
+  ok <- is.finite(banded$ihs)
+  expect_lt(abs(mean(banded$ihs[ok])), 0.15)
+  expect_lt(abs(stats::sd(banded$ihs[ok]) - 1), 0.15)
+
+  # and the point of it: the spread should no longer track the minor-allele frequency
+  spread <- function(d) {
+    d <- d[is.finite(d$ihs) & is.finite(d$freq_minor), ]
+    b <- cut(d$freq_minor, stats::quantile(d$freq_minor, c(0, 0.5, 1)),
+             include.lowest = TRUE)
+    s <- tapply(abs(d$ihs), b, mean)
+    unname(s[1] / s[2])            # rare-allele half over common-allele half
+  }
+  expect_lt(abs(spread(banded) - 1), abs(spread(one) - 1))
+})
+
+test_that("a band too thin to standardise in says so", {
+  raw <- data.frame(CHR = "Pf3D7_01_v3", POSITION = seq_len(40), FREQ_MAJ = 0.8,
+                    FREQ_MIN = c(rep(0.2, 36), rep(0.45, 4)),
+                    UNIHS = stats::rnorm(40))
+  expect_warning(.band_standardise(raw, raw$FREQ_MIN, 10), "fewer than 10 markers")
+})
+

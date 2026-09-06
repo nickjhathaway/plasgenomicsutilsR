@@ -16,7 +16,8 @@ parasite_haplotypes(
   impute = TRUE,
   seed = 42,
   meta = NULL,
-  genotype = NULL
+  genotype = NULL,
+  alleles = c("dosage", "index")
 )
 }
 \arguments{
@@ -44,6 +45,17 @@ instead drops every SNP that still has a gap.}
 \item{seed}{Random seed.}
 
 \item{meta, genotype}{As in \code{\link[=pop_diversity]{pop_diversity()}}.}
+
+\item{alleles}{How the input matrix codes its calls. \code{"dosage"} (default) is ALT dosage
+0/1/2, which can only ever describe two alleles -- 2 is two copies of the one ALT, not
+a second ALT. \code{"index"} is one allele index per haplotype (0 = reference, then 1, 2,
+...), which is what a marker with more than two alleles needs. An index matrix is
+already haploid, so nothing is made haploid and no heterozygote is resolved (\code{het} does
+not apply); the MAF floor becomes the share of everything that is not the commonest
+allele, and imputation draws from the alleles seen at that SNP. Only the EHH curves
+read more than two alleles -- \code{\link[=run_ihs]{run_ihs()}}, \code{\link[=run_rsb]{run_rsb()}} and \code{\link[=run_xpehh]{run_xpehh()}} rest on a
+ratio between exactly two, and \pkg{rehh}'s \code{scan_hh()} silently keeps the two
+commonest.}
 }
 \value{
 A \code{parasite_haplotypes} object: \code{hap} (samples x SNPs, 0/1), \code{map}

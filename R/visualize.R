@@ -164,6 +164,13 @@
          which_thr)
 }
 
+# How a top-track metric is written on the shared axis. A column the plot knows about gets
+# the name and the units the IBD half already uses, so the two halves read as one scheme
+# rather than as a statistic mirrored against a percentage; anything else keeps its own
+# column name, which is what a caller who passed an arbitrary table expects to see.
+.TOP_METRIC_STYLE <- list(
+  frac_extreme = list(label = "Extreme Fraction", percent = TRUE))
+
 # colour / linetype per threshold kind, so one line always means one thing
 # The two chi2(1)-based lines are warm, the two permutation-based ones cool-to-green, so
 # which family a line belongs to reads off the plot before the legend does.
@@ -173,6 +180,33 @@
   permutation = list(colour = "#117733",  linetype = "solid"),
   empirical   = list(colour = "#2271B2",  linetype = "longdash")
 )
+
+# A quantile of the top track itself is not one of the kinds above -- it is not a test, it
+# is the height the plotted statistic reaches on its own -- so it gets its own colour
+# rather than borrowing one that already means "threshold from the object's run".
+.TOP_QUANTILE_STYLE <- list(colour = "#762A83", linetype = "dotted")
+
+# The `p`-quantile of a top track's plotted magnitude, per group when it has one.
+#
+# Computed on the table as passed in, BEFORE any `chroms` / `skip_chr` / `zoom` crop, so
+# the reference is genome-wide and cropping to the chromosomes that carry signal cannot
+# raise the bar the signal is then judged against. Per group for the same reason a facet
+# gets its own panel: a region's windows are the distribution its own peaks stand out of.
+.top_quantile_lines <- function(df, metric, p, use_abs) {
+  v <- df[[metric]]
+  if (isTRUE(use_abs)) v <- abs(v)
+  ok <- is.finite(v)
+  if (!any(ok)) return(NULL)
+  v <- v[ok]
+  if (!"group" %in% names(df)) {
+    return(data.frame(group = NA_character_, threshold = unname(stats::quantile(v, p)),
+                      stringsAsFactors = FALSE))
+  }
+  g <- as.character(df$group)[ok]
+  q <- tapply(v, g, stats::quantile, probs = p)
+  data.frame(group = names(q), threshold = as.numeric(unlist(q)),
+             stringsAsFactors = FALSE)
+}
 
 # One kind of threshold as a group/threshold frame, or NULL when it is not available.
 # `strict` says the caller named this kind, so a run that lacks it is an error rather
@@ -744,6 +778,28 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #'   [plot_selection_manhattan()] takes, in the same colours, resolved by the same helper.
 #'   Each line is mapped through the same transform as the mirrored selection half, so it
 #'   lands where the data does.
+#' @param top_quantile Draw a reference line at this quantile of the top track's own
+#'   distribution -- `0.99` for the 99th percentile, `NULL` (default) for no line. This is
+#'   an empirical reference, not a test: it says how high the statistic reaches across the
+#'   genome, so a peak can be read against the rest of the scan rather than against a
+#'   nominal per-SNP tail. It is what a windowed fraction wants, because the fraction of
+#'   SNPs over `threshold` in [ihs_windows()] has no significance line of its own -- the
+#'   cutoff inside it defines the tail, and the evidence is the genome-wide distribution of
+#'   the fraction. The quantile is taken on the table as passed in, before `chroms`,
+#'   `skip_chr` and `zoom` crop it, so dropping the quiet chromosomes cannot raise the bar
+#'   its own peaks are then judged against; and per group when the track has a group
+#'   column, so each panel's line is that region's genome-wide quantile whether or not the
+#'   other regions are drawn. Stacks with `draw_threshold`, in its own colour.
+#' @param metric_label Name for the top metric on the shared axis. `NULL` (default) uses
+#'   the column name, except for a column the plot knows how to write -- `frac_extreme`
+#'   from [ihs_windows()] reads `Extreme Fraction`, matching `IBD Fraction` below it.
+#' @param top_percent Write the top track's tick labels as percentages. `NULL` (default)
+#'   does so when the metric is a fraction (and always under `scale = "free"`, where both
+#'   halves are percentages of their own maximum), so a fraction on top is not shown in
+#'   different units from the fraction underneath it.
+#' @param centre_gap Fraction of each half-axis left empty at the centre line, so the
+#'   tallest bar of each track -- and its largest tick label -- stops short of the middle
+#'   instead of meeting the other track's there. `0` restores the two halves meeting.
 #' @param selection_colour,ibd_colour Bar and axis colours for the two tracks.
 #' @param zoom Optional single interval to crop to, keeping the same data and the same
 #'   coordinates as the genome-wide plot: a chromosome (`"7"`), a range
@@ -774,12 +830,27 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
                               zoom = NULL, zoom_pad = 0.05,
                               genes_for_track = NULL, gene_label_angle = 0,
                               highlight_genes = NULL, label_genes = NULL,
-                              draw_threshold = TRUE,
+                              draw_threshold = TRUE, top_quantile = NULL,
+                              metric_label = NULL,
+                              top_percent = NULL, centre_gap = 0.08,
                               selection_colour = "#fd8d3c", ibd_colour = "#2166ac") {
   .need_package("ggplot2", "plot_ibd_tugofwar()")
   .need_package("scales", "plot_ibd_tugofwar()")
   scale <- match.arg(scale)
+  sty <- .TOP_METRIC_STYLE[[metric]]
+  metric_label <- metric_label %||% sty$label %||% metric
+  top_percent <- top_percent %||% isTRUE(sty$percent)
+  if (!is.numeric(centre_gap) || length(centre_gap) != 1L || centre_gap < 0 ||
+      centre_gap >= 1)
+    stop("`centre_gap` must be a single fraction of the half-axis, in [0, 1)", call. = FALSE)
+  if (!is.null(top_quantile) &&
+      (!is.numeric(top_quantile) || length(top_quantile) != 1L ||
+       !is.finite(top_quantile) || top_quantile <= 0 || top_quantile >= 1))
+    stop("`top_quantile` must be a single probability in (0, 1), e.g. 0.99", call. = FALSE)
   tt <- .top_track(x, top, metric, top_label)
+  # kept before any crop: the quantile line is a genome-wide reference, so it must not be
+  # recomputed on whatever subset of the genome the figure ends up showing
+  full_top <- tt$df
   sel <- tt$df
   ibd <- x$get_per_snp_group()
   if (is.null(ibd)) {
@@ -842,38 +913,46 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
          "to keep the sign", call. = FALSE)
   if (isTRUE(scan_abs) && signed) {
     sel[[metric]] <- abs(sel[[metric]])
-    metric_lab <- paste0("|", metric, "|")
+    metric_lab <- paste0("|", metric_label, "|")
   } else {
-    metric_lab <- metric
+    metric_lab <- metric_label
   }
 
   # normalise each track so its tallest bar reaches the centre (y = 0). common =
   # one shared max (panels comparable); free = each group to its own max.
+  # Both halves are scaled into [centre_gap, 1] rather than [0, 1]. Each track's tallest
+  # bar otherwise reaches the centre line exactly, and so does its largest tick label --
+  # putting the two tracks' most informative labels within a few points of each other.
+  span <- 1 - centre_gap
   normalized <- scale == "free" && "group" %in% names(sel) && "group" %in% names(ibd)
+  sm <- NULL
   if (normalized) {
     sm <- tapply(sel[[metric]], sel$group, max, na.rm = TRUE)
     im <- tapply(ibd$frac_pairs_ibd, ibd$group, max, na.rm = TRUE)
     sm[!is.finite(sm) | sm <= 0] <- 1
     im[!is.finite(im) | im <= 0] <- 1
-    sel$.tip <- 1 - sel[[metric]] / sm[as.character(sel$group)]
-    ibd$.tip <- -1 + ibd$frac_pairs_ibd / im[as.character(ibd$group)]
+    sel$.tip <- 1 - span * sel[[metric]] / sm[as.character(sel$group)]
+    ibd$.tip <- -1 + span * ibd$frac_pairs_ibd / im[as.character(ibd$group)]
     sel_max <- 1; ibd_max <- 1
   } else {
     sel_max <- max(sel[[metric]], na.rm = TRUE)
     ibd_max <- max(ibd$frac_pairs_ibd, na.rm = TRUE)
     if (!is.finite(sel_max) || sel_max <= 0) sel_max <- 1
     if (!is.finite(ibd_max) || ibd_max <= 0) ibd_max <- 1
-    sel$.tip <- 1 - .safe_scale(sel[[metric]], sel_max)
-    ibd$.tip <- -1 + .safe_scale(ibd$frac_pairs_ibd, ibd_max)
+    sel$.tip <- 1 - span * .safe_scale(sel[[metric]], sel_max)
+    ibd$.tip <- -1 + span * .safe_scale(ibd$frac_pairs_ibd, ibd_max)
   }
+  sel_y <- function(v) 1 - span * .safe_scale(v, sel_max)
+  ibd_y <- function(v) -1 + span * .safe_scale(v, ibd_max)
 
   # single left axis: selection breaks in the top half, IBD in the bottom half,
   # each tick label tinted to its track.
   sel_vals <- pretty(c(0, sel_max), 4); sel_vals <- sel_vals[sel_vals >= 0 & sel_vals <= sel_max]
   ibd_vals <- pretty(c(0, ibd_max), 4); ibd_vals <- ibd_vals[ibd_vals >= 0 & ibd_vals <= ibd_max]
-  sel_lab <- if (normalized) scales::percent(sel_vals, accuracy = 1) else as.character(sel_vals)
+  sel_lab <- if (normalized || top_percent) scales::percent(sel_vals, accuracy = 1)
+             else as.character(sel_vals)
   yax <- data.frame(
-    y   = c(1 - sel_vals / sel_max, -1 + ibd_vals / ibd_max),
+    y   = c(sel_y(sel_vals), ibd_y(ibd_vals)),
     lab = c(sel_lab, scales::percent(ibd_vals, accuracy = 1)),
     col = c(rep(selection_colour, length(sel_vals)), rep(ibd_colour, length(ibd_vals))),
     stringsAsFactors = FALSE)
@@ -885,11 +964,11 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
     yax$lab <- paste0("<span style='color:", yax$col, ";'>", yax$lab, "</span>")
     ytitle <- paste0(
       "<span style='color:", selection_colour, ";'>", tt$label, " (", metric_lab, ", top)</span>",
-      " / <span style='color:", ibd_colour, ";'>IBD fraction (bottom)</span>")
+      " / <span style='color:", ibd_colour, ";'>IBD Fraction (bottom)</span>")
     ytext_elem  <- ggtext::element_markdown()
     ytitle_elem <- ggtext::element_markdown(angle = 90)
   } else {
-    ytitle <- paste0(tt$label, " ", metric_lab, " (top)  /  IBD fraction (bottom)")
+    ytitle <- paste0(tt$label, " ", metric_lab, " (top)  /  IBD Fraction (bottom)")
     ytext_elem  <- ggplot2::element_text()
     ytitle_elem <- ggplot2::element_text()
   }
@@ -908,7 +987,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
       message("the ", tt$label, " threshold (", signif(lvl, 3), ") is above every value in ",
               "the top track (max ", signif(sel_max, 3), "), so no line is drawn")
     } else if (!is.null(lvl)) {
-      thr_layer <- ggplot2::geom_hline(yintercept = 1 - lvl / sel_max, colour = "firebrick",
+      thr_layer <- ggplot2::geom_hline(yintercept = sel_y(lvl), colour = "firebrick",
                                        linetype = "dashed", linewidth = 0.4)
     }
   }
@@ -924,7 +1003,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
       # the selection half of the mirror is drawn upside down in [0, 1], so the line has
       # to be mapped through the same transform as the data -- and a threshold above the
       # tallest bar would land in the IBD half, where it would read as an IBD line
-      thr$.y <- 1 - thr$threshold / sel_max
+      thr$.y <- sel_y(thr$threshold)
       thr <- thr[thr$.y >= 0, , drop = FALSE]
       if (!nrow(thr)) next
       sty <- .THRESHOLD_STYLE[[kind]]
@@ -933,6 +1012,49 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
         colour = sty$colour, linetype = sty$linetype, linewidth = 0.4)
     }
     if (!length(thr_layer)) thr_layer <- NULL
+  }
+
+  # The empirical reference, drawn from the top track itself and so independent of whether
+  # the object has a threshold table -- it stacks with whatever `draw_threshold` produced.
+  q_layer <- NULL
+  if (!is.null(top_quantile)) {
+    # always the magnitude: a signed track that was not mirrored as `|metric|` has already
+    # errored out above, so everything the top half draws is non-negative by this point --
+    # and the uncropped table can carry a sign the cropped one happens not to
+    ql <- .top_quantile_lines(full_top, metric, top_quantile, use_abs = TRUE)
+    if (is.null(ql)) {
+      message("the top track has no finite `", metric, "` values, so no quantile line ",
+              "is drawn")
+    } else {
+      if (!is.na(ql$group[1]) && "group" %in% names(sel))
+        ql <- ql[ql$group %in% present, , drop = FALSE]
+      # each panel is scaled to its own maximum under `scale = "free"`, so the line has to
+      # go through that group's transform rather than the shared one
+      ql$.y <- if (normalized && !is.na(ql$group[1])) {
+        # one max per group, so the division is vectorised here rather than through
+        # `.safe_scale()`, which takes a single denominator
+        mx <- unname(sm[as.character(ql$group)])
+        r <- ql$threshold / mx
+        r[!is.finite(r) | !is.finite(mx) | mx <= 0] <- 0
+        1 - span * r
+      } else sel_y(ql$threshold)
+      n_in <- nrow(ql)
+      # the top half only spans [0, sel_max]; a line above it would be drawn down in the
+      # IBD half, where it would read as an IBD line
+      ql <- ql[is.finite(ql$.y) & ql$.y >= 0, , drop = FALSE]
+      if (n_in > nrow(ql))
+        message(n_in - nrow(ql), " of ", n_in, " quantile line(s) sit above every value ",
+                "drawn in the top track, so they are not shown")
+      if (nrow(ql)) {
+        if (!is.na(ql$group[1]) && "group" %in% names(sel))
+          ql$group <- factor(as.character(ql$group), levels = present)
+        else ql$group <- NULL
+        q_layer <- ggplot2::geom_hline(
+          data = ql, ggplot2::aes(yintercept = .data$.y), inherit.aes = FALSE,
+          colour = .TOP_QUANTILE_STYLE$colour, linetype = .TOP_QUANTILE_STYLE$linetype,
+          linewidth = 0.4)
+      }
+    }
   }
 
   p <- ggplot2::ggplot() +
@@ -949,6 +1071,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
       ggplot2::aes(x = .data$cum_pos, xend = .data$cum_pos, y = -1, yend = .data$.tip),
       colour = ibd_colour, linewidth = 0.15) +
     thr_layer +
+    q_layer +
     .chr_axis(layout) +
     ggplot2::scale_y_continuous(name = ytitle, limits = c(-1, 1),
       breaks = yax$y, labels = yax$lab,

@@ -216,3 +216,38 @@ test_that("the class exposes the pair network the same way it exposes the per-ge
   bare <- ibd_results(meta = make_meta(), reference = "pf3d7")
   expect_error(bare$plot_ibd_pair_network(), "no pair table")
 })
+
+test_that("border outlines the nodes, and refuses to fight the shape encoding", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("igraph")
+  skip_if_not_installed("ggraph")
+  pairs <- make_pairs(); meta <- make_meta()
+  grp <- names(meta)[!names(meta) %in% "sample"][1]
+
+  plain <- plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp)
+  edged <- plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp, border = "black")
+  node_layer <- function(p) {
+    b <- ggplot2::ggplot_build(p)
+    b$data[[which(vapply(b$data, function(d) "shape" %in% names(d), logical(1)))[1]]]
+  }
+  # off by default: the group is the mark's colour and nothing outlines it
+  expect_true(is.na(formals(plot_ibd_pair_network)$border))
+  expect_false("fill" %in% names(node_layer(plain)) &&
+                 length(unique(node_layer(plain)$fill)) > 1)
+
+  # on: shape 21, one outline colour, and the group moved to the fill so it can have one
+  nl <- node_layer(edged)
+  expect_equal(unique(nl$shape), 21)
+  expect_equal(unique(nl$colour), "black")
+  expect_gt(length(unique(nl$fill)), 1)
+  # the same categories, still one legend, just keyed on fill now
+  expect_equal(sort(unique(nl$fill)), sort(unique(node_layer(plain)$colour)))
+
+  # only shapes 21-25 have an outline separate from a fill, so honouring both would mean
+  # throwing the caller's shapes away -- refuse instead of choosing for them
+  expect_error(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp,
+                                       shape_group = grp, border = "black"),
+               "cannot be combined with `shape_group`")
+  # and with the border off, shapes behave exactly as before
+  expect_s3_class(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, shape_group = grp), "ggplot")
+})

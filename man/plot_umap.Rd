@@ -11,6 +11,9 @@ plot_umap(
   point_size = 1.6,
   point_alpha = 0.8,
   legend_point_size = 3,
+  point_border = NULL,
+  point_stroke = 0.3,
+  legend_title = NULL,
   color = NULL,
   colours = NULL
 )
@@ -27,6 +30,15 @@ plot_umap(
 
 \item{legend_point_size}{Size of the coloured dots in the legend (default \code{3}, larger
 than the plotted points so the key is easy to read); \code{NULL} leaves it as-is.}
+
+\item{point_border}{Outline colour for each point (e.g. \code{"black"}), or \code{NULL}
+(default) for unoutlined points. Outlined points use shape 21, so the
+categories drive \code{fill} rather than \code{colour}.}
+
+\item{point_stroke}{Outline width (default \code{0.3}); ignored when \code{point_border}
+is \code{NULL}.}
+
+\item{legend_title}{Title for the colour legend (default: the \code{colour} column name).}
 }
 \value{
 A ggplot object.

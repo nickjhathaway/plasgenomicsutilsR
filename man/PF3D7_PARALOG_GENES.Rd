@@ -6,11 +6,14 @@
 \title{Pf3D7 paralogous / hypervariable gene families}
 \format{
 A data frame with columns \code{Pf3D7_chrom}, \code{start}, \code{end}, \code{chrom}, \code{gene_id},
-\code{description}; coordinates are 0-based half-open (see
-\link{plasgenomicsutilsR-coordinates}).
+\code{description} and \code{strand} (\code{"+"} / \code{"-"}, as in \link{PF3D7_GENES}); coordinates are 0-based
+half-open (see \link{plasgenomicsutilsR-coordinates}).
 }
 \source{
-The companion Python package (\code{plasgenomicsutils} \code{builtin:pf3d7_paralog_genes}).
+The companion Python package (\code{plasgenomicsutils} \code{builtin:pf3d7_paralog_genes}),
+with \code{strand} joined on \code{gene_id} from the same VEuPathDB / PlasmoDB GFF \link{PF3D7_GENES} is
+built from. About a quarter of these are pseudogenes, so they are absent from
+\link{PF3D7_GENES}, which holds protein-coding genes only.
 }
 \usage{
 PF3D7_PARALOG_GENES

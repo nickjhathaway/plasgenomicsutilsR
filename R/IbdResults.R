@@ -242,6 +242,10 @@ IbdResults <- R6::R6Class(
       bl <- .read_maybe(blocks, "blocks")
       if (!is.null(bl)) {
         .require_cols(bl, c("sample1", "sample2", "chr", "start", "end"), "blocks")
+        # ids as ids: a numeric-looking sample column would make every later lookup by
+        # name a lookup by position instead -- see .as_id_chr()
+        bl$sample1 <- .as_id_chr(bl$sample1)
+        bl$sample2 <- .as_id_chr(bl$sample2)
         private$analyzed_samples <- unique(c(bl$sample1, bl$sample2))   # before IBD filter
         if ("different" %in% names(bl)) bl <- bl[bl$different == 0, , drop = FALSE]
         bl$chr <- normalise_chr(bl$chr)
@@ -353,6 +357,7 @@ IbdResults <- R6::R6Class(
     set_meta = function(meta) {
       if (!is.data.frame(meta) || !"sample" %in% names(meta))
         stop("meta must be a data frame with a `sample` column", call. = FALSE)
+      meta$sample <- .as_id_chr(meta$sample)
       private$meta <- meta
       private$apply_group_order()
       invisible(self)

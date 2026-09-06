@@ -1169,3 +1169,126 @@ test_that("resolving one gene against a genome-wide track stays quiet", {
   expect_warning(plot_ibd_network(ibd, gene = "var", genes = dup, include_isolated = TRUE),
                  "2 genes are named var")
 })
+
+test_that("the tug-of-war writes both halves in one scheme, and its labels stay apart", {
+  skip_if_not_installed("ggplot2")
+  x <- example_ibd_results()
+  grp <- as.character(unique(x$get_per_snp_group()$group))[1:2]
+  ibd <- x$get_per_snp_group()
+  top <- data.frame(group = rep(grp, each = 4), chr = "Pf3D7_07_v3",
+                    pos = rep(c(2e5, 4e5, 6e5, 8e5), 2),
+                    frac_extreme = c(0.05, 0.6, 0.1, 0.02, 0.03, 0.2, 0.4, 0.01))
+  yscale <- function(p) p$scales$scales[[
+    which(vapply(p$scales$scales, function(s) "y" %in% s$aesthetics, logical(1)))[1]]]
+
+  p <- plot_ibd_tugofwar(x, top = top, top_label = "iHS", metric = "frac_extreme",
+                         draw_threshold = FALSE, group = grp)
+  sc <- yscale(p)
+  lab <- gsub("<[^>]*>", "", sc$labels)
+  # a fraction on top is written the way the fraction underneath it is
+  expect_true(all(grepl("%$", lab)))
+  expect_match(gsub("<[^>]*>", "", sc$name), "Extreme Fraction.*IBD Fraction")
+
+  # the innermost label of each half has to clear the centre line, or the two collide
+  # there: each track's largest value is its most informative label, and both sit at the
+  # inner end of their half
+  expect_gt(min(abs(sc$breaks)), 0.05)
+  flush <- yscale(plot_ibd_tugofwar(x, top = top, top_label = "iHS",
+                                    metric = "frac_extreme", draw_threshold = FALSE,
+                                    group = grp, centre_gap = 0))
+  expect_lt(min(abs(flush$breaks)), 0.05)
+  expect_error(plot_ibd_tugofwar(x, top = top, metric = "frac_extreme", group = grp,
+                                 centre_gap = 1), "centre_gap")
+
+  # an unknown metric keeps its own column name and units, as a caller would expect
+  top$other <- top$frac_extreme * 10
+  plain <- yscale(plot_ibd_tugofwar(x, top = top, metric = "other", group = grp,
+                                    draw_threshold = FALSE))
+  expect_false(any(grepl("%$", gsub("<[^>]*>", "", plain$labels[plain$breaks > 0]))))
+  expect_match(gsub("<[^>]*>", "", plain$name), "other")
+})
+
+test_that("the top-track quantile line is genome-wide, per group, and stacks", {
+  skip_if_not_installed("ggplot2")
+  x <- example_ibd_results()
+  ibd <- x$get_per_snp_group()
+  grp <- as.character(unique(ibd$group))[1:2]
+  # the chromosome with the most SNPs here, so dropping it moves a quantile measurably
+  quiet_chr <- "14"
+  set.seed(11)
+  top <- do.call(rbind, lapply(grp, function(g) {
+    d <- ibd[ibd$group == g, c("chr", "pos")]
+    d$group <- g
+    # one chromosome sits near zero and the rest spans the range, so a quantile taken
+    # after `skip_chr` drops it comes out higher than one taken over the whole scan
+    d$frac_extreme <- ifelse(d$chr == quiet_chr, stats::runif(nrow(d), 0, 0.02),
+                             stats::runif(nrow(d), 0.1, 1))
+    d
+  }))
+  hline <- function(p) {
+    i <- vapply(p$layers, function(l) is.data.frame(l$data) && ".y" %in% names(l$data),
+                logical(1))
+    if (!any(i)) NULL else p$layers[[which(i)[1]]]$data
+  }
+  byg <- function(d, p) unname(vapply(sort(grp),
+    function(g) unname(stats::quantile(d$frac_extreme[d$group == g], p)), numeric(1)))
+  drawn <- function(d) d$threshold[order(as.character(d$group))]
+  args <- list(x, top = top, metric = "frac_extreme", top_label = "iHS",
+               draw_threshold = FALSE, group = grp)
+
+  # one line per group, at that group's own quantile
+  ql <- hline(do.call(plot_ibd_tugofwar, c(args, list(top_quantile = 0.99))))
+  expect_equal(sort(as.character(ql$group)), sort(grp))
+  expect_equal(drawn(ql), byg(top, 0.99))
+
+  # dropping a chromosome does not move the line: cropping to the interesting part of the
+  # genome must not change the bar the surviving peaks are judged against
+  crop <- hline(do.call(plot_ibd_tugofwar,
+                        c(args, list(top_quantile = 0.5, skip_chr = quiet_chr))))
+  expect_equal(drawn(crop), byg(top, 0.5))
+  # ...and that is a real distinction here, not a quantile the crop happens not to touch
+  expect_false(isTRUE(all.equal(drawn(crop),
+                                byg(top[top$chr != quiet_chr, ], 0.5))))
+
+  # off by default, and it does not displace the `draw_threshold` line
+  expect_null(hline(do.call(plot_ibd_tugofwar, args)))
+  base_n <- length(do.call(plot_ibd_tugofwar, args)$layers)
+  both <- do.call(plot_ibd_tugofwar, c(args[names(args) != "draw_threshold"],
+                                       list(draw_threshold = 0.5, top_quantile = 0.99)))
+  expect_equal(length(both$layers), base_n + 2L)
+
+  # a quantile above everything drawn would land in the IBD half; it is dropped, and said
+  expect_message(
+    do.call(plot_ibd_tugofwar, c(args, list(top_quantile = 0.99, chroms = quiet_chr))),
+    "above every value")
+
+  # a track with no group column gets one pooled line
+  flat <- top; flat$group <- NULL
+  fl <- hline(plot_ibd_tugofwar(x, top = flat, metric = "frac_extreme",
+                                draw_threshold = FALSE, top_quantile = 0.99))
+  expect_equal(nrow(fl), 1L)
+  expect_equal(fl$threshold, unname(stats::quantile(flat$frac_extreme, 0.99)))
+
+  # a signed track is summarised on the magnitude the mirror actually draws
+  sgn <- top; sgn$ihs <- (top$frac_extreme - 0.45) * 12; sgn$frac_extreme <- NULL
+  si <- hline(plot_ibd_tugofwar(x, top = sgn, metric = "ihs", draw_threshold = FALSE,
+                                group = grp, top_quantile = 0.99))
+  expect_equal(si$threshold[order(as.character(si$group))],
+               unname(vapply(sort(grp),
+                 function(g) unname(stats::quantile(abs(sgn$ihs[sgn$group == g]), 0.99)),
+                 numeric(1))))
+
+  # each panel is scaled to its own maximum under `scale = "free"`, so the line has to be
+  # mapped through that group's transform rather than the shared one
+  fr <- hline(do.call(plot_ibd_tugofwar,
+                      c(args, list(scale = "free", top_quantile = 0.99))))
+  sm <- tapply(top$frac_extreme, top$group, max)
+  expect_equal(fr$.y[order(as.character(fr$group))],
+               1 - 0.92 * (byg(top, 0.99) / unname(sm[sort(grp)])))
+
+  expect_error(plot_ibd_tugofwar(x, top = top, metric = "frac_extreme",
+                                 top_quantile = 1), "top_quantile")
+  expect_error(plot_ibd_tugofwar(x, top = top, metric = "frac_extreme",
+                                 top_quantile = "0.99"), "top_quantile")
+})
+

@@ -117,7 +117,19 @@ test_that("the frequency note can be moved or turned off", {
   expect_gt(top$y[1], 0.9)
   expect_equal(top$hjust[1], 0)
   expect_equal(top$vjust[1], 1)
-  expect_match(top$label[1], "^n = [0-9]+; reference [0-9]+%, alternate [0-9]+%$")
+  expect_match(top$label[1],
+               "^n = [0-9]+; reference [0-9]+ \\([0-9]+%\\), alternate [0-9]+ \\([0-9]+%\\)$")
+  # the counts are counted, not recovered from the share, so they have to reconstruct n --
+  # and matching the percentages is what says the two alleles were not labelled the wrong
+  # way round, since the count is derived independently of the frequency rehh reports
+  n <- as.integer(sub("^n = ([0-9]+);.*", "\\1", top$label[1]))
+  k <- as.integer(regmatches(top$label[1],
+                             gregexpr("[0-9]+(?= \\()", top$label[1], perl = TRUE))[[1]])
+  pct <- as.integer(regmatches(top$label[1],
+                               gregexpr("[0-9]+(?=%)", top$label[1], perl = TRUE))[[1]])
+  expect_length(k, 2)
+  expect_equal(sum(k), n)
+  expect_equal(round(100 * k / n), pct)
 
   bottom <- note(freq_position = "bottomleft")
   expect_lt(bottom$y[1], 0.1)
@@ -222,4 +234,213 @@ test_that("the title is set on the curves, not on the gene track underneath", {
   plain <- plot_ehh(hap, snp, span = 5e5, title = "plain")
   expect_false(inherits(plain, "patchwork"))
   expect_equal(plain$labels$title, "plain")
+})
+
+
+# A focal marker with more than two alleles, which ALT dosage cannot express.
+.multi_hap <- function(counts, m = 41, seed = 7) {
+  set.seed(seed)
+  n <- sum(counts)
+  G <- matrix(stats::rbinom(n * m, 1, 0.35), n, m)
+  G[, (m + 1) %/% 2] <- rep(seq_along(counts) - 1L, times = counts)
+  rownames(G) <- sprintf("s%02d", seq_len(n))
+  colnames(G) <- paste0("c1:", seq(1000, by = 500, length.out = m))
+  parasite_haplotypes(G, maf = 0.02, alleles = "index")
+}
+
+test_that("a focal marker with three alleles gets three curves, correctly labelled", {
+  skip_if_not_installed("rehh")
+  skip_if_not_installed("ggplot2")
+  hap <- .multi_hap(c(30, 10, 20))
+  expect_setequal(unique(as.vector(hap$hap)), c(0L, 1L, 2L))
+
+  p <- plot_ehh(hap, "c1:11000", span = 12000)
+  expect_equal(levels(p$data$allele), c("reference", "alternate 1", "alternate 2"))
+
+  b <- ggplot2::ggplot_build(p)
+  lab <- unique(unlist(lapply(b$data, function(d)
+    if ("label" %in% names(d)) as.character(d$label))))
+  # rehh names the columns EHH_MAJ / EHH_MIN1 / EHH_MIN2 positionally, not by frequency, so
+  # allele 0 stays "reference" even though it is not the rarest or the commonest by design
+  expect_match(lab[1], "reference 30 \\(50%\\)")
+  expect_match(lab[1], "alternate 1 10 \\(17%\\)")
+  expect_match(lab[1], "alternate 2 20 \\(33%\\)")
+  k <- as.integer(regmatches(lab[1], gregexpr("[0-9]+(?= \\()", lab[1], perl = TRUE))[[1]])
+  expect_equal(sum(k), 60)                      # every haplotype accounted for, none dropped
+
+  # three curves need three colours; two keep the pair the plot has always used
+  curve_colours <- function(pp) {
+    bb <- ggplot2::ggplot_build(pp)
+    d <- bb$data[[which(vapply(bb$data, function(z)
+      "colour" %in% names(z) && nrow(z) > 50, logical(1)))[1]]]
+    sort(unique(d$colour))
+  }
+  expect_length(curve_colours(p), 3)
+  bi <- .multi_hap(c(35, 25))
+  expect_equal(curve_colours(plot_ehh(bi, "c1:11000", span = 12000)),
+               sort(unname(plasgenomicsutilsR:::.EHH_FILL)))
+})
+
+test_that("nothing about the curves is fixed at three alleles", {
+  skip_if_not_installed("rehh")
+  skip_if_not_installed("ggplot2")
+  # 1 ref + 3 alts is rare but legal, and rehh answers it with FREQ_MIN3. The column
+  # selector, the labels and the palette are all sized from the data, so the only way to
+  # know they stay in step is to ask at more than one arity.
+  for (counts in list(c(24, 6, 18, 12), c(20, 5, 15, 10, 10))) {
+    hap <- .multi_hap(counts)
+    p <- plot_ehh(hap, "c1:11000", span = 12000)
+    expect_equal(levels(p$data$allele),
+                 c("reference", paste("alternate", seq_len(length(counts) - 1))))
+    b <- ggplot2::ggplot_build(p)
+    lab <- unique(unlist(lapply(b$data, function(d)
+      if ("label" %in% names(d)) as.character(d$label))))
+    k <- as.integer(regmatches(lab[1], gregexpr("[0-9]+(?= \\()", lab[1], perl = TRUE))[[1]])
+    expect_equal(k, counts)                     # in allele order, not frequency order
+    expect_equal(sum(k), sum(counts))           # no allele quietly left out
+  }
+})
+
+test_that("the curve builder refuses a marker it cannot label rather than guessing", {
+  # the guard: whatever rehh returns, the frequencies and the curves have to correspond, or
+  # the labels would be attached to the wrong lines
+  fake <- list(ehh = data.frame(POSITION = 1:3, EHH_MAJ = 1, EHH_MIN1 = 1, EHH_MIN2 = 1),
+               freq = c(FREQ_MAJ = 0.5, FREQ_MIN = 0.5))
+  local_mocked_bindings(calc_ehh = function(...) fake, .package = "rehh")
+  hap <- .multi_hap(c(30, 10, 20))
+  msg <- plasgenomicsutilsR:::.ehh_curve(hap, seq_len(nrow(hap$hap)), 11000, "c1", FALSE, 0.05)
+  expect_type(msg, "character")
+  expect_match(msg, "3 curves and 2 frequencies for the 3 allele\\(s\\)")
+})
+
+test_that("allele = 'index' refuses what is not an allele index", {
+  G <- matrix(c(0, 1, 2, -1), 2, 2,
+              dimnames = list(c("a", "b"), c("c1:100", "c1:200")))
+  expect_error(parasite_haplotypes(G, maf = 0, alleles = "index"), "non-negative whole-number")
+  G2 <- matrix(c(0, 1, 2, 0.5), 2, 2, dimnames = dimnames(G))
+  expect_error(parasite_haplotypes(G2, maf = 0, alleles = "index"), "non-negative whole-number")
+})
+
+
+# A marker called on its own because the main callset dropped it for being multiallelic --
+# the situation add_haplotype_markers() exists for.
+.tri_bcf <- function(dir, chrom = "Pf3D7_13_v3", pos = 1725592,
+                     samps = sprintf("s%02d", 1:12)) {
+  gts <- c(rep("0/0", 6), rep("1/1", 3), rep("2/2", 2), "0/1")
+  hdr <- c("##fileformat=VCFv4.2", sprintf("##contig=<ID=%s,length=2000000>", chrom),
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste(c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO",
+                   "FORMAT", samps), collapse = "\t"),
+           paste(c(chrom, pos, ".", "C", "T,A", ".", ".", ".", "GT", gts), collapse = "\t"))
+  v <- file.path(dir, "tri.vcf")
+  writeLines(hdr, v)
+  v
+}
+
+.hap_on <- function(chrom, samps = sprintf("s%02d", 1:12), n_snp = 30, seed = 4) {
+  set.seed(seed)
+  G <- matrix(stats::rbinom(length(samps) * n_snp, 1, 0.4), length(samps), n_snp)
+  rownames(G) <- samps
+  colnames(G) <- paste0(chrom, ":", seq(1700000, by = 2000, length.out = n_snp))
+  parasite_haplotypes(G, maf = 0.02, alleles = "index")
+}
+
+test_that("a triallelic marker called on its own joins the haplotypes with its alleles intact", {
+  skip_if_not(nzchar(Sys.which("bcftools")))
+  skip_if_not_installed("rehh")
+  d <- tempfile(); dir.create(d)
+  hap <- .hap_on("Pf3D7_13_v3")
+  expect_setequal(unique(as.vector(hap$hap)), c(0L, 1L))     # biallelic to start with
+
+  out <- add_haplotype_markers(hap, .tri_bcf(d), het = "draw")
+  expect_setequal(unique(as.vector(out$hap)), c(0L, 1L, 2L))
+  expect_equal(ncol(out$hap), ncol(hap$hap) + 1L)
+
+  # a dosage matrix cannot hold this: copy.num.of.ref makes 1/1 and 2/2 the same number
+  i <- which(out$map$snp_id == "Pf3D7_13_v3:1725591")       # 0-based, as the package counts
+  expect_length(i, 1L)
+  counts <- as.integer(table(out$hap[, i])[c("0", "1", "2")])
+  expect_equal(counts, c(6L, 4L, 2L))            # the one het drew allele 1
+
+  # inserted in coordinate order, not appended
+  expect_false(is.unsorted(out$map$pos[out$map$chr == "Pf3D7_13_v3"]))
+  # and it reaches plot_ehh as three curves
+  p <- plot_ehh(out, "Pf3D7_13_v3:1725591", span = 30000)
+  expect_equal(levels(p$data$allele), c("reference", "alternate 1", "alternate 2"))
+})
+
+test_that("the added marker adopts the chromosome spelling the haplotypes already use", {
+  skip_if_not(nzchar(Sys.which("bcftools")))
+  # SNPRelate keeps `Pf3D7_13_v3` from one file and reduces a recognised name to `13` in
+  # another. A marker that keeps its own spelling lands on a chromosome of its own, with no
+  # neighbours to decay against -- which surfaces as "too few polymorphic SNPs on that
+  # chromosome", nothing like a naming problem.
+  d <- tempfile(); dir.create(d)
+  hap <- .hap_on("13")                                   # haplotypes say "13"
+  out <- add_haplotype_markers(hap, .tri_bcf(d, chrom = "Pf3D7_13_v3"), het = "draw")
+  expect_true(all(out$map$chr == "13"))
+  expect_true("13:1725591" %in% out$map$snp_id)
+  i <- which(out$map$snp_id == "13:1725591")
+  expect_gt(i, 1L)                                       # sorted among its neighbours
+  expect_lt(i, nrow(out$map))
+})
+
+test_that("add_haplotype_markers refuses what it cannot merge", {
+  skip_if_not(nzchar(Sys.which("bcftools")))
+  d <- tempfile(); dir.create(d)
+  hap <- .hap_on("Pf3D7_13_v3")
+
+  # a position already in the haplotypes is two answers, not a merge
+  same <- .tri_bcf(d, pos = as.integer(sub(".*:", "", hap$map$snp_id[1])) + 1L)
+  expect_error(add_haplotype_markers(hap, same), "already in the haplotypes")
+
+  # a callset missing some of the haplotypes' samples cannot fill the column
+  d2 <- tempfile(); dir.create(d2)
+  few <- .tri_bcf(d2, samps = sprintf("s%02d", 1:8))
+  expect_error(add_haplotype_markers(hap, few), "not in")
+})
+
+
+test_that("an allele keeps one name and one colour in every facet", {
+  skip_if_not_installed("rehh")
+  skip_if_not_installed("ggplot2")
+  hap <- .multi_hap(c(30, 20, 10))
+  i <- which(hap$map$pos == 11000)
+  a <- hap$hap[, i]
+  # one group without allele 2, which is what a region lacking a variant looks like. rehh
+  # numbers its columns densely over the alleles it is shown, so that group's allele 1 would
+  # come back as plain "alternate" -- one allele under two names in one plot, and a stray
+  # factor level with no colour in the scale.
+  grp <- ifelse(a == 2L, "has_all", rep(c("has_all", "no_alt2"), length.out = length(a)))
+  hap$meta <- data.frame(sample = rownames(hap$hap), grp = grp)
+
+  curves <- lapply(unique(grp), function(g)
+    plasgenomicsutilsR:::.ehh_curve(hap, which(grp == g), hap$map$pos[i], hap$map$chr[i],
+                                    FALSE, 0.05))
+  lv <- lapply(curves, attr, "levels")
+  expect_equal(lv[[1]], lv[[2]])                       # the same names in both groups
+  expect_equal(lv[[1]], c("reference", "alternate 1", "alternate 2"))
+
+  p <- plot_ehh(hap, "c1:11000", group = "grp", span = 12000)
+  expect_equal(levels(p$data$allele), c("reference", "alternate 1", "alternate 2"))
+  b <- ggplot2::ggplot_build(p)
+  d <- b$data[[which(vapply(b$data, function(z)
+    "colour" %in% names(z) && nrow(z) > 20, logical(1)))[1]]]
+  expect_length(unique(d$colour), 3)                   # no fourth, uncoloured level
+})
+
+test_that("a group carrying no reference allele keeps both of its alternates", {
+  skip_if_not_installed("rehh")
+  hap <- .multi_hap(c(30, 20, 10))
+  i <- which(hap$map$pos == 11000)
+  a <- hap$hap[, i]
+  rows <- which(a != 0L)
+  # shown alleles 1 and 2, rehh reports FREQ_MAJ = 0 for the absent allele 0 and drops one
+  # of the two real ones. The dense recoding is what stops that.
+  cur <- plasgenomicsutilsR:::.ehh_curve(hap, rows, hap$map$pos[i], hap$map$chr[i],
+                                         FALSE, 0.05)
+  expect_false(is.character(cur))
+  expect_setequal(levels(droplevels(cur$allele)), c("alternate 1", "alternate 2"))
+  expect_equal(sum(attr(cur, "count")), length(rows))  # every haplotype still accounted for
+  expect_equal(names(attr(cur, "count")), c("alternate 1", "alternate 2"))
 })

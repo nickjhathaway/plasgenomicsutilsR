@@ -3,6 +3,32 @@
 .EHH_LEVELS <- c("reference", "alternate")
 .EHH_FILL <- c(reference = "#2271B2", alternate = "#D55E00")
 
+# rehh names a marker's allele columns EHH_MAJ, EHH_MIN1, EHH_MIN2, ... and those names are
+# **positional**, not frequency ranks: EHH_MAJ is allele 0 whether or not it is the commonest
+# one (on a 3-allele marker coded 10/30/20, FREQ_MAJ comes back as the rarest, 0.167). So the
+# k-th column is allele k-1, and that is the only thing the labels can safely be built from.
+# Two alleles keep the reference / alternate wording the plot has always used; more get
+# numbered, because "the alternate" stops meaning anything once there are several.
+# Name an allele by *which allele it is*, never by which column of a scan it landed in.
+# rehh's columns are dense over the alleles present in the haplotypes it was handed, so a
+# group that happens to lack allele 2 gets two columns and would otherwise call its allele 1
+# "alternate" while the group beside it calls the same allele "alternate 1" -- one allele,
+# two names, in one faceted plot.
+.ehh_allele_label <- function(a, n_alleles) {
+  alt <- if (n_alleles <= 2) rep("alternate", length(a)) else paste("alternate", a)
+  ifelse(a == 0L, "reference", alt)
+}
+
+.ehh_allele_levels <- function(k) {
+  if (k <= 2) return(.EHH_LEVELS[seq_len(max(k, 1))])
+  c("reference", paste("alternate", seq_len(k - 1)))
+}
+
+.ehh_allele_fill <- function(levels) {
+  if (all(levels %in% names(.EHH_FILL))) return(.EHH_FILL[levels])
+  stats::setNames(.pick_palette(length(levels)), levels)
+}
+
 # The SNP the decay is measured from. A `chr:pos` id or a bare position names one outright; a
 # gene usually holds several, and then the one with the most balanced alleles is the only
 # defensible automatic choice -- EHH from a singleton is a line at 1 that says nothing. Which
@@ -42,22 +68,49 @@
   mrk <- which(o@positions == mrk_pos)
   # .haplohh_list() drops columns that are monomorphic within the group, focal SNP included
   if (!length(mrk)) return("the focal SNP is not variable in it")
+
+  # The alleles at this marker across the whole object, so a label means the same allele in
+  # every facet, and the alleles this group actually carries, which may be a subset.
+  gcol <- which(hap$map$chr == chr & hap$map$pos == mrk_pos)[1]
+  all_alleles <- sort(unique(as.integer(hap$hap[, gcol])))
+  alleles <- o@haplo[, mrk[1]]
+  present <- sort(unique(as.integer(alleles[!is.na(alleles)])))
+
+  # rehh numbers its columns densely over the alleles it is shown, and truncates rather than
+  # reporting a leading absent one (given alleles 1 and 2 it returns FREQ_MAJ = 0 and drops
+  # allele 2 outright). Hand it a dense 0..k-1 coding, which is a bijection on the focal
+  # column and so leaves the haplotype partition untouched, and keep the map back.
+  if (!identical(present, seq_along(present) - 1L))
+    o@haplo[, mrk[1]] <- match(alleles, present) - 1L
+
   e <- try(rehh::calc_ehh(o, mrk = mrk[1], polarized = polarized, limehh = limehh,
                           include_zero_values = TRUE, phased = TRUE), silent = TRUE)
   if (inherits(e, "try-error") || is.null(e$ehh) || !nrow(e$ehh))
     return("rehh returned no EHH values there")
 
   d <- as.data.frame(e$ehh)
-  cols <- intersect(c("EHH_MAJ", "EHH_MIN", "EHH_A", "EHH_D", "EHH"), names(d))
+  # Take whatever allele columns rehh returned rather than a fixed list of names: a marker
+  # with three alleles comes back as EHH_MAJ / EHH_MIN1 / EHH_MIN2, and a fixed list that
+  # knows only EHH_MIN would keep one curve of three and label it as the other one.
+  cols <- grep("^EHH(_|$)", names(d), value = TRUE)
   if (!length(cols)) return("rehh returned no EHH columns")
-  # unpolarized: MAJ / MIN are the two alleles as coded, 0 then 1, so reference then alternate
-  lab <- if (length(cols) == 1) .EHH_LEVELS[2] else .EHH_LEVELS[seq_along(cols)]
+  freq <- e$freq
+  if (length(cols) != length(present) || (length(freq) && length(freq) != length(cols)))
+    return(sprintf("rehh returned %d curves and %d frequencies for the %d allele(s) here",
+                   length(cols), length(freq), length(present)))
+  lab <- .ehh_allele_label(present, length(all_alleles))
+  levs <- .ehh_allele_label(all_alleles, length(all_alleles))
   out <- do.call(rbind, lapply(seq_along(cols), function(k) data.frame(
     pos = d$POSITION, ehh = d[[cols[k]]],
-    allele = factor(lab[k], levels = .EHH_LEVELS), stringsAsFactors = FALSE)))
-  freq <- e$freq
+    allele = factor(lab[k], levels = levs), stringsAsFactors = FALSE)))
   attr(out, "freq") <- stats::setNames(as.numeric(freq), lab[seq_along(freq)])
   attr(out, "n") <- length(rows)
+  attr(out, "levels") <- levs
+  # Count the alleles rather than recovering them from the frequency: rounding a share back
+  # into a count is right until it is not, and the haplotypes are right here. Counted against
+  # the real allele values, not the dense recoding rehh was handed.
+  attr(out, "count") <- stats::setNames(
+    vapply(present, function(a) sum(alleles == a, na.rm = TRUE), integer(1)), lab)
   out
 }
 
@@ -170,7 +223,9 @@ ehh_candidates <- function(x, focal, group = NULL, genes = NULL, min_haplotypes 
 #'   supplied only to resolve `focal`, and an EHH window is wide enough that a full annotation
 #'   would crowd a hundred names under it, so this is opt-in.
 #' @param gene_label_angle Rotation for the gene names, in degrees.
-#' @param colours,colors Named colours for `reference` / `alternate`.
+#' @param colours,colors Named colours for the focal alleles. A biallelic marker has
+#'   `reference` and `alternate`; one with more alleles has `reference`, `alternate 1`,
+#'   `alternate 2`, ... and takes its default colours from the shared palette.
 #' @param show_freq Note each panel's haplotype count and allele frequencies inside it
 #'   (default `TRUE`); `FALSE` leaves the panel clean.
 #' @param freq_position Which corner that note sits in: `"topleft"` (default), `"topright"`,
@@ -252,7 +307,9 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
   faceted <- !is.null(group) && length(unique(df$group)) > 1
   if (faceted) df$group <- factor(df$group, levels = names(rows)[keep])
 
-  fills <- .EHH_FILL
+  # the levels the curves actually carry, which is two only when the marker is biallelic
+  lv <- attr(curves[keep][[1]], "levels")
+  fills <- .ehh_allele_fill(if (is.null(lv)) .EHH_LEVELS else lv)
   if (!is.null(colours)) fills[names(colours)] <- unname(colours)
   xlim <- c(iv$start, iv$end)
 
@@ -273,10 +330,17 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
     p <- p + ggplot2::facet_wrap(~ .data$group, ncol = 1, strip.position = "right")
 
   if (isTRUE(show_freq)) {
-    lab <- vapply(names(freqs), function(g) paste0(
-      "n = ", attr(curves[[g]], "n"), "; ",
-      paste(sprintf("%s %.0f%%", names(freqs[[g]]), 100 * freqs[[g]]), collapse = ", ")),
-      character(1))
+    # the count as well as the share: reading "8%" against "n = 60" to get 5 haplotypes is
+    # arithmetic the reader should not have to do, and 8% of 60 reads very differently from
+    # 8% of 600. The counts are the ones the haplotypes were counted into, not the share
+    # multiplied back out.
+    lab <- vapply(names(freqs), function(g) {
+      f <- freqs[[g]]
+      k <- attr(curves[[g]], "count")
+      shares <- if (is.null(k)) sprintf("%s %.0f%%", names(f), 100 * f)
+                else sprintf("%s %d (%.0f%%)", names(f), k[names(f)], 100 * f)
+      paste0("n = ", attr(curves[[g]], "n"), "; ", paste(shares, collapse = ", "))
+    }, character(1))
     ann <- data.frame(group = names(freqs), label = unname(lab), stringsAsFactors = FALSE)
     if (faceted) ann$group <- factor(ann$group, levels = levels(df$group))
     # A corner the curves are least likely to occupy: EHH is 1 at the focal SNP and decays

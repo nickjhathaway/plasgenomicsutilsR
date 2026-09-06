@@ -11,6 +11,9 @@ run_rsb(
   pairs = NULL,
   polarized = FALSE,
   min_samples = 4,
+  maxgap = NA,
+  scalegap = NA,
+  discard_at_border = NULL,
   threads = 1
 )
 }
@@ -27,6 +30,28 @@ two groups to compare).}
 \item{polarized}{Treat allele 1 as derived (needs a real ancestral state).}
 
 \item{min_samples}{Skip groups smaller than this.}
+
+\item{maxgap}{Largest gap between consecutive SNPs, in base pairs, that the EHH
+integration may cross; \code{NA} (the default, and \pkg{rehh}'s) lets it cross any gap.
+This matters more than its default suggests. A region with no SNPs -- a centromere, a
+masked hypervariable block -- has nothing to break the haplotype, so EHH runs flat
+across it and the integral accumulates \verb{EHH x gap length}. The SNPs flanking such a
+hole then score on the width of the hole rather than on their haplotypes, in either
+direction: the ratio is diluted towards zero when both alleles carry EHH into the gap,
+and inflated when only one does. Pick a value from the data's own spacing (several
+dozen times the median gap leaves ordinary density untouched while stopping at a real
+hole) rather than from a round number.}
+
+\item{scalegap}{Gaps wider than this are counted as being exactly this wide, rather than
+stopping the integration outright; \code{NA} (default) does not rescale. A softer form of
+\code{maxgap} -- it caps a hole's contribution instead of refusing to cross it.}
+
+\item{discard_at_border}{Return \code{NA} instead of a truncated integral when the
+integration runs into the end of a chromosome or a gap wider than \code{maxgap}. \code{NULL}
+(default) ties it to \code{maxgap}: off when no \code{maxgap} is set (so the markers nearest the
+telomeres are still scored), on when one is. On sparse markers this can empty the scan
+-- if EHH never decays before the data runs out, every marker is at a border -- so a
+scan that comes back mostly \code{NA} says so.}
 
 \item{threads}{Threads for \pkg{rehh}.}
 }

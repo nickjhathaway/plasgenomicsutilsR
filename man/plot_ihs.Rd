@@ -6,7 +6,7 @@
 \usage{
 plot_ihs(
   scan,
-  metric = c("neg_log10_p", "ihs", "value"),
+  metric = c("neg_log10_p", "ihs", "value", "frac_extreme"),
   threshold = NULL,
   genes = NULL,
   highlight_genes = NULL,
@@ -27,7 +27,8 @@ plot_ihs(
 \arguments{
 \item{scan}{The tibble from \code{\link[=run_ihs]{run_ihs()}}, \code{\link[=run_rsb]{run_rsb()}} or \code{\link[=run_xpehh]{run_xpehh()}}.}
 
-\item{metric}{\code{"neg_log10_p"} (default) or the statistic itself (\code{"ihs"} / \code{"value"}).}
+\item{metric}{\code{"neg_log10_p"} (default), the statistic itself (\code{"ihs"} / \code{"value"}), or
+\code{"frac_extreme"} for an \code{\link[=ihs_windows]{ihs_windows()}} summary.}
 
 \item{threshold}{Draw a dashed significance line at this height. \code{NULL} uses the
 \code{-log10(p)} of a 1\% two-sided tail when plotting \code{neg_log10_p}, the convention these

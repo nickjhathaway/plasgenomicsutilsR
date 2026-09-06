@@ -21,6 +21,10 @@ plot_ibd_tugofwar(
   highlight_genes = NULL,
   label_genes = NULL,
   draw_threshold = TRUE,
+  top_quantile = NULL,
+  metric_label = NULL,
+  top_percent = NULL,
+  centre_gap = 0.08,
   selection_colour = "#fd8d3c",
   ibd_colour = "#2166ac"
 )
@@ -92,6 +96,32 @@ only when not \code{normalized}): \code{TRUE} / \code{"bonferroni"}, \code{"fdr"
 \code{\link[=plot_selection_manhattan]{plot_selection_manhattan()}} takes, in the same colours, resolved by the same helper.
 Each line is mapped through the same transform as the mirrored selection half, so it
 lands where the data does.}
+
+\item{top_quantile}{Draw a reference line at this quantile of the top track's own
+distribution -- \code{0.99} for the 99th percentile, \code{NULL} (default) for no line. This is
+an empirical reference, not a test: it says how high the statistic reaches across the
+genome, so a peak can be read against the rest of the scan rather than against a
+nominal per-SNP tail. It is what a windowed fraction wants, because the fraction of
+SNPs over \code{threshold} in \code{\link[=ihs_windows]{ihs_windows()}} has no significance line of its own -- the
+cutoff inside it defines the tail, and the evidence is the genome-wide distribution of
+the fraction. The quantile is taken on the table as passed in, before \code{chroms},
+\code{skip_chr} and \code{zoom} crop it, so dropping the quiet chromosomes cannot raise the bar
+its own peaks are then judged against; and per group when the track has a group
+column, so each panel's line is that region's genome-wide quantile whether or not the
+other regions are drawn. Stacks with \code{draw_threshold}, in its own colour.}
+
+\item{metric_label}{Name for the top metric on the shared axis. \code{NULL} (default) uses
+the column name, except for a column the plot knows how to write -- \code{frac_extreme}
+from \code{\link[=ihs_windows]{ihs_windows()}} reads \verb{Extreme Fraction}, matching \verb{IBD Fraction} below it.}
+
+\item{top_percent}{Write the top track's tick labels as percentages. \code{NULL} (default)
+does so when the metric is a fraction (and always under \code{scale = "free"}, where both
+halves are percentages of their own maximum), so a fraction on top is not shown in
+different units from the fraction underneath it.}
+
+\item{centre_gap}{Fraction of each half-axis left empty at the centre line, so the
+tallest bar of each track -- and its largest tick label -- stops short of the middle
+instead of meeting the other track's there. \code{0} restores the two halves meeting.}
 
 \item{selection_colour, ibd_colour}{Bar and axis colours for the two tracks.}
 }

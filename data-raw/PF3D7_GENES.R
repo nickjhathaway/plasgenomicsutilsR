@@ -1,6 +1,7 @@
 # Build the bundled Pf3D7 gene-coordinate datasets from the VEuPathDB/PlasmoDB GFF.
 #
-# PF3D7_GENES        : every protein-coding gene, coordinates = the CDS span (min CDS
+# PF3D7_GENES        : every protein-coding gene, with the strand it is read on and
+#                      coordinates = the CDS span (min CDS
 #                      start .. max CDS end over every isoform), i.e. the translated
 #                      extent, excluding UTRs. Genes with no CDS feature fall back to the
 #                      mRNA span and then to the `protein_coding_gene` bounds.
@@ -35,6 +36,10 @@ genes <- data.frame(
   Name        = attr_get(gn$attr, "Name"),
   gene_start  = gn$start,
   gene_end    = gn$end,
+  # the strand the gene is read on, carried straight from GFF column 7. Coordinates are
+  # always given low-to-high whatever it says, so this is the only record of orientation --
+  # and it is what tells you which end of a gene is its start.
+  strand      = gn$strand,
   stringsAsFactors = FALSE
 )
 
@@ -75,8 +80,11 @@ chrom <- sub("^Pf3D7_", "", sub("_v3$", "", genes$Pf3D7_chrom))
 num   <- suppressWarnings(as.integer(chrom))
 genes$chrom <- ifelse(is.na(num), chrom, as.character(num))
 
+# `strand` last: `.gene_track()` and friends select the columns they need by name and drop
+# the rest, so appending cannot disturb anything that already reads these tables.
 PF3D7_GENES <- genes[order(match(genes$chrom, c(1:14, "API", "MIT")), genes$start),
-                     c("Pf3D7_chrom", "start", "end", "chrom", "gene_id", "name")]
+                     c("Pf3D7_chrom", "start", "end", "chrom", "gene_id", "name", "strand")]
+stopifnot(all(PF3D7_GENES$strand %in% c("+", "-")))
 rownames(PF3D7_GENES) <- NULL
 attr(PF3D7_GENES, "source_version") <- PF3D7_SOURCE_VERSION
 

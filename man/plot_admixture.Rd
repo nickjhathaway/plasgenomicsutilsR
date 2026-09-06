@@ -19,6 +19,7 @@ plot_admixture(
   border_linewidth = 0.15,
   legend_position = c("right", "bottom", "top", "left", "none"),
   legend_rows = NULL,
+  cluster_label = "Ancestry\\ncomponent",
   colors = NULL,
   group_colors = NULL,
   border_color = NULL
@@ -63,6 +64,11 @@ before wrapping into another column/row. \code{NULL} (default) wraps a side lege
 10 keys and splits a horizontal one over two
 rows, which keeps \code{K} = 15 plus a group strip on the page. The suggested output height
 accounts for whatever this works out to.}
+
+\item{cluster_label}{Legend title for the ancestry fills. The K components are what
+sNMF calls clusters, but next to a UMAP -- where the visible groupings are also
+clusters -- a legend reading "cluster" invites reading the two as the same thing.
+The default wraps over two lines so the longer wording costs no legend width.}
 }
 \value{
 A ggplot object.

@@ -16,6 +16,7 @@ plot_structure_figure(
   region_colours = NULL,
   cluster_colours = NULL,
   region_label = NULL,
+  cluster_label = "Ancestry\\ncomponent",
   base_size = 11,
   border = TRUE,
   border_colour = "black",
@@ -23,6 +24,10 @@ plot_structure_figure(
   legend = "right",
   legend_point_size = 3.5,
   point_size = 1.6,
+  point_border = NULL,
+  point_stroke = 0.3,
+  tags = NULL,
+  tag_size = NULL,
   point_alpha = 0.8,
   umap_ratio = 1,
   file = NULL,
@@ -60,6 +65,12 @@ region strip / K-cluster fills.}
 
 \item{region_label}{Legend title for the region colours (default \code{colour}).}
 
+\item{cluster_label}{Legend title for the ancestry fills. The K components are what
+sNMF calls clusters, but this figure sits them beside a UMAP, where the visible
+groupings are also clusters, so a legend reading "cluster" invites reading the two as
+the same thing. The default wraps over two lines so the longer wording costs no
+legend width.}
+
 \item{base_size}{Base font size shared by every panel.}
 
 \item{border}{Outline each sample's admixture bar (default \code{TRUE}) so neighbours with
@@ -74,6 +85,21 @@ nearly identical ancestry stay distinct.}
 the key reads clearly next to the small plotted points).}
 
 \item{point_size, point_alpha}{Size and opacity of the UMAP scatter points.}
+
+\item{point_border}{Outline colour for the UMAP points (e.g. \code{"black"}), or \code{NULL}
+(default) for unoutlined points. Outlined points use shape 21, so the region
+colours drive \code{fill} rather than \code{colour}.}
+
+\item{point_stroke}{Width of that outline (default \code{0.3}); ignored when
+\code{point_border} is \code{NULL}.}
+
+\item{tags}{Panel tags for a figure legend, e.g. \code{c("a", "b")} (or just \code{"a"}, which
+continues to \code{"b"}): the first goes on the UMAP, the second on the admixture block.
+\code{NULL} (default) draws no tags. Tagging with \code{\link[patchwork:plot_annotation]{patchwork::plot_annotation()}}
+directly does not work here -- \code{tag_levels} would letter every one of the dozen
+admixture panels separately.}
+
+\item{tag_size}{Tag point size (default \code{base_size * 1.4}, bold).}
 
 \item{umap_ratio}{Relative size of the UMAP vs the admixture block (a single number;
 default 1 means roughly equal).}

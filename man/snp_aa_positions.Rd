@@ -115,13 +115,11 @@ snp_aa_positions(data.frame(snp_id = colnames(ps$genotype("full"))), cds, keep =
 
 # or point `fasta` at the released genome, read straight from the web like the GFF is.
 # pfcrt codon 76 comes back "AAA" / "K".
-genome <- paste0("https://plasmodb.org/common/downloads/Current_Release/",
-                 "Pfalciparum3D7/fasta/data/PlasmoDB-68_Pfalciparum3D7_Genome.fasta")
 snp_aa_positions(data.frame(chr = "Pf3D7_07_v3", pos = 403625), cds, keep = "hits",
-                 one_based_snps = TRUE, fasta = genome)
+                 one_based_snps = TRUE, fasta = ensembl_genome_url("falciparum"))
 }
 }
 \seealso{
 \code{\link[=aa_intervals]{aa_intervals()}} for the other direction, \code{\link[=annotate_snps]{annotate_snps()}} to first ask which
-gene a SNP is in.
+gene a SNP is in, \code{\link[=ensembl_genome_url]{ensembl_genome_url()}} for the \code{fasta} path.
 }

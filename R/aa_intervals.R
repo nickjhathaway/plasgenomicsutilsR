@@ -77,7 +77,7 @@
 #'   the web, so a released annotation can be used without keeping a copy.
 #' @return A tibble of `transcript_id`, `gene_id`, `chrom`, `start`, `end` (1-based
 #'   inclusive, as the GFF gives them), `strand` and `phase`, one row per CDS exon.
-#' @seealso [aa_intervals()]
+#' @seealso [aa_intervals()], [ensembl_gff_url()]
 #' @examples
 #' # the CDS of six 3D7 drug-resistance genes ship with the package
 #' cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
@@ -85,13 +85,9 @@
 #' cds
 #'
 #' \dontrun{
-#' # a whole released annotation, read straight from the web
-#' cds <- read_gff_cds(paste0("https://plasmodb.org/common/downloads/Current_Release/",
-#'                            "Pfalciparum3D7/gff/data/PlasmoDB-68_Pfalciparum3D7.gff"))
-#' # Ensembl Protists works too, despite naming its attributes differently
-#' cds <- read_gff_cds(paste0("https://ftp.ensemblgenomes.ebi.ac.uk/pub/protists/current/",
-#'                            "gff3/plasmodium_falciparum/",
-#'                            "Plasmodium_falciparum.GCA000002765v3.63.gff3.gz"))
+#' # a whole released annotation, read straight from the web -- gzipped is fine.
+#' # ensembl_gff_url() builds the path, so it need not be looked up by hand.
+#' cds <- read_gff_cds(ensembl_gff_url("falciparum"))
 #' }
 #' @export
 read_gff_cds <- function(gff) {
@@ -421,7 +417,7 @@ aa_intervals <- function(positions, gff, genes = PF3D7_GENES, one_based_output =
 #'   (1/2/3 in transcript orientation), `strand` and `coding` added, plus `ref_codon` and
 #'   `ref_aa` when there is sequence to read them from.
 #' @seealso [aa_intervals()] for the other direction, [annotate_snps()] to first ask which
-#'   gene a SNP is in.
+#'   gene a SNP is in, [ensembl_genome_url()] for the `fasta` path.
 #' @examples
 #' cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
 #'                                 package = "plasgenomicsutilsR"))
@@ -448,10 +444,8 @@ aa_intervals <- function(positions, gff, genes = PF3D7_GENES, one_based_output =
 #'
 #' # or point `fasta` at the released genome, read straight from the web like the GFF is.
 #' # pfcrt codon 76 comes back "AAA" / "K".
-#' genome <- paste0("https://plasmodb.org/common/downloads/Current_Release/",
-#'                  "Pfalciparum3D7/fasta/data/PlasmoDB-68_Pfalciparum3D7_Genome.fasta")
 #' snp_aa_positions(data.frame(chr = "Pf3D7_07_v3", pos = 403625), cds, keep = "hits",
-#'                  one_based_snps = TRUE, fasta = genome)
+#'                  one_based_snps = TRUE, fasta = ensembl_genome_url("falciparum"))
 #' }
 #' @export
 snp_aa_positions <- function(snps, gff, keep = c("all", "hits"), one_based_snps = FALSE,

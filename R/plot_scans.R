@@ -89,7 +89,8 @@
 #' genome-wide plots in the package.
 #'
 #' @param scan The tibble from [run_ihs()], [run_rsb()] or [run_xpehh()].
-#' @param metric `"neg_log10_p"` (default) or the statistic itself (`"ihs"` / `"value"`).
+#' @param metric `"neg_log10_p"` (default), the statistic itself (`"ihs"` / `"value"`), or
+#'   `"frac_extreme"` for an [ihs_windows()] summary.
 #' @param threshold Draw a dashed significance line at this height. `NULL` uses the
 #'   `-log10(p)` of a 1% two-sided tail when plotting `neg_log10_p`, the convention these
 #'   scans are usually read at; `NA` draws none.
@@ -122,7 +123,8 @@
 #' hap <- parasite_haplotypes(ps, maf = 0.05)
 #' plot_ihs(run_ihs(hap, group = "country"), genes = PF_EXAMPLE_DRUG_GENES)
 #' @export
-plot_ihs <- function(scan, metric = c("neg_log10_p", "ihs", "value"), threshold = NULL,
+plot_ihs <- function(scan, metric = c("neg_log10_p", "ihs", "value", "frac_extreme"),
+                     threshold = NULL,
                      genes = NULL, highlight_genes = NULL, label_genes = NULL,
                      chroms = NULL, skip_chr = NULL, zoom = NULL, zoom_pad = 0.05,
                      genes_for_track = NULL, gene_label_angle = 0,
@@ -133,7 +135,8 @@ plot_ihs <- function(scan, metric = c("neg_log10_p", "ihs", "value"), threshold 
   metric <- match.arg(metric)
   if (metric == "ihs" && !"ihs" %in% names(scan)) metric <- "value"
   facet <- if ("group" %in% names(scan)) "group" else if ("pair" %in% names(scan)) "pair"
-  lab <- switch(metric, neg_log10_p = expression(-log[10](italic(p))), metric)
+  lab <- switch(metric, neg_log10_p = expression(-log[10](italic(p))),
+                frac_extreme = "fraction of SNPs extreme", metric)
   thr <- if (metric == "neg_log10_p") {
     if (is.null(threshold)) -log10(0.01) else threshold
   } else threshold
@@ -144,7 +147,7 @@ plot_ihs <- function(scan, metric = c("neg_log10_p", "ihs", "value"), threshold 
                   gene_label_angle = gene_label_angle,
                   highlight_genes = highlight_genes, label_genes = label_genes,
                   threshold = if (is.null(thr) || is.na(thr)) NULL else thr,
-                  hline = if (metric != "neg_log10_p") 0 else NULL,
+                  hline = if (metric %in% c("ihs", "value")) 0 else NULL,
                   point_size = point_size, point_alpha = point_alpha, colours = colours)
 }
 

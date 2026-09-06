@@ -10,6 +10,11 @@
   if (is.list(x) && !is.null(x$sample.id)) return(as.character(x$sample.id))
   if (is.list(x) && !is.null(x$genotype)) return(rownames(as.matrix(x$genotype)))
   if (is.data.frame(x) && "sample" %in% names(x)) return(as.character(x$sample))
+  if (is.numeric(x))
+    stop("cannot read sample ids from a numeric vector -- `subset_genotypes()` selects by ",
+         "id, not by position. If these really are ids, pass them as character: ",
+         "as.character(c(", paste(utils::head(x, 2), collapse = ", "), ", ...))",
+         call. = FALSE)
   stop("cannot read sample ids from an object of class ", class(x)[1], call. = FALSE)
 }
 

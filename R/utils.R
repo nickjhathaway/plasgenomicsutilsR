@@ -58,10 +58,28 @@
 #' @param want The canonical column name (default `"sample"`).
 #' @return `meta`, with the column renamed if it needed it.
 #' @noRd
+# A sample id is a label, not a number. An all-numeric cohort -- micronix ids, barcodes,
+# anything without a letter -- reads back from a file as numeric, and R then does something
+# worse than failing: `named_vector[c(3, 1)]` indexes by *position*, so a lookup meant to be
+# by name silently returns whoever happens to sit in those rows. Ids are made character at
+# every point one enters the package, so that can never arise.
+.as_id_chr <- function(x) {
+  if (is.character(x)) return(x)
+  if (is.factor(x)) return(as.character(x))
+  if (!is.numeric(x)) return(as.character(x))
+  # format(), not as.character(): a large id would otherwise come back as "4.06e+09"
+  out <- format(x, scientific = FALSE, trim = TRUE)
+  out[is.na(x)] <- NA_character_
+  out
+}
+
 .normalise_meta <- function(meta, want = "sample") {
   if (is.null(meta) || !is.data.frame(meta)) return(meta)
   nms <- names(meta)
-  if (want %in% nms) return(meta)
+  if (want %in% nms) {
+    meta[[want]] <- .as_id_chr(meta[[want]])
+    return(meta)
+  }
   hit <- which(tolower(nms) == tolower(want))
   if (!length(hit)) return(meta)
   if (length(hit) > 1)
@@ -69,5 +87,6 @@
          paste(nms[hit], collapse = ", "), ". Rename all but one.", call. = FALSE)
   message("reading metadata column `", nms[hit], "` as `", want, "`")
   names(meta)[hit] <- want
+  meta[[want]] <- .as_id_chr(meta[[want]])
   meta
 }
