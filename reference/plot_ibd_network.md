@@ -27,6 +27,8 @@ plot_ibd_network(
   spread = 1.5,
   node_size = 3,
   node_alpha = 0.9,
+  border = NA,
+  border_width = 0.4,
   edge_colour = "grey65",
   edge_alpha = 0.5,
   edge_width = 1,
@@ -167,6 +169,19 @@ plot_ibd_network(
 - node_size, node_alpha:
 
   Node point aesthetics.
+
+- border:
+
+  Outline colour for the nodes, or `NA` (default) for none. An outline
+  makes a dark category legible where it sits over the grey edge
+  bundles, at the cost of the shape encoding: only shapes 21-25 carry a
+  fill separate from their outline, so turning this on draws every node
+  as a filled circle and maps the colour group to the fill. It is
+  therefore an error to give both `border` and `shape_group`.
+
+- border_width:
+
+  Outline width when `border` is set.
 
 - edge_colour, edge_color, edge_width:
 

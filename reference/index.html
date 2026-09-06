@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -219,6 +219,13 @@
 
         </dt>
         <dd>Load genotypes from a VCF, optionally LD-pruned</dd>
+
+        <dt>
+
+          <code><a href="merge_genotypes.html">merge_genotypes()</a></code>
+
+        </dt>
+        <dd>Merge loaded genotype sets into one</dd>
 
         <dt>
 
@@ -489,6 +496,13 @@
 
         <dt>
 
+          <code><a href="add_haplotype_markers.html">add_haplotype_markers()</a></code>
+
+        </dt>
+        <dd>Add markers to a haplotype set from a callset of their own</dd>
+
+        <dt>
+
           <code><a href="run_ihs.html">run_ihs()</a></code>
 
         </dt>
@@ -507,6 +521,13 @@
 
         </dt>
         <dd>Cross-population extended haplotype homozygosity (XP-EHH)</dd>
+
+        <dt>
+
+          <code><a href="ihs_windows.html">ihs_windows()</a></code>
+
+        </dt>
+        <dd>Windowed summary of an iHS scan</dd>
 
         <dt>
 
@@ -633,7 +654,7 @@
       </dl></div><div class="section level2">
       <h2 id="colours">Colours<a class="anchor" aria-label="anchor" href="#colours"></a></h2>
 
-      <div class="section-desc"><p>Colour-blind-friendly palettes and a shared level-to-colour map.</p></div>
+      <div class="section-desc"><p>Colour-blind-friendly palettes, a shared level-to-colour map, and the check that shows – rather than asserts – how a figure’s colours read under each dichromacy.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -653,6 +674,20 @@
 
         </dt>
         <dd>A colour-blind-friendly categorical palette</dd>
+
+        <dt>
+
+          <code><a href="colour_blind_distance.html">colour_blind_distance()</a></code> <code><a href="colour_blind_distance.html">color_blind_distance()</a></code>
+
+        </dt>
+        <dd>Smallest colour difference within (or between) palettes, under colour blindness</dd>
+
+        <dt>
+
+          <code><a href="plot_colour_blind_check.html">plot_colour_blind_check()</a></code> <code><a href="plot_colour_blind_check.html">plot_color_blind_check()</a></code>
+
+        </dt>
+        <dd>Show how a set of palettes reads under colour blindness</dd>
       </dl></div><div class="section level2">
       <h2 id="saving-and-sizing">Saving and sizing<a class="anchor" aria-label="anchor" href="#saving-and-sizing"></a></h2>
 
@@ -720,6 +755,27 @@
 
         </dt>
         <dd>Read the CDS features of a GFF</dd>
+
+        <dt>
+
+          <code><a href="ensembl_gff_url.html">ensembl_gff_url()</a></code> <code><a href="ensembl_gff_url.html">ensembl_genome_url()</a></code>
+
+        </dt>
+        <dd>Ensembl Protists download URLs</dd>
+
+        <dt>
+
+          <code><a href="ensembl_species.html">ensembl_species()</a></code>
+
+        </dt>
+        <dd>Plasmodium genomes in an Ensembl Protists release</dd>
+
+        <dt>
+
+          <code><a href="ENSEMBL_PROTISTS_RELEASE.html">ENSEMBL_PROTISTS_RELEASE</a></code>
+
+        </dt>
+        <dd>Default Ensembl Protists release</dd>
 
         <dt>
 

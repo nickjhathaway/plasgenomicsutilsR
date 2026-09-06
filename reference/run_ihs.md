@@ -15,7 +15,11 @@ run_ihs(
   polarized = FALSE,
   freqbin = NULL,
   min_maf = 0.05,
+  maf_bands = NULL,
   min_samples = 4,
+  maxgap = NA,
+  scalegap = NA,
+  discard_at_border = NULL,
   threads = 1
 )
 ```
@@ -59,9 +63,56 @@ run_ihs(
 
   Minor-allele frequency floor applied at standardisation.
 
+- maf_bands:
+
+  Standardise within this many minor-allele-frequency bands, cut at
+  quantiles of the observed frequencies so each band holds a similar
+  number of markers. `NULL` (default) leaves the standardisation to rehh
+  and `freqbin`. The spread of the log iHH ratio depends on how common
+  the minor allele is – a rarer allele is carried by fewer haplotypes,
+  so its integrals are noisier – and a single bin cannot remove that,
+  which leaves rarer SNPs over-represented in the tail. Bands do remove
+  it, without running into the empty bins that make rehh's own binning
+  unusable on an unpolarized scan. Around 10 is reasonable; it replaces
+  `freqbin` rather than combining with it, and it changes every score,
+  so a result computed with it is not comparable to one computed
+  without.
+
 - min_samples:
 
   Skip groups smaller than this.
+
+- maxgap:
+
+  Largest gap between consecutive SNPs, in base pairs, that the EHH
+  integration may cross; `NA` (the default, and rehh's) lets it cross
+  any gap. This matters more than its default suggests. A region with no
+  SNPs – a centromere, a masked hypervariable block – has nothing to
+  break the haplotype, so EHH runs flat across it and the integral
+  accumulates `EHH x gap length`. The SNPs flanking such a hole then
+  score on the width of the hole rather than on their haplotypes, in
+  either direction: the ratio is diluted towards zero when both alleles
+  carry EHH into the gap, and inflated when only one does. Pick a value
+  from the data's own spacing (several dozen times the median gap leaves
+  ordinary density untouched while stopping at a real hole) rather than
+  from a round number.
+
+- scalegap:
+
+  Gaps wider than this are counted as being exactly this wide, rather
+  than stopping the integration outright; `NA` (default) does not
+  rescale. A softer form of `maxgap` – it caps a hole's contribution
+  instead of refusing to cross it.
+
+- discard_at_border:
+
+  Return `NA` instead of a truncated integral when the integration runs
+  into the end of a chromosome or a gap wider than `maxgap`. `NULL`
+  (default) ties it to `maxgap`: off when no `maxgap` is set (so the
+  markers nearest the telomeres are still scored), on when one is. On
+  sparse markers this can empty the scan – if EHH never decays before
+  the data runs out, every marker is at a border – so a scan that comes
+  back mostly `NA` says so.
 
 - threads:
 
@@ -94,6 +145,7 @@ haplotype structure. *Molecular Ecology Resources* 17, 78-90.
 
 ## See also
 
+[`ihs_windows()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_windows.md),
 [`ihs_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_genes.md),
 [`plot_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ihs.md),
 [`run_rsb()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_rsb.md),

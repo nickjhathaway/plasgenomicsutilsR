@@ -29,14 +29,10 @@ web, so a released annotation can be used without keeping a copy:
 
 ``` r
 
-# VEuPathDB / PlasmoDB — the source the bundled gene datasets were built from
-cds <- read_gff_cds(paste0("https://plasmodb.org/common/downloads/Current_Release/",
-                           "Pfalciparum3D7/gff/data/PlasmoDB-68_Pfalciparum3D7.gff"))
-
-# Ensembl Protists, gzipped
-cds <- read_gff_cds(paste0("https://ftp.ensemblgenomes.ebi.ac.uk/pub/protists/current/",
-                           "gff3/plasmodium_falciparum/",
-                           "Plasmodium_falciparum.GCA000002765v3.63.gff3.gz"))
+# Ensembl Protists. ensembl_gff_url() builds the download path from a species name, so
+# the release layout does not have to be looked up by hand; ensembl_species() lists the
+# names it takes, which cover the Plasmodium genomes Ensembl carries, not just Pf3D7.
+cds <- read_gff_cds(ensembl_gff_url("falciparum"))
 ```
 
 The examples here use a small file that ships with the package instead:
@@ -207,10 +203,8 @@ so point it at the released genome:
 
 ``` r
 
-cds <- read_gff_cds(paste0("https://plasmodb.org/common/downloads/Current_Release/",
-                           "Pfalciparum3D7/gff/data/PlasmoDB-68_Pfalciparum3D7.gff"))
-genome <- paste0("https://plasmodb.org/common/downloads/Current_Release/",
-                 "Pfalciparum3D7/fasta/data/PlasmoDB-68_Pfalciparum3D7_Genome.fasta")
+cds <- read_gff_cds(ensembl_gff_url("falciparum"))
+genome <- ensembl_genome_url("falciparum")
 
 markers <- data.frame(
   transcript_id = c("pfcrt", "pfdhps", "pfdhps", "pfdhfr", "pfmdr1", "pfkelch13"),

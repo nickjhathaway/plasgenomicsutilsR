@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>UMAP scatter plot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>plot_umap.Rd</code></div>
     </div>
 
@@ -61,6 +61,9 @@
 <span>  point_size <span class="op">=</span> <span class="fl">1.6</span>,</span>
 <span>  point_alpha <span class="op">=</span> <span class="fl">0.8</span>,</span>
 <span>  legend_point_size <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  point_border <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  point_stroke <span class="op">=</span> <span class="fl">0.3</span>,</span>
+<span>  legend_title <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  color <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  colours <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -90,6 +93,21 @@
 <dt id="arg-legend-point-size">legend_point_size<a class="anchor" aria-label="anchor" href="#arg-legend-point-size"></a></dt>
 <dd><p>Size of the coloured dots in the legend (default <code>3</code>, larger
 than the plotted points so the key is easy to read); <code>NULL</code> leaves it as-is.</p></dd>
+
+
+<dt id="arg-point-border">point_border<a class="anchor" aria-label="anchor" href="#arg-point-border"></a></dt>
+<dd><p>Outline colour for each point (e.g. <code>"black"</code>), or <code>NULL</code>
+(default) for unoutlined points. Outlined points use shape 21, so the
+categories drive <code>fill</code> rather than <code>colour</code>.</p></dd>
+
+
+<dt id="arg-point-stroke">point_stroke<a class="anchor" aria-label="anchor" href="#arg-point-stroke"></a></dt>
+<dd><p>Outline width (default <code>0.3</code>); ignored when <code>point_border</code>
+is <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-legend-title">legend_title<a class="anchor" aria-label="anchor" href="#arg-legend-title"></a></dt>
+<dd><p>Title for the colour legend (default: the <code>colour</code> column name).</p></dd>
 
 </dl></div>
     <div class="section level2">

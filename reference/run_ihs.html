@@ -13,7 +13,7 @@ its frequency."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,7 +50,7 @@ its frequency."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Integrated haplotype score (iHS)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>run_ihs.Rd</code></div>
     </div>
 
@@ -70,7 +70,11 @@ its frequency.</p>
 <span>  polarized <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  freqbin <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  min_maf <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  maf_bands <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  min_samples <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>  maxgap <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  scalegap <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  discard_at_border <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  threads <span class="op">=</span> <span class="fl">1</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -112,8 +116,49 @@ change sign (most in the 0.05-0.1 and &gt;0.3 MAF bands).</p></dd>
 <dd><p>Minor-allele frequency floor applied at standardisation.</p></dd>
 
 
+<dt id="arg-maf-bands">maf_bands<a class="anchor" aria-label="anchor" href="#arg-maf-bands"></a></dt>
+<dd><p>Standardise within this many minor-allele-frequency bands, cut at
+quantiles of the observed frequencies so each band holds a similar number of markers.
+<code>NULL</code> (default) leaves the standardisation to <span class="pkg">rehh</span> and <code>freqbin</code>. The spread of
+the log iHH ratio depends on how common the minor allele is – a rarer allele is
+carried by fewer haplotypes, so its integrals are noisier – and a single bin cannot
+remove that, which leaves rarer SNPs over-represented in the tail. Bands do remove it,
+without running into the empty bins that make <span class="pkg">rehh</span>'s own binning unusable on an
+unpolarized scan. Around 10 is reasonable; it replaces <code>freqbin</code> rather than combining
+with it, and it changes every score, so a result computed with it is not comparable
+to one computed without.</p></dd>
+
+
 <dt id="arg-min-samples">min_samples<a class="anchor" aria-label="anchor" href="#arg-min-samples"></a></dt>
 <dd><p>Skip groups smaller than this.</p></dd>
+
+
+<dt id="arg-maxgap">maxgap<a class="anchor" aria-label="anchor" href="#arg-maxgap"></a></dt>
+<dd><p>Largest gap between consecutive SNPs, in base pairs, that the EHH
+integration may cross; <code>NA</code> (the default, and <span class="pkg">rehh</span>'s) lets it cross any gap.
+This matters more than its default suggests. A region with no SNPs – a centromere, a
+masked hypervariable block – has nothing to break the haplotype, so EHH runs flat
+across it and the integral accumulates <code>EHH x gap length</code>. The SNPs flanking such a
+hole then score on the width of the hole rather than on their haplotypes, in either
+direction: the ratio is diluted towards zero when both alleles carry EHH into the gap,
+and inflated when only one does. Pick a value from the data's own spacing (several
+dozen times the median gap leaves ordinary density untouched while stopping at a real
+hole) rather than from a round number.</p></dd>
+
+
+<dt id="arg-scalegap">scalegap<a class="anchor" aria-label="anchor" href="#arg-scalegap"></a></dt>
+<dd><p>Gaps wider than this are counted as being exactly this wide, rather than
+stopping the integration outright; <code>NA</code> (default) does not rescale. A softer form of
+<code>maxgap</code> – it caps a hole's contribution instead of refusing to cross it.</p></dd>
+
+
+<dt id="arg-discard-at-border">discard_at_border<a class="anchor" aria-label="anchor" href="#arg-discard-at-border"></a></dt>
+<dd><p>Return <code>NA</code> instead of a truncated integral when the
+integration runs into the end of a chromosome or a gap wider than <code>maxgap</code>. <code>NULL</code>
+(default) ties it to <code>maxgap</code>: off when no <code>maxgap</code> is set (so the markers nearest the
+telomeres are still scored), on when one is. On sparse markers this can empty the scan
+– if EHH never decays before the data runs out, every marker is at a border – so a
+scan that comes back mostly <code>NA</code> says so.</p></dd>
 
 
 <dt id="arg-threads">threads<a class="anchor" aria-label="anchor" href="#arg-threads"></a></dt>
@@ -144,7 +189,7 @@ package rehh to detect positive selection from haplotype structure.
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="ihs_genes.html">ihs_genes()</a></code>, <code><a href="plot_ihs.html">plot_ihs()</a></code>, <code><a href="run_rsb.html">run_rsb()</a></code>, <code><a href="beta_score.html">beta_score()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="ihs_windows.html">ihs_windows()</a></code>, <code><a href="ihs_genes.html">ihs_genes()</a></code>, <code><a href="plot_ihs.html">plot_ihs()</a></code>, <code><a href="run_rsb.html">run_rsb()</a></code>, <code><a href="beta_score.html">beta_score()</a></code></p></div>
     </div>
 
     <div class="section level2">

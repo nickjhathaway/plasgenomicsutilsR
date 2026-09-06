@@ -22,6 +22,7 @@ plot_structure_figure(
   region_colours = NULL,
   cluster_colours = NULL,
   region_label = NULL,
+  cluster_label = "Ancestry\ncomponent",
   base_size = 11,
   border = TRUE,
   border_colour = "black",
@@ -29,6 +30,10 @@ plot_structure_figure(
   legend = "right",
   legend_point_size = 3.5,
   point_size = 1.6,
+  point_border = NULL,
+  point_stroke = 0.3,
+  tags = NULL,
+  tag_size = NULL,
   point_alpha = 0.8,
   umap_ratio = 1,
   file = NULL,
@@ -95,6 +100,14 @@ plot_structure_figure(
 
   Legend title for the region colours (default `colour`).
 
+- cluster_label:
+
+  Legend title for the ancestry fills. The K components are what sNMF
+  calls clusters, but this figure sits them beside a UMAP, where the
+  visible groupings are also clusters, so a legend reading "cluster"
+  invites reading the two as the same thing. The default wraps over two
+  lines so the longer wording costs no legend width.
+
 - base_size:
 
   Base font size shared by every panel.
@@ -121,6 +134,30 @@ plot_structure_figure(
 - point_size, point_alpha:
 
   Size and opacity of the UMAP scatter points.
+
+- point_border:
+
+  Outline colour for the UMAP points (e.g. `"black"`), or `NULL`
+  (default) for unoutlined points. Outlined points use shape 21, so the
+  region colours drive `fill` rather than `colour`.
+
+- point_stroke:
+
+  Width of that outline (default `0.3`); ignored when `point_border` is
+  `NULL`.
+
+- tags:
+
+  Panel tags for a figure legend, e.g. `c("a", "b")` (or just `"a"`,
+  which continues to `"b"`): the first goes on the UMAP, the second on
+  the admixture block. `NULL` (default) draws no tags. Tagging with
+  [`patchwork::plot_annotation()`](https://patchwork.data-imaginist.com/reference/plot_annotation.html)
+  directly does not work here – `tag_levels` would letter every one of
+  the dozen admixture panels separately.
+
+- tag_size:
+
+  Tag point size (default `base_size * 1.4`, bold).
 
 - umap_ratio:
 

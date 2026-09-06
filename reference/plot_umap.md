@@ -12,6 +12,9 @@ plot_umap(
   point_size = 1.6,
   point_alpha = 0.8,
   legend_point_size = 3,
+  point_border = NULL,
+  point_stroke = 0.3,
+  legend_title = NULL,
   color = NULL,
   colours = NULL
 )
@@ -43,6 +46,20 @@ plot_umap(
 
   Size of the coloured dots in the legend (default `3`, larger than the
   plotted points so the key is easy to read); `NULL` leaves it as-is.
+
+- point_border:
+
+  Outline colour for each point (e.g. `"black"`), or `NULL` (default)
+  for unoutlined points. Outlined points use shape 21, so the categories
+  drive `fill` rather than `colour`.
+
+- point_stroke:
+
+  Outline width (default `0.3`); ignored when `point_border` is `NULL`.
+
+- legend_title:
+
+  Title for the colour legend (default: the `colour` column name).
 
 ## Value
 

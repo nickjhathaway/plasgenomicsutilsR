@@ -26,6 +26,10 @@ plot_ibd_tugofwar(
   highlight_genes = NULL,
   label_genes = NULL,
   draw_threshold = TRUE,
+  top_quantile = NULL,
+  metric_label = NULL,
+  top_percent = NULL,
+  centre_gap = 0.08,
   selection_colour = "#fd8d3c",
   ibd_colour = "#2166ac"
 )
@@ -147,6 +151,49 @@ plot_ibd_tugofwar(
   takes, in the same colours, resolved by the same helper. Each line is
   mapped through the same transform as the mirrored selection half, so
   it lands where the data does.
+
+- top_quantile:
+
+  Draw a reference line at this quantile of the top track's own
+  distribution – `0.99` for the 99th percentile, `NULL` (default) for no
+  line. This is an empirical reference, not a test: it says how high the
+  statistic reaches across the genome, so a peak can be read against the
+  rest of the scan rather than against a nominal per-SNP tail. It is
+  what a windowed fraction wants, because the fraction of SNPs over
+  `threshold` in
+  [`ihs_windows()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_windows.md)
+  has no significance line of its own – the cutoff inside it defines the
+  tail, and the evidence is the genome-wide distribution of the
+  fraction. The quantile is taken on the table as passed in, before
+  `chroms`, `skip_chr` and `zoom` crop it, so dropping the quiet
+  chromosomes cannot raise the bar its own peaks are then judged
+  against; and per group when the track has a group column, so each
+  panel's line is that region's genome-wide quantile whether or not the
+  other regions are drawn. Stacks with `draw_threshold`, in its own
+  colour.
+
+- metric_label:
+
+  Name for the top metric on the shared axis. `NULL` (default) uses the
+  column name, except for a column the plot knows how to write –
+  `frac_extreme` from
+  [`ihs_windows()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_windows.md)
+  reads `Extreme Fraction`, matching `IBD Fraction` below it.
+
+- top_percent:
+
+  Write the top track's tick labels as percentages. `NULL` (default)
+  does so when the metric is a fraction (and always under
+  `scale = "free"`, where both halves are percentages of their own
+  maximum), so a fraction on top is not shown in different units from
+  the fraction underneath it.
+
+- centre_gap:
+
+  Fraction of each half-axis left empty at the centre line, so the
+  tallest bar of each track – and its largest tick label – stops short
+  of the middle instead of meeting the other track's there. `0` restores
+  the two halves meeting.
 
 - selection_colour, ibd_colour:
 

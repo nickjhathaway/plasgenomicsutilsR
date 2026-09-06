@@ -11,7 +11,7 @@ the same thing; this asks who is related overall, so the amount is the point."><
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,7 +48,7 @@ the same thing; this asks who is related overall, so the amount is the point."><
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Genome-wide IBD relatedness network</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/plot_ibd_pair_network.R" class="external-link"><code>R/plot_ibd_pair_network.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/plot_ibd_pair_network.R" class="external-link"><code>R/plot_ibd_pair_network.R</code></a></small>
       <div class="d-none name"><code>plot_ibd_pair_network.Rd</code></div>
     </div>
 
@@ -77,6 +77,8 @@ the same thing; this asks who is related overall, so the amount is the point.</p
 <span>  spread <span class="op">=</span> <span class="fl">1.5</span>,</span>
 <span>  node_size <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  node_alpha <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>  border <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  border_width <span class="op">=</span> <span class="fl">0.4</span>,</span>
 <span>  edge_colour <span class="op">=</span> <span class="st">"grey65"</span>,</span>
 <span>  edge_alpha <span class="op">=</span> <span class="fl">0.6</span>,</span>
 <span>  weight_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.15</span>, <span class="fl">2.6</span><span class="op">)</span>,</span>
@@ -146,6 +148,18 @@ reproducible.</p></dd>
 
 <dt id="arg-node-size-node-alpha-edge-colour-edge-color-edge-alpha">node_size, node_alpha, edge_colour, edge_color, edge_alpha<a class="anchor" aria-label="anchor" href="#arg-node-size-node-alpha-edge-colour-edge-color-edge-alpha"></a></dt>
 <dd><p>Node and edge aesthetics.</p></dd>
+
+
+<dt id="arg-border">border<a class="anchor" aria-label="anchor" href="#arg-border"></a></dt>
+<dd><p>Outline colour for the nodes, or <code>NA</code> (default) for none. An outline makes
+a dark category legible where it sits over the grey edge bundles, at the cost of the
+shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
+this on draws every node as a filled circle and maps the colour group to the fill. It
+is therefore an error to give both <code>border</code> and <code>shape_group</code>.</p></dd>
+
+
+<dt id="arg-border-width">border_width<a class="anchor" aria-label="anchor" href="#arg-border-width"></a></dt>
+<dd><p>Outline width when <code>border</code> is set.</p></dd>
 
 
 <dt id="arg-weight-range">weight_range<a class="anchor" aria-label="anchor" href="#arg-weight-range"></a></dt>

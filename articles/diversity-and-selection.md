@@ -396,7 +396,7 @@ plot_region_haplotypes(ps, "pfdhps", pad = 20000, split = "country",
 
 ![](diversity-and-selection_files/figure-html/unnamed-chunk-18-1.png)
 
-`spacing` decides what the horizontal axis means, and the two answers
+`spacing` decides what the horizontal axis means, and the three answers
 show different things. `"even"` (the default) gives every SNP the same
 width, which is how the haplotype structure is easiest to read but says
 nothing about distance. `"genomic"` keeps every mark the same width and
@@ -418,6 +418,34 @@ plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
 ```
 
 ![](diversity-and-selection_files/figure-html/unnamed-chunk-19-1.png)
+
+Genomic spacing has one honest limitation worth knowing: every mark is
+the same width, so SNPs closer together than that width overlap and read
+as a single wide block. A dense cluster therefore looks like one fat
+SNP, and there is no width you can pick that both fits a dense window
+and stays visible in a sparse one.
+
+`"gapped"` is the middle ground. Every SNP keeps a full column as under
+`"even"`, and an empty stretch of genome buys blank columns — one per
+`gap_unit` (a fiftieth of the window by default), capped at `gap_max`
+for any single gap. Ordinary spacing between SNPs costs nothing, so only
+a stretch noticeably emptier than the rest opens up:
+
+``` r
+
+plot_region_haplotypes(ps, "pfcrt", pad = 20000, split = "country",
+                       spacing = "gapped", genes = PF_EXAMPLE_DRUG_GENES)
+```
+
+![](diversity-and-selection_files/figure-html/unnamed-chunk-20-1.png)
+
+The cap is what keeps it a compression rather than a coordinate:
+distances come out ordered and roughly proportional, not to scale. Read
+it for “there is a lot of nothing here”, not for how much — `"genomic"`
+is still the one to use when the answer has to be measured off the axis.
+The blank columns also give the gene track somewhere to draw, so a gene
+sitting in a desert with no genotyped SNP of its own appears here, where
+`"even"` drops it.
 
 One thing to be sure of before reading the colours: `allele` says
 whether a dosage of 2 means two alternate alleles or two reference ones.
@@ -475,7 +503,7 @@ b <- beta_score(ps, group = "country", window = 300000, min_window_snps = 1)
 plot_beta(b)
 ```
 
-![](diversity-and-selection_files/figure-html/unnamed-chunk-22-1.png)
+![](diversity-and-selection_files/figure-html/unnamed-chunk-23-1.png)
 
 Use `window = 1000` (the default) on a real, dense callset; the fixture
 needs a far wider window just to find any neighbours.

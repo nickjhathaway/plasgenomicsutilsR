@@ -17,7 +17,7 @@ plot_region_haplotypes(
   annotations = NULL,
   genotypes = NULL,
   samples = NULL,
-  spacing = c("even", "genomic"),
+  spacing = c("even", "genomic", "gapped"),
   cluster = TRUE,
   dendrogram = TRUE,
   dend_width = 0.15,
@@ -33,11 +33,14 @@ plot_region_haplotypes(
   min_span = 0,
   max_snps = 2000,
   snp_width = NULL,
+  gap_unit = NULL,
+  gap_max = 10,
   colours = NULL,
   na_colour = "grey85",
   show_sample_names = NULL,
   reference = DEFAULT_REFERENCE,
   annotation_colours = NULL,
+  additional_genotypes = NULL,
   border_color = NULL,
   colors = NULL,
   na_color = NULL,
@@ -61,9 +64,14 @@ plot_region_haplotypes(
 
 - split:
 
-  Optional metadata column whose levels block the rows. Samples are
+  Optional metadata column(s) whose levels block the rows. Samples are
   clustered inside each block, and the blocks keep the column's level
-  order.
+  order – a factor's levels are honoured, so a `region` ordered
+  geographically stays geographic. More than one column nests the blocks
+  in the order given: `split = c("region", "PIN_variant")` makes one
+  block per region, each divided by variant, with a strip per column and
+  only the combinations that hold a sample drawn. Samples missing any of
+  the columns are dropped with a message.
 
 - annotations:
 
@@ -92,7 +100,9 @@ plot_region_haplotypes(
 - spacing:
 
   `"even"` (default) gives every SNP equal width; `"genomic"` places
-  each at its real coordinate.
+  each at its real coordinate; `"gapped"` keeps the equal widths and
+  inserts blank columns for empty stretches of genome, so distance is
+  visible without the SNPs shrinking.
 
 - cluster:
 
@@ -174,9 +184,18 @@ plot_region_haplotypes(
   (default) uses 0.5% of the window, wide enough to see and narrow
   enough to leave the gaps between SNPs visible.
 
+- gap_unit, gap_max:
+
+  Under `"gapped"` spacing, base pairs of empty genome per blank column
+  and the most blank columns any one gap may claim (default `10`).
+  `gap_unit` defaults to `NULL`, a fiftieth of the window; lower it to
+  exaggerate distance, raise it to play it down. `gap_max` stops a
+  single desert from squeezing every SNP into the margin.
+
 - colours, colors:
 
-  Named fill colours for `reference` / `mixed` / `alternate`.
+  Named fill colours for `reference` / `mixed` / `alternate`, and for
+  any state an `additional_genotypes` marker contributes.
 
 - na_colour, na_color:
 
@@ -202,6 +221,20 @@ plot_region_haplotypes(
   colour everywhere at once, which is what keeps a level looking the
   same across figures.
 
+- additional_genotypes:
+
+  Optional VCF/BCF path(s) holding markers the genotype matrix cannot
+  express. A dosage counts copies of one allele, so a site with three
+  alleles collapses every non-reference call to the same number – which
+  is why such sites are usually dropped from a callset in the first
+  place. Markers given here are read as the **set of alleles** each
+  sample carries, so `reference`, `alternate 1`, `alternate 2` and the
+  mixed states between them stay distinct. Needs `bcftools` on `PATH`;
+  samples are matched by name, and a position already in the genotypes
+  is an error. Only the states that actually occur are added to the
+  legend: the full enumeration of a triallelic site is seven, and most
+  of them are ordinarily empty.
+
 ## Value
 
 A patchwork of the dendrogram, heatmap and gene track, or a plain ggplot
@@ -218,12 +251,30 @@ thinner than they are. Build the object with
 for PCA / UMAP / admixture, where pruning is what you want; the plot
 says so when the object records that it was pruned.
 
-`spacing` decides what the horizontal axis means, and the two answers
+`spacing` decides what the horizontal axis means, and the three answers
 show different things. `"even"` gives every SNP the same width, which is
 how the haplotype structure is easiest to read but says nothing about
 distance. `"genomic"` puts each SNP at its real coordinate, so a dense
 cluster of SNPs looks dense – correct about position, but sparse
-stretches become wide empty bands.
+stretches become wide empty bands, and SNPs closer together than one
+mark width merge into a single block that cannot be told from one wide
+SNP.
+
+`"gapped"` is the middle ground: every SNP keeps a full readable column
+as under `"even"`, and an empty stretch of genome buys blank columns –
+one per `gap_unit`, up to `gap_max` for any single gap. A desert then
+reads as a visible gap instead of vanishing, without a long one taking
+over the panel. `gap_unit` defaults to a fiftieth of the window, so
+ordinary spacing between SNPs costs nothing and only a stretch
+noticeably emptier than the rest opens up. The cap is what keeps it a
+compression rather than a coordinate: distances come out ordered and
+roughly proportional, not to scale, so read it for "there is a lot of
+nothing here", not for how much.
+
+It also gives the gene track somewhere to draw. Under `"even"` a gene
+with no genotyped SNP has no columns and is dropped from the track with
+a message; under `"gapped"` the blank columns are real space, so a gene
+sitting in a desert still appears, in about the right place.
 
 Either way a SNP is only ever drawn over the genes it really falls in.
 Under `"even"` the axis counts SNPs, so a gene's box is exactly the

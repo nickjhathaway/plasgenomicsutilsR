@@ -13,7 +13,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,7 +50,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>EHH decay around one SNP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
       <div class="d-none name"><code>plot_ehh.Rd</code></div>
     </div>
 
@@ -140,7 +140,9 @@ would crowd a hundred names under it, so this is opt-in.</p></dd>
 
 
 <dt id="arg-colours-colors">colours, colors<a class="anchor" aria-label="anchor" href="#arg-colours-colors"></a></dt>
-<dd><p>Named colours for <code>reference</code> / <code>alternate</code>.</p></dd>
+<dd><p>Named colours for the focal alleles. A biallelic marker has
+<code>reference</code> and <code>alternate</code>; one with more alleles has <code>reference</code>, <code>alternate 1</code>,
+<code>alternate 2</code>, ... and takes its default colours from the shared palette.</p></dd>
 
 
 <dt id="arg-show-freq">show_freq<a class="anchor" aria-label="anchor" href="#arg-show-freq"></a></dt>

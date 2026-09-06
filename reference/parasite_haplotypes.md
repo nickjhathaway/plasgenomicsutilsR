@@ -20,7 +20,8 @@ parasite_haplotypes(
   impute = TRUE,
   seed = 42,
   meta = NULL,
-  genotype = NULL
+  genotype = NULL,
+  alleles = c("dosage", "index")
 )
 ```
 
@@ -73,6 +74,24 @@ parasite_haplotypes(
 
   As in
   [`pop_diversity()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_diversity.md).
+
+- alleles:
+
+  How the input matrix codes its calls. `"dosage"` (default) is ALT
+  dosage 0/1/2, which can only ever describe two alleles – 2 is two
+  copies of the one ALT, not a second ALT. `"index"` is one allele index
+  per haplotype (0 = reference, then 1, 2, ...), which is what a marker
+  with more than two alleles needs. An index matrix is already haploid,
+  so nothing is made haploid and no heterozygote is resolved (`het` does
+  not apply); the MAF floor becomes the share of everything that is not
+  the commonest allele, and imputation draws from the alleles seen at
+  that SNP. Only the EHH curves read more than two alleles –
+  [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md),
+  [`run_rsb()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_rsb.md)
+  and
+  [`run_xpehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_xpehh.md)
+  rest on a ratio between exactly two, and rehh's `scan_hh()` silently
+  keeps the two commonest.
 
 ## Value
 

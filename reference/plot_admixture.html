@@ -11,7 +11,7 @@ column, with an optional group colour strip whose colours can match another plot
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,7 +48,7 @@ column, with an optional group colour strip whose colours can match another plot
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Admixture (STRUCTURE) bar plot from a Q matrix</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/pop_structure.R" class="external-link"><code>R/pop_structure.R</code></a></small>
       <div class="d-none name"><code>plot_admixture.Rd</code></div>
     </div>
 
@@ -75,6 +75,7 @@ column, with an optional group colour strip whose colours can match another plot
 <span>  border_linewidth <span class="op">=</span> <span class="fl">0.15</span>,</span>
 <span>  legend_position <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"right"</span>, <span class="st">"bottom"</span>, <span class="st">"top"</span>, <span class="st">"left"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  legend_rows <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cluster_label <span class="op">=</span> <span class="st">"Ancestry\ncomponent"</span>,</span>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  group_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  border_color <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -148,6 +149,13 @@ before wrapping into another column/row. <code>NULL</code> (default) wraps a sid
 10 keys and splits a horizontal one over two
 rows, which keeps <code>K</code> = 15 plus a group strip on the page. The suggested output height
 accounts for whatever this works out to.</p></dd>
+
+
+<dt id="arg-cluster-label">cluster_label<a class="anchor" aria-label="anchor" href="#arg-cluster-label"></a></dt>
+<dd><p>Legend title for the ancestry fills. The K components are what
+sNMF calls clusters, but next to a UMAP – where the visible groupings are also
+clusters – a legend reading "cluster" invites reading the two as the same thing.
+The default wraps over two lines so the longer wording costs no legend width.</p></dd>
 
 </dl></div>
     <div class="section level2">

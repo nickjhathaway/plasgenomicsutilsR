@@ -97,7 +97,10 @@ plot_ehh(
 
 - colours, colors:
 
-  Named colours for `reference` / `alternate`.
+  Named colours for the focal alleles. A biallelic marker has
+  `reference` and `alternate`; one with more alleles has `reference`,
+  `alternate 1`, `alternate 2`, ... and takes its default colours from
+  the shared palette.
 
 - show_freq:
 

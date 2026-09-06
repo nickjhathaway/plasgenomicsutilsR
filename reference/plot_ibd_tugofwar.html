@@ -13,7 +13,7 @@ tinted to their track (selection on top, IBD on the bottom)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,7 +50,7 @@ tinted to their track (selection on top, IBD on the bottom)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>IBD / selection "tug-of-war" mirror plot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
       <div class="d-none name"><code>plot_ibd_tugofwar.Rd</code></div>
     </div>
 
@@ -80,6 +80,10 @@ tinted to their track (selection on top, IBD on the bottom).</p>
 <span>  highlight_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  label_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  draw_threshold <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  top_quantile <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  metric_label <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  top_percent <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  centre_gap <span class="op">=</span> <span class="fl">0.08</span>,</span>
 <span>  selection_colour <span class="op">=</span> <span class="st">"#fd8d3c"</span>,</span>
 <span>  ibd_colour <span class="op">=</span> <span class="st">"#2166ac"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -186,6 +190,40 @@ only when not <code>normalized</code>): <code>TRUE</code> / <code>"bonferroni"</
 <code><a href="plot_selection_manhattan.html">plot_selection_manhattan()</a></code> takes, in the same colours, resolved by the same helper.
 Each line is mapped through the same transform as the mirrored selection half, so it
 lands where the data does.</p></dd>
+
+
+<dt id="arg-top-quantile">top_quantile<a class="anchor" aria-label="anchor" href="#arg-top-quantile"></a></dt>
+<dd><p>Draw a reference line at this quantile of the top track's own
+distribution – <code>0.99</code> for the 99th percentile, <code>NULL</code> (default) for no line. This is
+an empirical reference, not a test: it says how high the statistic reaches across the
+genome, so a peak can be read against the rest of the scan rather than against a
+nominal per-SNP tail. It is what a windowed fraction wants, because the fraction of
+SNPs over <code>threshold</code> in <code><a href="ihs_windows.html">ihs_windows()</a></code> has no significance line of its own – the
+cutoff inside it defines the tail, and the evidence is the genome-wide distribution of
+the fraction. The quantile is taken on the table as passed in, before <code>chroms</code>,
+<code>skip_chr</code> and <code>zoom</code> crop it, so dropping the quiet chromosomes cannot raise the bar
+its own peaks are then judged against; and per group when the track has a group
+column, so each panel's line is that region's genome-wide quantile whether or not the
+other regions are drawn. Stacks with <code>draw_threshold</code>, in its own colour.</p></dd>
+
+
+<dt id="arg-metric-label">metric_label<a class="anchor" aria-label="anchor" href="#arg-metric-label"></a></dt>
+<dd><p>Name for the top metric on the shared axis. <code>NULL</code> (default) uses
+the column name, except for a column the plot knows how to write – <code>frac_extreme</code>
+from <code><a href="ihs_windows.html">ihs_windows()</a></code> reads <code>Extreme Fraction</code>, matching <code>IBD Fraction</code> below it.</p></dd>
+
+
+<dt id="arg-top-percent">top_percent<a class="anchor" aria-label="anchor" href="#arg-top-percent"></a></dt>
+<dd><p>Write the top track's tick labels as percentages. <code>NULL</code> (default)
+does so when the metric is a fraction (and always under <code>scale = "free"</code>, where both
+halves are percentages of their own maximum), so a fraction on top is not shown in
+different units from the fraction underneath it.</p></dd>
+
+
+<dt id="arg-centre-gap">centre_gap<a class="anchor" aria-label="anchor" href="#arg-centre-gap"></a></dt>
+<dd><p>Fraction of each half-axis left empty at the centre line, so the
+tallest bar of each track – and its largest tick label – stops short of the middle
+instead of meeting the other track's there. <code>0</code> restores the two halves meeting.</p></dd>
 
 
 <dt id="arg-selection-colour-ibd-colour">selection_colour, ibd_colour<a class="anchor" aria-label="anchor" href="#arg-selection-colour-ibd-colour"></a></dt>

@@ -164,15 +164,15 @@ loci:
 ``` r
 
 PF_EXAMPLE_DRUG_GENES
-#>   Pf3D7_chrom   start     end chrom       gene_id      name
-#> 1 Pf3D7_07_v3  403221  406317     7 PF3D7_0709000     pfcrt
-#> 2 Pf3D7_04_v3  748087  749914     4 PF3D7_0417200    pfdhfr
-#> 3 Pf3D7_05_v3  957889  962149     5 PF3D7_0523000    pfmdr1
-#> 4 Pf3D7_08_v3  548199  550616     8 PF3D7_0810800    pfdhps
-#> 5 Pf3D7_13_v3 1724816 1726997    13 PF3D7_1343700 pfkelch13
-#> 6 Pf3D7_06_v3 1213947 1216005     6 PF3D7_0629500    pfaat1
-#> 7 Pf3D7_12_v3  974371  975541    12 PF3D7_1224000    pfgch1
-#> 8 Pf3D7_07_v3  891682  899051     7 PF3D7_0720700     pfpx1
+#>   Pf3D7_chrom   start     end chrom       gene_id      name strand
+#> 1 Pf3D7_07_v3  403221  406317     7 PF3D7_0709000     pfcrt      +
+#> 2 Pf3D7_04_v3  748087  749914     4 PF3D7_0417200    pfdhfr      +
+#> 3 Pf3D7_05_v3  957889  962149     5 PF3D7_0523000    pfmdr1      +
+#> 4 Pf3D7_08_v3  548199  550616     8 PF3D7_0810800    pfdhps      +
+#> 5 Pf3D7_13_v3 1724816 1726997    13 PF3D7_1343700 pfkelch13      -
+#> 6 Pf3D7_06_v3 1213947 1216005     6 PF3D7_0629500    pfaat1      -
+#> 7 Pf3D7_12_v3  974371  975541    12 PF3D7_1224000    pfgch1      +
+#> 8 Pf3D7_07_v3  891682  899051     7 PF3D7_0720700     pfpx1      +
 ```
 
 Pass `highlight_genes` to pick which to mark and `label_genes = TRUE` to

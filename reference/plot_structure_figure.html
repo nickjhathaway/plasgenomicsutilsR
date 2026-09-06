@@ -15,7 +15,7 @@ ordered once and reused, laid out over one or more rows."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,7 +52,7 @@ ordered once and reused, laid out over one or more rows."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Combined UMAP + admixture figure</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/structure_figure.R" class="external-link"><code>R/structure_figure.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/structure_figure.R" class="external-link"><code>R/structure_figure.R</code></a></small>
       <div class="d-none name"><code>plot_structure_figure.Rd</code></div>
     </div>
 
@@ -78,6 +78,7 @@ ordered once and reused, laid out over one or more rows.</p>
 <span>  region_colours <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cluster_colours <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  region_label <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cluster_label <span class="op">=</span> <span class="st">"Ancestry\ncomponent"</span>,</span>
 <span>  base_size <span class="op">=</span> <span class="fl">11</span>,</span>
 <span>  border <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  border_colour <span class="op">=</span> <span class="st">"black"</span>,</span>
@@ -85,6 +86,10 @@ ordered once and reused, laid out over one or more rows.</p>
 <span>  legend <span class="op">=</span> <span class="st">"right"</span>,</span>
 <span>  legend_point_size <span class="op">=</span> <span class="fl">3.5</span>,</span>
 <span>  point_size <span class="op">=</span> <span class="fl">1.6</span>,</span>
+<span>  point_border <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  point_stroke <span class="op">=</span> <span class="fl">0.3</span>,</span>
+<span>  tags <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tag_size <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  point_alpha <span class="op">=</span> <span class="fl">0.8</span>,</span>
 <span>  umap_ratio <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -146,6 +151,14 @@ region strip / K-cluster fills.</p></dd>
 <dd><p>Legend title for the region colours (default <code>colour</code>).</p></dd>
 
 
+<dt id="arg-cluster-label">cluster_label<a class="anchor" aria-label="anchor" href="#arg-cluster-label"></a></dt>
+<dd><p>Legend title for the ancestry fills. The K components are what
+sNMF calls clusters, but this figure sits them beside a UMAP, where the visible
+groupings are also clusters, so a legend reading "cluster" invites reading the two as
+the same thing. The default wraps over two lines so the longer wording costs no
+legend width.</p></dd>
+
+
 <dt id="arg-base-size">base_size<a class="anchor" aria-label="anchor" href="#arg-base-size"></a></dt>
 <dd><p>Base font size shared by every panel.</p></dd>
 
@@ -171,6 +184,29 @@ the key reads clearly next to the small plotted points).</p></dd>
 
 <dt id="arg-point-size-point-alpha">point_size, point_alpha<a class="anchor" aria-label="anchor" href="#arg-point-size-point-alpha"></a></dt>
 <dd><p>Size and opacity of the UMAP scatter points.</p></dd>
+
+
+<dt id="arg-point-border">point_border<a class="anchor" aria-label="anchor" href="#arg-point-border"></a></dt>
+<dd><p>Outline colour for the UMAP points (e.g. <code>"black"</code>), or <code>NULL</code>
+(default) for unoutlined points. Outlined points use shape 21, so the region
+colours drive <code>fill</code> rather than <code>colour</code>.</p></dd>
+
+
+<dt id="arg-point-stroke">point_stroke<a class="anchor" aria-label="anchor" href="#arg-point-stroke"></a></dt>
+<dd><p>Width of that outline (default <code>0.3</code>); ignored when
+<code>point_border</code> is <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-tags">tags<a class="anchor" aria-label="anchor" href="#arg-tags"></a></dt>
+<dd><p>Panel tags for a figure legend, e.g. <code>c("a", "b")</code> (or just <code>"a"</code>, which
+continues to <code>"b"</code>): the first goes on the UMAP, the second on the admixture block.
+<code>NULL</code> (default) draws no tags. Tagging with <code><a href="https://patchwork.data-imaginist.com/reference/plot_annotation.html" class="external-link">patchwork::plot_annotation()</a></code>
+directly does not work here – <code>tag_levels</code> would letter every one of the dozen
+admixture panels separately.</p></dd>
+
+
+<dt id="arg-tag-size">tag_size<a class="anchor" aria-label="anchor" href="#arg-tag-size"></a></dt>
+<dd><p>Tag point size (default <code>base_size * 1.4</code>, bold).</p></dd>
 
 
 <dt id="arg-umap-ratio">umap_ratio<a class="anchor" aria-label="anchor" href="#arg-umap-ratio"></a></dt>

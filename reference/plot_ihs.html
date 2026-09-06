@@ -11,7 +11,7 @@ genome-wide plots in the package."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,7 +48,7 @@ genome-wide plots in the package."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Manhattan plot of a haplotype-homozygosity scan</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/plot_scans.R" class="external-link"><code>R/plot_scans.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/plot_scans.R" class="external-link"><code>R/plot_scans.R</code></a></small>
       <div class="d-none name"><code>plot_ihs.Rd</code></div>
     </div>
 
@@ -62,7 +62,7 @@ genome-wide plots in the package.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_ihs</span><span class="op">(</span></span>
 <span>  <span class="va">scan</span>,</span>
-<span>  metric <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"neg_log10_p"</span>, <span class="st">"ihs"</span>, <span class="st">"value"</span><span class="op">)</span>,</span>
+<span>  metric <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"neg_log10_p"</span>, <span class="st">"ihs"</span>, <span class="st">"value"</span>, <span class="st">"frac_extreme"</span><span class="op">)</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  highlight_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -90,7 +90,8 @@ genome-wide plots in the package.</p>
 
 
 <dt id="arg-metric">metric<a class="anchor" aria-label="anchor" href="#arg-metric"></a></dt>
-<dd><p><code>"neg_log10_p"</code> (default) or the statistic itself (<code>"ihs"</code> / <code>"value"</code>).</p></dd>
+<dd><p><code>"neg_log10_p"</code> (default), the statistic itself (<code>"ihs"</code> / <code>"value"</code>), or
+<code>"frac_extreme"</code> for an <code><a href="ihs_windows.html">ihs_windows()</a></code> summary.</p></dd>
 
 
 <dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>

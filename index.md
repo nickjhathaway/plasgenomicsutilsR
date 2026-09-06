@@ -1,6 +1,6 @@
 # plasgenomicsutilsR
 
-> **Version 0.3.3** — early development; APIs, defaults, and outputs may
+> **Version 0.4.0** — early development; APIs, defaults, and outputs may
 > change between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** —
@@ -399,9 +399,14 @@ paths, not just the CRAN ones.)
   `split =` blocks the rows by a metadata column and clusters *within*
   each block (`ComplexHeatmap`’s `row_split` semantics), so a haplotype
   shared across a group reads as a solid band rather than being
-  scattered by one global ordering. `spacing = "genomic"` moves every
-  mark to its real coordinate, keeping them all the same width, so the
-  gaps between SNPs are what you see.
+  scattered by one global ordering; several columns
+  (`split = c("region", "PIN_variant")`) nest the blocks in the order
+  given, each keeping its own factor levels. `spacing = "genomic"` moves
+  every mark to its real coordinate, keeping them all the same width, so
+  the gaps between SNPs are what you see; `spacing = "gapped"` sits
+  between the two, keeping every SNP a full readable column and spending
+  blank columns on empty stretches of genome, so a desert is visible
+  without the SNPs shrinking into it.
 
 - **Coverage QC** —
   [`read_coverage()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_coverage.md),
@@ -558,6 +563,21 @@ devtools::load_all()
 devtools::test()
 devtools::document()
 ```
+
+`scripts/check.sh` runs everything CI runs, so a pull request does not
+have to be the thing that tells you `_pkgdown.yml` names a topic that no
+longer exists or that `man/` is behind the roxygen comments:
+
+``` bash
+scripts/check.sh          # + R CMD check, a couple of minutes
+scripts/check.sh --fast   # roxygen freshness, pkgdown config and testthat, under a minute
+```
+
+`--fast` is the loop between edits. It checks that `man/` and
+`NAMESPACE` match the roxygen comments (CI checks whatever was *pushed*,
+so a forgotten `document()` fails there and nowhere else), runs
+[`pkgdown::check_pkgdown()`](https://pkgdown.r-lib.org/reference/check_pkgdown.html),
+and runs the test suite — leaving only `R CMD check` for the full run.
 
 ## License
 

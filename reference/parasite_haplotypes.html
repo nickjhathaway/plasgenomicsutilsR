@@ -9,7 +9,7 @@ run_ihs() and its cross-population relatives need."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,7 +46,7 @@ run_ihs() and its cross-population relatives need."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Build phased haplotypes for a haplotype-homozygosity scan</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>parasite_haplotypes.Rd</code></div>
     </div>
 
@@ -69,7 +69,8 @@ run_ihs() and its cross-population relatives need."></head><body>
 <span>  impute <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">42</span>,</span>
 <span>  meta <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  genotype <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  genotype <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alleles <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dosage"</span>, <span class="st">"index"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -120,6 +121,19 @@ instead drops every SNP that still has a gap.</p></dd>
 
 <dt id="arg-meta-genotype">meta, genotype<a class="anchor" aria-label="anchor" href="#arg-meta-genotype"></a></dt>
 <dd><p>As in <code><a href="pop_diversity.html">pop_diversity()</a></code>.</p></dd>
+
+
+<dt id="arg-alleles">alleles<a class="anchor" aria-label="anchor" href="#arg-alleles"></a></dt>
+<dd><p>How the input matrix codes its calls. <code>"dosage"</code> (default) is ALT dosage
+0/1/2, which can only ever describe two alleles – 2 is two copies of the one ALT, not
+a second ALT. <code>"index"</code> is one allele index per haplotype (0 = reference, then 1, 2,
+...), which is what a marker with more than two alleles needs. An index matrix is
+already haploid, so nothing is made haploid and no heterozygote is resolved (<code>het</code> does
+not apply); the MAF floor becomes the share of everything that is not the commonest
+allele, and imputation draws from the alleles seen at that SNP. Only the EHH curves
+read more than two alleles – <code><a href="run_ihs.html">run_ihs()</a></code>, <code><a href="run_rsb.html">run_rsb()</a></code> and <code><a href="run_xpehh.html">run_xpehh()</a></code> rest on a
+ratio between exactly two, and <span class="pkg">rehh</span>'s <code>scan_hh()</code> silently keeps the two
+commonest.</p></dd>
 
 </dl></div>
     <div class="section level2">

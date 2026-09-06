@@ -9,7 +9,7 @@ gene markers used by the other genome-wide plots in the package.
 ``` r
 plot_ihs(
   scan,
-  metric = c("neg_log10_p", "ihs", "value"),
+  metric = c("neg_log10_p", "ihs", "value", "frac_extreme"),
   threshold = NULL,
   genes = NULL,
   highlight_genes = NULL,
@@ -40,8 +40,10 @@ plot_ihs(
 
 - metric:
 
-  `"neg_log10_p"` (default) or the statistic itself (`"ihs"` /
-  `"value"`).
+  `"neg_log10_p"` (default), the statistic itself (`"ihs"` / `"value"`),
+  or `"frac_extreme"` for an
+  [`ihs_windows()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_windows.md)
+  summary.
 
 - threshold:
 

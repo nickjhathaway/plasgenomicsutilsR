@@ -11,7 +11,7 @@ Intersect against this with bed_intersect() to flag genes that fall in these fam
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,7 +48,7 @@ Intersect against this with bed_intersect() to flag genes that fall in these fam
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Pf3D7 paralogous / hypervariable gene families</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/R/data.R" class="external-link"><code>R/data.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/R/data.R" class="external-link"><code>R/data.R</code></a></small>
       <div class="d-none name"><code>PF3D7_PARALOG_GENES.Rd</code></div>
     </div>
 
@@ -66,12 +66,15 @@ Intersect against this with <code><a href="bed_intersect.html">bed_intersect()</
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
     <p>A data frame with columns <code>Pf3D7_chrom</code>, <code>start</code>, <code>end</code>, <code>chrom</code>, <code>gene_id</code>,
-<code>description</code>; coordinates are 0-based half-open (see
-<a href="plasgenomicsutilsR-coordinates.html">plasgenomicsutilsR-coordinates</a>).</p>
+<code>description</code> and <code>strand</code> (<code>"+"</code> / <code>"-"</code>, as in <a href="PF3D7_GENES.html">PF3D7_GENES</a>); coordinates are 0-based
+half-open (see <a href="plasgenomicsutilsR-coordinates.html">plasgenomicsutilsR-coordinates</a>).</p>
     </div>
     <div class="section level2">
     <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
-    <p>The companion Python package (<code>plasgenomicsutils</code> <code>builtin:pf3d7_paralog_genes</code>).</p>
+    <p>The companion Python package (<code>plasgenomicsutils</code> <code>builtin:pf3d7_paralog_genes</code>),
+with <code>strand</code> joined on <code>gene_id</code> from the same VEuPathDB / PlasmoDB GFF <a href="PF3D7_GENES.html">PF3D7_GENES</a> is
+built from. About a quarter of these are pseudogenes, so they are absent from
+<a href="PF3D7_GENES.html">PF3D7_GENES</a>, which holds protein-coding genes only.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

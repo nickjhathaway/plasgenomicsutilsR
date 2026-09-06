@@ -67,6 +67,8 @@ workspace.
   : Population-structure workspace (PCA + UMAP + admixture)
 - [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
   : Load genotypes from a VCF, optionally LD-pruned
+- [`merge_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/merge_genotypes.md)
+  : Merge loaded genotype sets into one
 - [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)
   : Deprecated name for load_genotypes()
 - [`pop_structure()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pop_structure.md)
@@ -164,12 +166,16 @@ balancing selection from clustered allele frequencies (beta).
   : Build phased haplotypes for a haplotype-homozygosity scan
 - [`subset_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_haplotypes.md)
   : Keep only some of the haplotypes
+- [`add_haplotype_markers()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_haplotype_markers.md)
+  : Add markers to a haplotype set from a callset of their own
 - [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
   : Integrated haplotype score (iHS)
 - [`run_rsb()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_rsb.md)
   : Cross-population extended haplotype homozygosity (Rsb)
 - [`run_xpehh()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_xpehh.md)
   : Cross-population extended haplotype homozygosity (XP-EHH)
+- [`ihs_windows()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_windows.md)
+  : Windowed summary of an iHS scan
 - [`ihs_genes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_genes.md)
   : Summarise a haplotype scan per gene
 - [`plot_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ihs.md)
@@ -219,12 +225,21 @@ things one Fws value cannot tell apart.
 
 ## Colours
 
-Colour-blind-friendly palettes and a shared level-to-colour map.
+Colour-blind-friendly palettes, a shared level-to-colour map, and the
+check that shows – rather than asserts – how a figure’s colours read
+under each dichromacy.
 
 - [`meta_colors()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.md)
   : Assign colours to the levels of metadata columns
 - [`color_palette()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palette.md)
   : A colour-blind-friendly categorical palette
+- [`colour_blind_distance()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/colour_blind_distance.md)
+  [`color_blind_distance()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/colour_blind_distance.md)
+  : Smallest colour difference within (or between) palettes, under
+  colour blindness
+- [`plot_colour_blind_check()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_colour_blind_check.md)
+  [`plot_color_blind_check()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_colour_blind_check.md)
+  : Show how a set of palettes reads under colour blindness
 
 ## Saving and sizing
 
@@ -250,6 +265,13 @@ convention.
   : The amino acid a SNP falls in
 - [`read_gff_cds()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_cds.md)
   : Read the CDS features of a GFF
+- [`ensembl_gff_url()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_gff_url.md)
+  [`ensembl_genome_url()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_gff_url.md)
+  : Ensembl Protists download URLs
+- [`ensembl_species()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_species.md)
+  : Plasmodium genomes in an Ensembl Protists release
+- [`ENSEMBL_PROTISTS_RELEASE`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ENSEMBL_PROTISTS_RELEASE.md)
+  : Default Ensembl Protists release
 - [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md)
   : Intersect two sets of genomic intervals
 - [`bed_subtract()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_subtract.md)

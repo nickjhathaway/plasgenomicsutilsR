@@ -38,6 +38,14 @@ A data frame with 5318 rows and columns:
 
   friendly display name (see above)
 
+- strand:
+
+  `"+"` or `"-"`, the strand the gene is read on. `start`/`end` are
+  always given low-to-high whatever the strand, as intervals are
+  everywhere in this package, so this column is the only record of
+  orientation – and it is what says which end of the gene is its
+  beginning: a `"-"` gene starts at `end` and runs down to `start`
+
 ## Source
 
 VEuPathDB / PlasmoDB Pf3D7 GFF, release version 2020-09-01. The GFF is

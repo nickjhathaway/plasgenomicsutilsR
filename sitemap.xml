@@ -14,6 +14,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/authors.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/index.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/DEFAULT_REFERENCE.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ENSEMBL_PROTISTS_RELEASE.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/IbdResults.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_BP_PER_CM.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_CORE_CHROM_LENGTHS_BP.html</loc></url>
@@ -23,6 +24,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF_EXAMPLE_DRUG_GENES.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/aa_intervals.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_haplotype_markers.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/admixture_order.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.html</loc></url>
@@ -32,8 +34,11 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/color_palette.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/colour_blind_distance.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/coverage_qc.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ehh_candidates.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_gff_url.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_species.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_ibd_results.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_pop_structure.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_overlap.html</loc></url>
@@ -42,11 +47,13 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/haplotype_samples.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_results.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_genes.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_windows.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/index.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/jost_d.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ld_index.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_pop_structure.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/merge_genotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/n_pcs_for_variance.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/normalise_chr.html</loc></url>
@@ -58,6 +65,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture_multi_k.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_beta.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_colour_blind_check.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_by_chrom.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_dropout.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_coverage_summary.html</loc></url>

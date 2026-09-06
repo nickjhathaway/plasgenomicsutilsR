@@ -15,13 +15,21 @@ PF3D7_PARALOG_GENES
 ## Format
 
 A data frame with columns `Pf3D7_chrom`, `start`, `end`, `chrom`,
-`gene_id`, `description`; coordinates are 0-based half-open (see
+`gene_id`, `description` and `strand` (`"+"` / `"-"`, as in
+[PF3D7_GENES](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_GENES.md));
+coordinates are 0-based half-open (see
 [plasgenomicsutilsR-coordinates](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)).
 
 ## Source
 
 The companion Python package (`plasgenomicsutils`
-`builtin:pf3d7_paralog_genes`).
+`builtin:pf3d7_paralog_genes`), with `strand` joined on `gene_id` from
+the same VEuPathDB / PlasmoDB GFF
+[PF3D7_GENES](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_GENES.md)
+is built from. About a quarter of these are pseudogenes, so they are
+absent from
+[PF3D7_GENES](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_GENES.md),
+which holds protein-coding genes only.
 
 ## See also
 

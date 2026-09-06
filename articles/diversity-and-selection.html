@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -70,7 +70,7 @@
       <h1>Diversity, linkage and selection</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.3.3/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.0/vignettes/diversity-and-selection.Rmd" class="external-link"><code>vignettes/diversity-and-selection.Rmd</code></a></small>
       <div class="d-none name"><code>diversity-and-selection.Rmd</code></div>
     </div>
 
@@ -403,7 +403,7 @@ has in the UMAP or the admixture bars:</p>
 <span>                       annotations <span class="op">=</span> <span class="st">"country"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
 <p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-18-1.png" class="r-plt" alt="" width="768"></p>
 <p><code>spacing</code> decides what the horizontal axis means, and the
-two answers show different things. <code>"even"</code> (the default)
+three answers show different things. <code>"even"</code> (the default)
 gives every SNP the same width, which is how the haplotype structure is
 easiest to read but says nothing about distance. <code>"genomic"</code>
 keeps every mark the same width and moves it to its real coordinate, so
@@ -419,6 +419,28 @@ are clipped at gene edges instead.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"pfcrt"</span>, pad <span class="op">=</span> <span class="fl">20000</span>, split <span class="op">=</span> <span class="st">"country"</span>,</span>
 <span>                       spacing <span class="op">=</span> <span class="st">"genomic"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
 <p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" alt="" width="768"></p>
+<p>Genomic spacing has one honest limitation worth knowing: every mark
+is the same width, so SNPs closer together than that width overlap and
+read as a single wide block. A dense cluster therefore looks like one
+fat SNP, and there is no width you can pick that both fits a dense
+window and stays visible in a sparse one.</p>
+<p><code>"gapped"</code> is the middle ground. Every SNP keeps a full
+column as under <code>"even"</code>, and an empty stretch of genome buys
+blank columns — one per <code>gap_unit</code> (a fiftieth of the window
+by default), capped at <code>gap_max</code> for any single gap. Ordinary
+spacing between SNPs costs nothing, so only a stretch noticeably emptier
+than the rest opens up:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_region_haplotypes.html">plot_region_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, <span class="st">"pfcrt"</span>, pad <span class="op">=</span> <span class="fl">20000</span>, split <span class="op">=</span> <span class="st">"country"</span>,</span>
+<span>                       spacing <span class="op">=</span> <span class="st">"gapped"</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span><span class="op">)</span></span></code></pre></div>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-20-1.png" class="r-plt" alt="" width="768"></p>
+<p>The cap is what keeps it a compression rather than a coordinate:
+distances come out ordered and roughly proportional, not to scale. Read
+it for “there is a lot of nothing here”, not for how much —
+<code>"genomic"</code> is still the one to use when the answer has to be
+measured off the axis. The blank columns also give the gene track
+somewhere to draw, so a gene sitting in a desert with no genotyped SNP
+of its own appears here, where <code>"even"</code> drops it.</p>
 <p>One thing to be sure of before reading the colours:
 <code>allele</code> says whether a dosage of 2 means two alternate
 alleles or two reference ones. The plot asks the object, which knows
@@ -427,7 +449,7 @@ cannot say, and the two codings are indistinguishable afterwards, so it
 assumes alt dosage and tells you it did.</p>
 <p>Rsb and XP-EHH compare two populations rather than two alleles, so
 they see exactly those completed sweeps:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/run_rsb.html">run_rsb</a></span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 8</span></span></span>
 <span><span class="co">#&gt;   pair              pop1     pop2  chr            pos snp_id   value neg_log10_p</span></span>
@@ -439,7 +461,7 @@ they see exactly those completed sweeps:</p>
 default is every pair.</p>
 <p><code><a href="../reference/ihs_genes.html">ihs_genes()</a></code> reduces any of these to one row per gene –
 the peak SNP inside it:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ihs_genes.html">ihs_genes</a></span><span class="op">(</span><span class="va">ihs</span>, genes <span class="op">=</span> <span class="va">PF_EXAMPLE_DRUG_GENES</span>, within <span class="op">=</span> <span class="fl">10000</span>, min_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 10</span></span></span>
 <span><span class="co">#&gt;   group  gene  chr    start    end n_snps max_neg_log10_p max_abs_value peak_pos</span></span>
@@ -459,10 +481,10 @@ the peak SNP inside it:</p>
 frequencies pile up around an intermediate-frequency core – the
 footprint of long-term balancing selection, and in this parasite usually
 an antigen rather than a drug target.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/beta_score.html">beta_score</a></span><span class="op">(</span><span class="va">ps</span>, group <span class="op">=</span> <span class="st">"country"</span>, window <span class="op">=</span> <span class="fl">300000</span>, min_window_snps <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/plot_beta.html">plot_beta</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span></span></code></pre></div>
-<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-22-1.png" class="r-plt" alt="" width="672"></p>
+<p><img src="diversity-and-selection_files/figure-html/unnamed-chunk-23-1.png" class="r-plt" alt="" width="672"></p>
 <p>Use <code>window = 1000</code> (the default) on a real, dense
 callset; the fixture needs a far wider window just to find any
 neighbours. <code><a href="../reference/beta_genes.html">beta_genes()</a></code> summarises per gene, giving the
