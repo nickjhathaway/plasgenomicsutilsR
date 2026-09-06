@@ -22,6 +22,8 @@ plot_ibd_network(
   spread = 1.5,
   node_size = 3,
   node_alpha = 0.9,
+  border = NA,
+  border_width = 0.4,
   edge_colour = "grey65",
   edge_alpha = 0.5,
   edge_width = 1,
@@ -109,6 +111,14 @@ the cost of them taking up more of the canvas. Applies to weight-aware layouts
 (\code{"fr"}, \code{"kk"}, \code{"drl"}, \code{"stress"}, ...); others are unaffected.}
 
 \item{node_size, node_alpha}{Node point aesthetics.}
+
+\item{border}{Outline colour for the nodes, or \code{NA} (default) for none. An outline makes
+a dark category legible where it sits over the grey edge bundles, at the cost of the
+shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
+this on draws every node as a filled circle and maps the colour group to the fill. It
+is therefore an error to give both \code{border} and \code{shape_group}.}
+
+\item{border_width}{Outline width when \code{border} is set.}
 
 \item{edge_colour, edge_color, edge_width}{Edge aesthetics (default width \code{1}).}
 

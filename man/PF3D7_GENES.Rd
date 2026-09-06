@@ -13,6 +13,10 @@ extent (min CDS start to max CDS end across isoforms), excluding UTRs}
 \item{chrom}{short chromosome (\code{"1"}..\code{"14"}, or \code{"API"} / \code{"MIT"})}
 \item{gene_id}{PlasmoDB gene id, e.g. \code{PF3D7_0709000}}
 \item{name}{friendly display name (see above)}
+\item{strand}{\code{"+"} or \code{"-"}, the strand the gene is read on. \code{start}/\code{end} are always
+given low-to-high whatever the strand, as intervals are everywhere in this package, so
+this column is the only record of orientation -- and it is what says which end of the
+gene is its beginning: a \code{"-"} gene starts at \code{end} and runs down to \code{start}}
 }
 }
 \source{

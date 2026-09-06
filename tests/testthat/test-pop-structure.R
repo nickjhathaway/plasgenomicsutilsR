@@ -438,6 +438,12 @@ test_that("plot_admixture_multi_k pages every K, best K first-page-marked", {
   expect_equal(pages[["K=2"]]$labels$title, "K = 2")          # the others are plain
   expect_equal(pages$cross_entropy$labels$title, "sNMF cross-entropy by K")
 
+  # every page carries the ancestry legend title, and `...` can retitle them all at once
+  expect_false(any(grepl("cluster", vapply(pages[-1], function(p) p$labels$fill,
+                                           character(1)), fixed = TRUE)))
+  expect_equal(ps$plot_admixture_multi_k(K = 2, cross_entropy_first = FALSE,
+                                         cluster_label = "K")[["K=2"]]$labels$fill, "K")
+
   # one shared sample order keeps a sample at the same x on every page
   ords <- lapply(pages[-1], function(p) levels(p$data$sample))
   expect_length(unique(ords), 1)
@@ -517,6 +523,16 @@ test_that("admixture clusters read K1..K15, not K1 K10 K11 K2", {
   p <- plot_admixture(q)
   # reshape() leaves `cluster` a character, which ggplot would sort as K1, K10, K11, K12, K2...
   expect_equal(levels(p$data$cluster), paste0("K", 1:12))
+})
+
+test_that("the ancestry legend is not titled `cluster`, which a UMAP also has", {
+  testthat::skip_if_not_installed("ggplot2")
+  q <- matrix(stats::runif(8 * 3), 8, 3,
+              dimnames = list(paste0("s", 1:8), paste0("K", 1:3)))
+  q <- q / rowSums(q)
+  ttl <- function(p) ggplot2::ggplot_build(p)$plot$labels$fill
+  expect_false(grepl("cluster", ttl(plot_admixture(q)), fixed = TRUE))
+  expect_equal(ttl(plot_admixture(q, cluster_label = "K")), "K")
 })
 
 test_that("legends wrap and the suggested height clears them", {
@@ -746,4 +762,143 @@ test_that("a palette passed as `colour` is named as the mistake it is", {
   expect_s3_class(ps$plot_admixture(K = 3, group = "region", colour = "region"), "ggplot")
   expect_s3_class(ps$plot_umap(colour = "region"), "ggplot")
   expect_s3_class(ps$plot_pca(), "ggplot")
+})
+
+
+# A BCF and the text VCF beside it, with the VCF made to look older -- the state you are in
+# after replacing the input and re-running.
+.stale_pair <- function(n_snps) {
+  hdr <- c("##fileformat=VCFv4.2", "##contig=<ID=chr1,length=100000>",
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste(c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO",
+                   "FORMAT", sprintf("s%d", 1:6)), collapse = "\t"))
+  body <- vapply(seq_len(n_snps), function(i)
+    paste(c("chr1", i * 100, ".", "A", "T", ".", ".", ".", "GT",
+            rep(c("0/0", "0/1", "1/1"), length.out = 6)), collapse = "\t"), character(1))
+  d <- tempfile(); dir.create(d)
+  txt <- file.path(d, "x.vcf")
+  writeLines(c(hdr, body), txt)
+  bcf <- file.path(d, "x.bcf")
+  system2("bcftools", c("view", "-Ob", "-o", shQuote(bcf), shQuote(txt)),
+          stdout = FALSE, stderr = FALSE)
+  list(dir = d, bcf = bcf, vcf = file.path(d, "x.vcf.gz"))
+}
+
+test_that("a VCF older than the BCF beside it is reconverted, not quietly reused", {
+  testthat::skip_if_not(nzchar(Sys.which("bcftools")))
+  # convert once from a 5-SNP BCF, then replace the BCF with a 40-SNP one. This is the
+  # situation that bites: the derived VCF still holds the old records, and everything after
+  # it -- the GDS, the panel, every analysis -- would be built from those.
+  a <- .stale_pair(5)
+  suppressMessages(plasgenomicsutilsR:::.as_text_vcf(a$bcf))
+  expect_true(file.exists(a$vcf))
+  n_lines <- function(p) length(readLines(gzfile(p)))
+  old_n <- n_lines(a$vcf)
+
+  b <- .stale_pair(40)
+  file.copy(b$bcf, a$bcf, overwrite = TRUE)        # the input moved on
+  Sys.setFileTime(a$vcf, Sys.time() - 3600)        # ...and the VCF beside it did not
+
+  suppressMessages(out <- plasgenomicsutilsR:::.as_text_vcf(a$bcf))
+  expect_equal(out, a$vcf)
+  expect_gt(n_lines(out), old_n)                   # the new records, not the cached ones
+
+  # and `never` is the way to ask for the old behaviour, which now says what it costs
+  Sys.setFileTime(a$vcf, Sys.time() - 3600)
+  expect_warning(suppressMessages(plasgenomicsutilsR:::.as_text_vcf(a$bcf, refresh = "never")),
+                 "built from the older records")
+})
+
+test_that("a VCF newer than its BCF is reused whatever refresh says", {
+  testthat::skip_if_not(nzchar(Sys.which("bcftools")))
+  a <- .stale_pair(5)
+  suppressMessages(plasgenomicsutilsR:::.as_text_vcf(a$bcf))
+  before <- file.mtime(a$vcf)
+  for (mode in c("stale", "never")) {
+    suppressMessages(out <- plasgenomicsutilsR:::.as_text_vcf(a$bcf, refresh = mode))
+    expect_equal(out, a$vcf)
+    expect_equal(file.mtime(out), before)           # untouched: no needless reconversion
+  }
+  # `always` reconverts a VCF that is not stale at all, for when the timestamps cannot be
+  # trusted -- a copied tree, a restored backup
+  suppressMessages(plasgenomicsutilsR:::.as_text_vcf(a$bcf, refresh = "always"))
+  expect_gt(file.mtime(a$vcf), before)
+})
+
+
+.geno_from <- function(positions, chrom = "chr1", samps = sprintf("s%d", 1:6), seed = 1) {
+  set.seed(seed)
+  hdr <- c("##fileformat=VCFv4.2", sprintf("##contig=<ID=%s,length=100000>", chrom),
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste(c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO",
+                   "FORMAT", samps), collapse = "\t"))
+  body <- vapply(positions, function(p) paste(c(chrom, p, ".", "A", "T", ".", ".", ".",
+    "GT", sample(c("0/0", "0/1", "1/1"), length(samps), replace = TRUE)), collapse = "\t"),
+    character(1))
+  v <- tempfile(fileext = ".vcf")
+  writeLines(c(hdr, body), v)
+  suppressMessages(load_genotypes(v, gds = tempfile(fileext = ".gds"), prune = FALSE))
+}
+
+test_that("merge_genotypes adds a separately called SNP into its place in the callset", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  main <- .geno_from(seq(100, 2000, by = 100))
+  extra <- .geno_from(1550, seed = 9)              # re-called on its own, mid-callset
+  m <- merge_genotypes(main, extra)
+
+  expect_equal(ncol(m$genotype), ncol(main$genotype) + 1L)
+  expect_equal(nrow(m$genotype), nrow(main$genotype))
+  # sorted into position rather than appended, so the matrix still reads along the genome
+  pos <- as.numeric(sub(".*:", "", colnames(m$genotype)))
+  expect_false(is.unsorted(pos))
+  expect_equal(colnames(m$genotype)[which(colnames(m$genotype) == "1:1549") + c(-1, 1)],
+               c("1:1499", "1:1599"))
+  # and the added calls are the ones that were loaded, not recomputed
+  expect_equal(unname(m$genotype[, "1:1549"]), unname(extra$genotype[, 1]))
+  # SNPRelate's ids are per-file integers starting at 1, so they collide and are rebuilt
+  expect_equal(m$snp.id, seq_len(ncol(m$genotype)))
+  expect_equal(m$allele, main$allele)
+  expect_false(m$pruned)                           # the added SNP never faced pruning
+
+  # the whole point: it goes on to be a PopStructure like any other genotype set
+  meta <- data.frame(sample = m$sample.id, region = rep(c("a", "b"), each = 3))
+  ps <- PopStructure$new(m, meta = meta)
+  expect_equal(ncol(ps$genotype()), ncol(m$genotype))
+})
+
+test_that("merge_genotypes refuses the merges that would be silently wrong", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  main <- .geno_from(seq(100, 500, by = 100))
+
+  # one position, two callers, two answers -- picking silently would hide the disagreement
+  expect_error(merge_genotypes(main, main), "appear in more than one set")
+  expect_equal(ncol(suppressMessages(
+    merge_genotypes(main, main, on_overlap = "first"))$genotype), ncol(main$genotype))
+
+  # `allele` is unrecoverable after the fact: nothing in a dosage matrix says whether a 2
+  # is two reference copies or two alternate ones
+  flipped <- main; flipped$allele <- "ref"
+  expect_error(merge_genotypes(main, flipped), "count different alleles")
+
+  short <- .geno_from(900, samps = sprintf("s%d", 1:4), seed = 3)
+  expect_error(merge_genotypes(main, short), "missing 2 of the 6 samples")
+  common <- suppressMessages(merge_genotypes(main, short, samples = "common"))
+  expect_equal(nrow(common$genotype), 4L)
+  expect_equal(ncol(common$genotype), ncol(main$genotype) + 1L)
+
+  expect_error(merge_genotypes(main), "at least two")
+})
+
+test_that("merge_genotypes realigns samples given in a different order", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  main <- .geno_from(seq(100, 400, by = 100))
+  extra <- .geno_from(650, samps = rev(sprintf("s%d", 1:6)), seed = 5)
+  m <- merge_genotypes(main, extra)
+  expect_equal(m$sample.id, main$sample.id)
+  # each sample keeps its own call, not the one sitting in that row of the other matrix
+  expect_equal(unname(m$genotype[, "1:649"]),
+               unname(extra$genotype[main$sample.id, 1]))
 })

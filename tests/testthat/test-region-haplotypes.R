@@ -290,7 +290,7 @@ test_that("a SNP is only ever drawn over the genes it actually falls in", {
   skip_if_not_installed("ggplot2")
   skip_if_not_installed("patchwork")
   ps <- ps_for_hap()
-  for (sp in c("even", "genomic")) {
+  for (sp in c("even", "genomic", "gapped")) {
     g <- hap_geometry(suppressMessages(
       plot_region_haplotypes(ps, "pfcrt", pad = 30000, genes = PF3D7_GENES, spacing = sp)))
     skip_if(is.null(g$genes) || !nrow(g$genes))
@@ -491,4 +491,293 @@ test_that("a level the shared colour map does not cover still gets a colour", {
   expect_setequal(names(keys), regs)
   expect_false(anyNA(keys))
   expect_equal(unname(keys[regs[1]]), "#E20134")   # the one that was set is honoured
+})
+
+
+# ---- gapped spacing: even's readable columns, genomic's sense of distance ------------
+
+test_that("gapped spacing keeps one full column per SNP", {
+  skip_if_not_installed("ggplot2")
+  ps <- ps_for_hap()
+  d <- hap_panel(plot_region_haplotypes(ps, "7", spacing = "gapped"))$data
+  expect_equal(unique(round(d$xmax - d$xmin, 9)), 1)
+})
+
+test_that("a blank column is spent per gap_unit of empty genome, up to gap_max", {
+  # 100 bp apart, then a 40 kb desert, then 100 bp apart again
+  pos <- c(1000, 1100, 1200, 41200, 41300)
+  x <- plasgenomicsutilsR:::.gapped_x(pos, gap_unit = 10000, gap_max = 10)
+  expect_equal(diff(x), c(1, 1, 5, 1))          # 4 blank columns bought by the desert
+  expect_true(all(diff(x) >= 1))                # never overlapping, always in order
+
+  # the cap is what stops one desert taking the panel
+  capped <- plasgenomicsutilsR:::.gapped_x(c(1, 10e6), gap_unit = 10000, gap_max = 10)
+  expect_equal(diff(capped), 11)
+
+  # a smaller unit exaggerates the same gap, a larger one plays it down
+  expect_gt(diff(plasgenomicsutilsR:::.gapped_x(pos, 2000, 100))[3],
+            diff(plasgenomicsutilsR:::.gapped_x(pos, 20000, 100))[3])
+})
+
+test_that("the default gap_unit scales with the window, so ordinary spacing costs nothing", {
+  # SNPs evenly spread over the window: none of the gaps is unusual, so none buys a column
+  even_spread <- seq(1, 50000, length.out = 60)
+  expect_equal(diff(plasgenomicsutilsR:::.gapped_x(even_spread)), rep(1, 59))
+  # the same window with one desert in it: only the desert opens up
+  with_desert <- c(seq(1, 20000, length.out = 40), seq(45000, 50000, length.out = 20))
+  d <- diff(plasgenomicsutilsR:::.gapped_x(with_desert))
+  expect_equal(sum(d > 1), 1L)
+  expect_gt(max(d), 5)
+})
+
+test_that("gapped sits between even and genomic on the axis", {
+  skip_if_not_installed("ggplot2")
+  ps <- ps_for_hap()
+  xr <- function(...) {
+    d <- hap_panel(plot_region_haplotypes(ps, "7", ...))$data
+    diff(range(c(d$xmin, d$xmax)))
+  }
+  even <- xr(spacing = "even")
+  gapped <- xr(spacing = "gapped")
+  expect_gte(gapped, even)                      # gaps add columns, never remove them
+  expect_lt(gapped, xr(spacing = "genomic"))    # but the axis is still columns, not bp
+})
+
+test_that("a gene with no SNP of its own is drawn in the gap it sits in", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("patchwork")
+  ps <- ps_for_hap()
+  g <- ps$genotype("full")
+  pos <- as.numeric(sub(".*:", "", colnames(g)))
+  # carve out every SNP in pfcrt, so it holds none
+  thinned <- g[, !(pos > 403000 & pos < 407000), drop = FALSE]
+  args <- list(ps, "pfcrt", pad = 30000, genotypes = thinned, genes = PF3D7_GENES)
+
+  # under even it has no columns, so it cannot be drawn at all
+  even <- hap_geometry(suppressMessages(do.call(plot_region_haplotypes,
+                                                c(args, spacing = "even"))))
+  expect_false("pfcrt" %in% even$genes$name)
+
+  # under gapped the blank columns are room, and it lands between its flanking SNPs
+  gap <- hap_geometry(suppressMessages(do.call(plot_region_haplotypes,
+                                               c(args, spacing = "gapped"))))
+  expect_true("pfcrt" %in% gap$genes$name)
+  box <- gap$genes[gap$genes$name == "pfcrt", ]
+  expect_gt(box$.gene_xmax, box$.gene_xmin)
+})
+
+test_that("a marked position with no SNP still lands under gapped spacing", {
+  skip_if_not_installed("ggplot2")
+  ps <- ps_for_hap()
+  d <- hap_panel(plot_region_haplotypes(ps, "7", spacing = "gapped"))$data
+  snps <- sort(unique(d$pos))
+  between <- floor((snps[1] + snps[2]) / 2)
+  if (between %in% snps) skip("no room between the first two SNPs")
+  x <- plasgenomicsutilsR:::.marks_to_x(between, data.frame(pos = snps), 
+                                        list(x = seq_along(snps)), "gapped")
+  expect_length(x, 1L)
+  expect_gt(x, 1); expect_lt(x, 2)              # between the first two columns, not dropped
+})
+
+
+# ---- nested splits: several metadata columns, each in its own level order ------------
+
+test_that("split takes several columns and nests them in the order given", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("patchwork")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  m <- ps$get_meta()
+  # a geographic order that is neither alphabetical nor the order the rows arrive in, so
+  # the test can tell factor levels from either fallback
+  regs <- rev(sort(unique(as.character(m$region))))
+  m$region <- factor(as.character(m$region), levels = regs)
+  m$half <- ifelse(seq_len(nrow(m)) %% 2 == 0, "odd", "even")   # "odd" sorts after "even"
+  ps$add_meta(m)
+
+  p <- plot_region_haplotypes(ps, "7", split = c("region", "half"))
+  hm <- hap_panel(p)
+  d <- hm$data[order(hm$data$.row), ]
+  d <- d[!duplicated(d$sample), ]
+
+  # the outer column's factor order is the block order, and the inner divides each block
+  expect_identical(levels(d$.split1), regs)
+  expect_identical(as.character(unique(d$.split1)), regs)
+  expect_identical(levels(d$.split2), c("even", "odd"))
+  within <- lapply(split(as.character(d$.split2), d$.split1), unique)
+  for (w in within) expect_identical(w, c("even", "odd"))
+  # every combination is one contiguous block, none of them drawn twice
+  runs <- rle(as.character(d$.split))
+  expect_length(runs$values, nlevels(d$.split))
+  expect_identical(runs$values, levels(d$.split))
+  expect_identical(levels(d$.split),
+                   as.vector(t(outer(regs, c("even", "odd"), paste, sep = " / "))))
+
+  # one panel per combination, and the dendrogram facets identically so the leaves line up
+  hb <- ggplot2::ggplot_build(hm); db <- ggplot2::ggplot_build(p[[1]])
+  expect_length(hb$layout$panel_params, nlevels(d$.split))
+  expect_length(db$layout$panel_params, nlevels(d$.split))
+  for (i in seq_along(hb$layout$panel_params))
+    expect_equal(db$layout$panel_params[[i]]$y.range,
+                 hb$layout$panel_params[[i]]$y.range, tolerance = 1e-6)
+  # the strips name each column separately rather than pasting the two together
+  expect_length(hb$layout$facet$params$rows, 2L)
+
+  # a combination with no samples is not drawn as an empty block
+  m2 <- m; m2$half[m2$region == regs[1]] <- "even"
+  ps$add_meta(m2)
+  q <- hap_panel(plot_region_haplotypes(ps, "7", split = c("region", "half")))
+  expect_false(paste(regs[1], "odd", sep = " / ") %in% levels(q$data$.split))
+  expect_true(paste(regs[1], "even", sep = " / ") %in% levels(q$data$.split))
+})
+
+test_that("nested splits keep the annotations and the block names in step", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("patchwork")
+  skip_if_not_installed("ggnewscale")
+  ps <- example_pop_structure("africa", umap = FALSE)
+  p <- plot_region_haplotypes(ps, "7", split = c("region", "country"),
+                              annotations = c("region", "country"))
+  hm <- hap_panel(p)
+  n <- length(ggplot2::ggplot_build(hm)$layout$panel_params)
+  expect_gt(n, 1L)
+  for (i in seq_len(6)) {
+    q <- tryCatch(p[[i]], error = function(e) NULL)
+    if (is.null(q) || is.null(q$facet) || inherits(q$facet, "FacetNull")) next
+    expect_length(ggplot2::ggplot_build(q)$layout$panel_params, n)
+  }
+  # a sample missing either column is dropped, and the message names both
+  m <- ps$get_meta(); m$country[1] <- NA; ps$add_meta(m)
+  expect_message(plot_region_haplotypes(ps, "7", split = c("region", "country")),
+                 "1 sample\\(s\\) with no region / country")
+  expect_error(plot_region_haplotypes(ps, "7", split = c("region", "nope")),
+               "`split = \"nope\"` is not a metadata column")
+})
+
+
+.set_bcf <- function(dir, gts, alt = "T,A", chrom = "Pf3D7_13_v3", pos = 1725592,
+                     samps = NULL) {
+  if (is.null(samps)) samps <- sprintf("s%02d", seq_along(gts))
+  hdr <- c("##fileformat=VCFv4.2", sprintf("##contig=<ID=%s,length=2000000>", chrom),
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste(c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO",
+                   "FORMAT", samps), collapse = "\t"),
+           paste(c(chrom, pos, ".", "C", alt, ".", ".", ".", "GT", gts), collapse = "\t"))
+  v <- file.path(dir, paste0("m", pos, ".vcf"))
+  writeLines(hdr, v)
+  v
+}
+
+test_that("a call is named for the alleles it carries, and a biallelic one keeps its words", {
+  nm <- plasgenomicsutilsR:::.allele_set_name
+  # two alleles: exactly the wording the plot has always used, so adding a multiallelic
+  # marker beside biallelic ones does not rename the calls they were already showing
+  expect_equal(nm(0L, 2L), "reference")
+  expect_equal(nm(1L, 2L), "alternate")
+  expect_equal(nm(0:1, 2L), "mixed")
+  # three: the alternates are told apart, and so are the mixtures between them
+  expect_equal(nm(0L, 3L), "reference")
+  expect_equal(nm(1L, 3L), "alternate 1")
+  expect_equal(nm(2L, 3L), "alternate 2")
+  expect_equal(nm(0:1, 3L), "reference + alternate 1")
+  expect_equal(nm(c(1L, 2L), 3L), "alternate 1 + alternate 2")
+  expect_equal(nm(0:2, 3L), "reference + alternate 1 + alternate 2")
+})
+
+test_that("allele sets are read from the calls, and only the states that occur are kept", {
+  skip_if_not(nzchar(Sys.which("bcftools")))
+  d <- tempfile(); dir.create(d)
+  v <- .set_bcf(d, c(rep("0/0", 5), rep("1/1", 3), rep("2/2", 2), "0/1", "1/2", "./."))
+  got <- plasgenomicsutilsR:::.read_genotype_sets(v)
+
+  expect_equal(colnames(got$codes), "Pf3D7_13_v3:1725591")     # 0-based, as ids are here
+  states <- got$levels[[1]][got$codes[, 1] + 1L]
+  expect_equal(as.integer(table(states)[c("reference", "alternate 1", "alternate 2")]),
+               c(5L, 3L, 2L))
+  expect_true("reference + alternate 1" %in% states)
+  expect_true("alternate 1 + alternate 2" %in% states)
+  expect_true(is.na(states[length(states)]))                   # ./. stays missing
+  # a triallelic site has seven possible states; only the five seen are levels
+  expect_length(got$levels[[1]], 5L)
+  expect_false("reference + alternate 2" %in% got$levels[[1]])
+})
+
+test_that("additional_genotypes puts a multiallelic marker in the heatmap and the legend", {
+  skip_if_not(nzchar(Sys.which("bcftools")))
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("SNPRelate")
+  ps <- example_pop_structure(umap = FALSE)
+  ids <- colnames(ps$genotype(prefer = "full"))
+  loc <- plasgenomicsutilsR:::.parse_snp_ids(ids)
+  chrom <- loc$chr[1]
+  samps <- rownames(ps$genotype(prefer = "full"))
+  gts <- rep(c("0/0", "1/1", "2/2"), length.out = length(samps))
+  d <- tempfile(); dir.create(d)
+  # a position inside the window but not already genotyped
+  free <- setdiff(seq(min(loc$pos), min(loc$pos) + 200), loc$pos)[1]
+  v <- .set_bcf(d, gts, chrom = chrom, pos = free + 1L, samps = samps)
+
+  p <- plot_region_haplotypes(ps, sprintf("%s:%d-%d", chrom, min(loc$pos), max(loc$pos)),
+                              additional_genotypes = v, cluster = FALSE,
+                              gene_track = FALSE)
+  hm <- if (inherits(p, "patchwork")) p[[1]] else p
+  keys <- hm$scales$scales[[which(vapply(hm$scales$scales, function(z)
+    "fill" %in% z$aesthetics, logical(1)))[1]]]$limits
+  expect_true(all(c("reference", "mixed", "alternate") %in% keys))
+  expect_true(all(c("alternate 1", "alternate 2") %in% keys))
+  # no key for a state nobody has: this marker has no mixed calls at all
+  expect_false(any(grepl("\\+", keys)))
+})
+
+test_that("the extra call colours stay clear of the three already in use", {
+  base <- plasgenomicsutilsR:::.GENO_FILL
+  got <- plasgenomicsutilsR:::.distinct_fills(base, 3)
+  expect_length(got, 3L)
+  expect_length(intersect(got, unname(base)), 0L)
+  # taking the next entries off the palette hands back an orange that sits beside the
+  # existing `alternate`; picked on worst-case CIEDE2000 they stay apart under every
+  # dichromacy the package checks
+  d <- colour_blind_distance(c(unname(base), got))
+  expect_true(all(d > 10, na.rm = TRUE))
+})
+
+test_that("extra samples in the marker's callset are left out, and said so", {
+  skip_if_not(nzchar(Sys.which("bcftools")))
+  skip_if_not_installed("SNPRelate")
+  # a left join on the genotypes being plotted. The marker is normally called on the whole
+  # cohort while the figure shows a subset, so extras are ordinary -- but a name mismatch
+  # that drops most of the callset looks exactly the same, hence the count.
+  ps <- example_pop_structure(umap = FALSE)
+  loc <- plasgenomicsutilsR:::.parse_snp_ids(colnames(ps$genotype(prefer = "full")))
+  samps <- rownames(ps$genotype(prefer = "full"))
+  free <- setdiff(seq(min(loc$pos), min(loc$pos) + 300), loc$pos)[1]
+  d <- tempfile(); dir.create(d)
+  v <- .set_bcf(d, rep(c("0/0", "1/1", "2/2"), length.out = length(samps) + 5L),
+                chrom = loc$chr[1], pos = free + 1L, samps = c(samps, paste0("ghost", 1:5)))
+  region <- sprintf("%s:%d-%d", loc$chr[1], min(loc$pos), max(loc$pos))
+  expect_message(p <- plot_region_haplotypes(ps, region, additional_genotypes = v,
+                                             cluster = FALSE, gene_track = FALSE),
+                 "5 sample\\(s\\) not in the genotypes")
+  hm <- if (inherits(p, "patchwork")) p[[1]] else p
+  expect_setequal(unique(hm$data$sample), samps)      # and none of the extras got in
+})
+
+test_that("additional_genotypes refuses what it cannot place", {
+  skip_if_not(nzchar(Sys.which("bcftools")))
+  skip_if_not_installed("SNPRelate")
+  ps <- example_pop_structure(umap = FALSE)
+  ids <- colnames(ps$genotype(prefer = "full"))
+  loc <- plasgenomicsutilsR:::.parse_snp_ids(ids)
+  samps <- rownames(ps$genotype(prefer = "full"))
+  d <- tempfile(); dir.create(d)
+
+  # a position already genotyped is two answers for one column
+  same <- .set_bcf(d, rep("0/0", length(samps)), chrom = loc$chr[1],
+                   pos = loc$pos[1] + 1L, samps = samps)
+  expect_error(plot_region_haplotypes(ps, ids[1], additional_genotypes = same),
+               "already in the genotypes")
+  # and a callset missing samples cannot fill the column
+  d2 <- tempfile(); dir.create(d2)
+  few <- .set_bcf(d2, rep("0/0", 3), chrom = loc$chr[1], pos = loc$pos[1] + 5L,
+                  samps = samps[1:3])
+  expect_error(plot_region_haplotypes(ps, ids[1], additional_genotypes = few), "are not in")
 })

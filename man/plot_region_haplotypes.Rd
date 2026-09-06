@@ -11,7 +11,7 @@ plot_region_haplotypes(
   annotations = NULL,
   genotypes = NULL,
   samples = NULL,
-  spacing = c("even", "genomic"),
+  spacing = c("even", "genomic", "gapped"),
   cluster = TRUE,
   dendrogram = TRUE,
   dend_width = 0.15,
@@ -27,11 +27,14 @@ plot_region_haplotypes(
   min_span = 0,
   max_snps = 2000,
   snp_width = NULL,
+  gap_unit = NULL,
+  gap_max = 10,
   colours = NULL,
   na_colour = "grey85",
   show_sample_names = NULL,
   reference = DEFAULT_REFERENCE,
   annotation_colours = NULL,
+  additional_genotypes = NULL,
   border_color = NULL,
   colors = NULL,
   na_color = NULL,
@@ -45,8 +48,13 @@ plot_region_haplotypes(
 (\code{"13:1,720,000-1,730,000"}), a whole chromosome, or a one-row data frame with
 chr/start/end.}
 
-\item{split}{Optional metadata column whose levels block the rows. Samples are clustered
-inside each block, and the blocks keep the column's level order.}
+\item{split}{Optional metadata column(s) whose levels block the rows. Samples are
+clustered inside each block, and the blocks keep the column's level order -- a factor's
+levels are honoured, so a \code{region} ordered geographically stays geographic. More than
+one column nests the blocks in the order given: \code{split = c("region", "PIN_variant")}
+makes one block per region, each divided by variant, with a strip per column and only
+the combinations that hold a sample drawn. Samples missing any of the columns are
+dropped with a message.}
 
 \item{annotations}{Optional metadata columns to draw as coloured strips down the right,
 one column each, sharing the object's colour maps (see \code{\link[=meta_colors]{meta_colors()}}) so a level keeps
@@ -61,7 +69,8 @@ the calls -- which is the combination this plot wants.}
 \item{samples}{Optional sample ids to keep.}
 
 \item{spacing}{\code{"even"} (default) gives every SNP equal width; \code{"genomic"} places each at
-its real coordinate.}
+its real coordinate; \code{"gapped"} keeps the equal widths and inserts blank columns for
+empty stretches of genome, so distance is visible without the SNPs shrinking.}
 
 \item{cluster}{Cluster the samples (default \code{TRUE}). \code{FALSE} keeps them in the order they
 arrive, which is worth doing when the metadata order is the point.}
@@ -105,7 +114,14 @@ thousands of SNPs is unreadable as tiles; narrow it rather than have it silently
 (default) uses 0.5\% of the window, wide enough to see and narrow enough to leave the
 gaps between SNPs visible.}
 
-\item{colours, colors}{Named fill colours for \code{reference} / \code{mixed} / \code{alternate}.}
+\item{gap_unit, gap_max}{Under \code{"gapped"} spacing, base pairs of empty genome per blank
+column and the most blank columns any one gap may claim (default \code{10}). \code{gap_unit}
+defaults to \code{NULL}, a fiftieth of the window; lower it to exaggerate distance, raise it
+to play it down. \code{gap_max} stops a single desert from squeezing every SNP into the
+margin.}
+
+\item{colours, colors}{Named fill colours for \code{reference} / \code{mixed} / \code{alternate}, and for
+any state an \code{additional_genotypes} marker contributes.}
 
 \item{na_colour, na_color}{Fill for missing calls.}
 
@@ -120,6 +136,16 @@ levels and leave the rest of that annotation's shared map alone, so recolouring 
 level does not mean respelling all of them; an unnamed vector is taken in level order.
 Only this plot changes -- \code{PopStructure$set_colors()} is still the way to move a colour
 everywhere at once, which is what keeps a level looking the same across figures.}
+
+\item{additional_genotypes}{Optional VCF/BCF path(s) holding markers the genotype matrix
+cannot express. A dosage counts copies of one allele, so a site with three alleles
+collapses every non-reference call to the same number -- which is why such sites are
+usually dropped from a callset in the first place. Markers given here are read as the
+\strong{set of alleles} each sample carries, so \code{reference}, \verb{alternate 1}, \verb{alternate 2} and
+the mixed states between them stay distinct. Needs \code{bcftools} on \code{PATH}; samples are
+matched by name, and a position already in the genotypes is an error. Only the states
+that actually occur are added to the legend: the full enumeration of a triallelic site
+is seven, and most of them are ordinarily empty.}
 }
 \value{
 A patchwork of the dendrogram, heatmap and gene track, or a plain ggplot when
@@ -140,11 +166,26 @@ thinner than they are. Build the object with \code{load_genotypes(prune = FALSE)
 and keep the pruned one for PCA / UMAP / admixture, where pruning is what you want; the
 plot says so when the object records that it was pruned.
 
-\code{spacing} decides what the horizontal axis means, and the two answers show different
+\code{spacing} decides what the horizontal axis means, and the three answers show different
 things. \code{"even"} gives every SNP the same width, which is how the haplotype structure is
 easiest to read but says nothing about distance. \code{"genomic"} puts each SNP at its real
 coordinate, so a dense cluster of SNPs looks dense -- correct about position, but sparse
-stretches become wide empty bands.
+stretches become wide empty bands, and SNPs closer together than one mark width merge into
+a single block that cannot be told from one wide SNP.
+
+\code{"gapped"} is the middle ground: every SNP keeps a full readable column as under \code{"even"},
+and an empty stretch of genome buys blank columns -- one per \code{gap_unit}, up to \code{gap_max}
+for any single gap. A desert then reads as a visible gap instead of vanishing, without a
+long one taking over the panel. \code{gap_unit} defaults to a fiftieth of the window, so
+ordinary spacing between SNPs costs nothing and only a stretch noticeably emptier than the
+rest opens up. The cap is what keeps it a compression rather than a coordinate: distances
+come out ordered and roughly proportional, not to scale, so read it for "there is a lot of
+nothing here", not for how much.
+
+It also gives the gene track somewhere to draw. Under \code{"even"} a gene with no genotyped SNP
+has no columns and is dropped from the track with a message; under \code{"gapped"} the blank
+columns are real space, so a gene sitting in a desert still appears, in about the right
+place.
 
 Either way a SNP is only ever drawn over the genes it really falls in. Under \code{"even"} the
 axis counts SNPs, so a gene's box is exactly the columns it holds: its width says how many

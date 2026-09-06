@@ -17,7 +17,8 @@ load_genotypes(
   seed = 42,
   vcf_dir = NULL,
   allele = c("alt", "ref"),
-  variants = c("biallelic_snvs", "all")
+  variants = c("biallelic_snvs", "all"),
+  refresh = c("stale", "never", "always")
 )
 }
 \arguments{
@@ -53,6 +54,14 @@ and selection statistic here is symmetric in \code{p} and \code{1 - p}.}
 only; \code{"all"} keeps every record, multiallelic sites and indels included, at the cost of a
 dosage that cannot say which ALT it counts. See the two sections below -- nothing in this
 package handles \code{"all"}, and it warns.}
+
+\item{refresh}{What to do with a derived file older than what it was built from -- the
+text VCF beside a BCF, and the GDS beside either. \code{"stale"} (default) rebuilds it,
+\code{"always"} rebuilds regardless, \code{"never"} reuses it and warns. The default is a
+rebuild because the alternative is silent: update the BCF and every result below comes
+from the old records, with the GDS looking current because it is newer than the stale
+VCF it was built from. A GDS built with a different \code{variants} is rebuilt whatever
+\code{refresh} says -- that is a different set of records, not an older one.}
 }
 \value{
 A list with \code{genotype} (matrix; sample row names and \code{chr:pos0} column names --

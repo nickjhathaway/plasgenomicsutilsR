@@ -50,6 +50,12 @@
 #' @param layout,spread,seed Layout algorithm, clique spreading, and the seed that makes it
 #'   reproducible.
 #' @param node_size,node_alpha,edge_colour,edge_color,edge_alpha Node and edge aesthetics.
+#' @param border Outline colour for the nodes, or `NA` (default) for none. An outline makes
+#'   a dark category legible where it sits over the grey edge bundles, at the cost of the
+#'   shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
+#'   this on draws every node as a filled circle and maps the colour group to the fill. It
+#'   is therefore an error to give both `border` and `shape_group`.
+#' @param border_width Outline width when `border` is set.
 #' @param weight_range Narrowest and widest edge, in `linewidth` units.
 #' @param weight_breaks Legend breaks; defaults to powers of two spanning the data, since
 #'   sharing runs over orders of magnitude.
@@ -71,15 +77,30 @@ plot_ibd_pair_network <- function(pairs, meta = NULL, weight = NULL, min_ibd = 0
                                   na_shape = .NA_SHAPE, na_colour = "grey70",
                                   include_isolated = TRUE, layout = "fr", spread = 1.5,
                                   node_size = 3, node_alpha = 0.9,
+                                  border = NA, border_width = 0.4,
                                   edge_colour = "grey65", edge_alpha = 0.6,
                                   weight_range = c(0.15, 2.6), weight_breaks = NULL,
                                   title = NULL, subtitle = TRUE, seed = 42,
                                   colour_group = NULL, colours = NULL, na_color = NULL, edge_color = NULL) {
   meta <- .normalise_meta(meta)
+  # An outline needs a shape that has one, and only 21-25 do. Honouring `border` alongside
+  # `shape_group` would mean silently replacing the caller's shapes with circles, so it is
+  # refused instead: the two encodings want the same property of the mark.
+  if (!is.null(border) && !is.na(border) && !is.null(shape_group))
+    stop("`border` cannot be combined with `shape_group`: an outline needs a filled shape ",
+         "(21-25), and only those carry a fill separate from the outline, so the shapes you ",
+         "asked for would have to be discarded. Drop one of the two.", call. = FALSE)
   color_group <- .alias_arg("color_group", "colour_group")
   colors <- .alias_arg("colors", "colours")
   na_colour <- .alias_arg("na_colour", "na_color")
   edge_colour <- .alias_arg("edge_colour", "edge_color")
+  # An outline needs a shape that has one, and only 21-25 do. Honouring `border` alongside
+  # `shape_group` would mean silently replacing the caller's shapes with circles, so it is
+  # refused instead: the two encodings want the same property of the mark.
+  if (!is.null(border) && !is.na(border) && !is.null(shape_group))
+    stop("`border` cannot be combined with `shape_group`: an outline needs a filled shape ",
+         "(21-25), and only those carry a fill separate from the outline, so the shapes you ",
+         "asked for would have to be discarded. Drop one of the two.", call. = FALSE)
   .need_package("ggplot2", "plot_ibd_pair_network()")
   .need_package("igraph", "plot_ibd_pair_network()")
   .need_package("ggraph", "plot_ibd_pair_network()")
@@ -122,6 +143,7 @@ plot_ibd_pair_network <- function(pairs, meta = NULL, weight = NULL, min_ibd = 0
     color_group = color_group, colors = colors, shape_group = shape_group, shapes = shapes,
     na_shape = na_shape, na_colour = na_colour, include_isolated = include_isolated,
     layout = layout, spread = spread, node_size = node_size, node_alpha = node_alpha,
+    border = border, border_width = border_width,
     edge_colour = edge_colour, edge_alpha = edge_alpha,
     weight_name = "IBD", weight_range = weight_range, weight_breaks = weight_breaks,
     title = if (is.null(title)) "Genome-wide IBD network" else title,

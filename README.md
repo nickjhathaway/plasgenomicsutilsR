@@ -5,7 +5,7 @@
 [![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-> **Version 0.3.3** — early development; APIs, defaults, and outputs may change
+> **Version 0.4.0** — early development; APIs, defaults, and outputs may change
 > between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** — the
@@ -257,8 +257,11 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   metadata strips down the right and a gene track underneath. `split =` blocks the rows by a
   metadata column and clusters *within* each block (`ComplexHeatmap`'s `row_split` semantics),
   so a haplotype shared across a group reads as a solid band rather than being scattered by
-  one global ordering. `spacing = "genomic"` moves every mark to its real coordinate, keeping
-  them all the same width, so the gaps between SNPs are what you see.
+  one global ordering; several columns (`split = c("region", "PIN_variant")`) nest the blocks
+  in the order given, each keeping its own factor levels. `spacing = "genomic"` moves every mark to its real coordinate, keeping
+  them all the same width, so the gaps between SNPs are what you see; `spacing = "gapped"`
+  sits between the two, keeping every SNP a full readable column and spending blank columns
+  on empty stretches of genome, so a desert is visible without the SNPs shrinking into it.
 - **Coverage QC** — `read_coverage()`, `coverage_qc()`, `plot_coverage_summary()`,
   `plot_coverage_by_chrom()` and `plot_coverage_dropout()` read and plot the depth tables
   from `plasgenomicsutils coverage_depth_stats` / `coverage_dropout_regions`. Breadth
@@ -369,6 +372,20 @@ devtools::load_all()
 devtools::test()
 devtools::document()
 ```
+
+`scripts/check.sh` runs everything CI runs, so a pull request does not have to be the thing
+that tells you `_pkgdown.yml` names a topic that no longer exists or that `man/` is behind
+the roxygen comments:
+
+```bash
+scripts/check.sh          # + R CMD check, a couple of minutes
+scripts/check.sh --fast   # roxygen freshness, pkgdown config and testthat, under a minute
+```
+
+`--fast` is the loop between edits. It checks that `man/` and `NAMESPACE` match the roxygen
+comments (CI checks whatever was *pushed*, so a forgotten `document()` fails there and
+nowhere else), runs `pkgdown::check_pkgdown()`, and runs the test suite — leaving only
+`R CMD check` for the full run.
 
 ## License
 

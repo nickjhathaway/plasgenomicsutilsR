@@ -56,7 +56,9 @@ would crowd a hundred names under it, so this is opt-in.}
 
 \item{gene_label_angle}{Rotation for the gene names, in degrees.}
 
-\item{colours, colors}{Named colours for \code{reference} / \code{alternate}.}
+\item{colours, colors}{Named colours for the focal alleles. A biallelic marker has
+\code{reference} and \code{alternate}; one with more alleles has \code{reference}, \verb{alternate 1},
+\verb{alternate 2}, ... and takes its default colours from the shared palette.}
 
 \item{show_freq}{Note each panel's haplotype count and allele frequencies inside it
 (default \code{TRUE}); \code{FALSE} leaves the panel clean.}

@@ -26,6 +26,10 @@
 #'   \item{chrom}{short chromosome (`"1"`..`"14"`, or `"API"` / `"MIT"`)}
 #'   \item{gene_id}{PlasmoDB gene id, e.g. `PF3D7_0709000`}
 #'   \item{name}{friendly display name (see above)}
+#'   \item{strand}{`"+"` or `"-"`, the strand the gene is read on. `start`/`end` are always
+#'     given low-to-high whatever the strand, as intervals are everywhere in this package, so
+#'     this column is the only record of orientation -- and it is what says which end of the
+#'     gene is its beginning: a `"-"` gene starts at `end` and runs down to `start`}
 #' }
 #' @source VEuPathDB / PlasmoDB Pf3D7 GFF, release version 2020-09-01. The GFF is 1-based
 #'   inclusive; `start` is shifted down by one when the dataset is built so the shipped
@@ -67,8 +71,11 @@
 #' Intersect against this with [bed_intersect()] to flag genes that fall in these families.
 #'
 #' @format A data frame with columns `Pf3D7_chrom`, `start`, `end`, `chrom`, `gene_id`,
-#'   `description`; coordinates are 0-based half-open (see
-#'   [plasgenomicsutilsR-coordinates]).
-#' @source The companion Python package (`plasgenomicsutils` `builtin:pf3d7_paralog_genes`).
+#'   `description` and `strand` (`"+"` / `"-"`, as in [PF3D7_GENES]); coordinates are 0-based
+#'   half-open (see [plasgenomicsutilsR-coordinates]).
+#' @source The companion Python package (`plasgenomicsutils` `builtin:pf3d7_paralog_genes`),
+#'   with `strand` joined on `gene_id` from the same VEuPathDB / PlasmoDB GFF [PF3D7_GENES] is
+#'   built from. About a quarter of these are pseudogenes, so they are absent from
+#'   [PF3D7_GENES], which holds protein-coding genes only.
 #' @seealso [PF3D7_CORE_REGIONS], [bed_intersect()]
 "PF3D7_PARALOG_GENES"

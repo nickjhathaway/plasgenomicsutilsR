@@ -35,3 +35,41 @@ test_that("_pkgdown.yml indexes every vignette and every export", {
     any(f == ref) || any(startsWith(f, ref[!ref %in% exports])), logical(1))]
   expect_equal(missing, character(0))
 })
+
+
+test_that("the bundled gene tables record the strand each gene is read on", {
+  for (nm in c("PF3D7_GENES", "PF_EXAMPLE_DRUG_GENES", "PF3D7_PARALOG_GENES")) {
+    g <- get(nm)
+    expect_true("strand" %in% names(g), info = nm)
+    expect_setequal(unique(g$strand), c("+", "-"))
+    expect_false(anyNA(g$strand), info = nm)
+  }
+  # coordinates stay low-to-high whatever the strand -- the column is the only orientation
+  expect_true(all(PF3D7_GENES$end > PF3D7_GENES$start))
+  # a known minus-strand gene, so a sign flip in the build would not pass silently
+  expect_equal(PF3D7_GENES$strand[PF3D7_GENES$gene_id == "PF3D7_1343700"], "-")
+  expect_equal(PF3D7_GENES$strand[PF3D7_GENES$gene_id == "PF3D7_0709000"], "+")
+})
+
+test_that("adding strand did not disturb what already reads these tables", {
+  # .gene_track() selects the columns it needs by name and drops the rest, which is what
+  # makes appending a column safe
+  expect_equal(names(plasgenomicsutilsR:::.gene_track(PF3D7_GENES)),
+               c("name", "chr", "start", "end"))
+})
+
+
+test_that("the paralog table's strands agree with PF3D7_GENES where the two overlap", {
+  # they are joined from the same GFF, so a disagreement would mean the two datasets were
+  # built from different releases -- which nothing downstream would notice
+  m <- merge(PF3D7_PARALOG_GENES[, c("gene_id", "strand")],
+             PF3D7_GENES[, c("gene_id", "strand")], by = "gene_id",
+             suffixes = c("_par", "_genes"))
+  expect_gt(nrow(m), 0)
+  expect_equal(m$strand_par, m$strand_genes)
+  # about a quarter are pseudogenes, so they are absent from PF3D7_GENES and still carry one
+  extra <- setdiff(PF3D7_PARALOG_GENES$gene_id, PF3D7_GENES$gene_id)
+  expect_gt(length(extra), 0)
+  expect_false(anyNA(PF3D7_PARALOG_GENES$strand[
+    PF3D7_PARALOG_GENES$gene_id %in% extra]))
+})

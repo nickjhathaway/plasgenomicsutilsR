@@ -14,13 +14,95 @@
 
 .GENO_FILL <- c(reference = "#2271B2", mixed = "#359B73", alternate = "#D55E00")
 
+
+# A marker's calls as *allele sets*, read from the callset rather than from a dosage matrix.
+# A dosage says how many copies of one allele a sample carries, which at a site with three
+# alleles cannot say which of them it is; the set can. States are named from the alleles they
+# contain, and only the states that occur are returned -- the full enumeration of a
+# triallelic site is seven, and most of them are usually empty.
+.read_genotype_sets <- function(vcf) {
+  if (!nzchar(Sys.which("bcftools")))
+    stop("`additional_genotypes` needs bcftools on PATH", call. = FALSE)
+  if (!file.exists(vcf)) stop("no such file: ", vcf, call. = FALSE)
+  samples <- system2("bcftools", c("query", "-l", shQuote(vcf)), stdout = TRUE, stderr = FALSE)
+  lines <- system2("bcftools", c("query", "-f", shQuote("%CHROM\t%POS\t%ALT[\t%GT]\n"),
+                                 shQuote(vcf)), stdout = TRUE, stderr = FALSE)
+  if (!length(lines)) stop("no records in ", basename(vcf), call. = FALSE)
+  parts <- strsplit(lines, "\t", fixed = TRUE)
+
+  codes <- matrix(NA_integer_, nrow = length(samples), ncol = length(parts),
+                  dimnames = list(samples, NULL))
+  levs <- vector("list", length(parts))
+  ids <- character(length(parts))
+  for (j in seq_along(parts)) {
+    chrom <- parts[[j]][1]
+    pos <- as.integer(parts[[j]][2])
+    n_alleles <- 1L + length(strsplit(parts[[j]][3], ",", fixed = TRUE)[[1]])
+    gt <- parts[[j]][-(1:3)]
+    sets <- lapply(strsplit(gt, "[/|]"), function(v) {
+      v <- suppressWarnings(as.integer(v[v != "."]))
+      if (!length(v)) NA_integer_ else sort(unique(v))
+    })
+    key <- vapply(sets, function(v) if (length(v) == 1 && is.na(v[1])) NA_character_
+                  else paste(v, collapse = ","), character(1))
+    seen <- sort(unique(key[!is.na(key)]))
+    nm <- vapply(seen, function(k) .allele_set_name(
+      as.integer(strsplit(k, ",", fixed = TRUE)[[1]]), n_alleles), character(1))
+    codes[, j] <- match(key, seen) - 1L
+    levs[[j]] <- unname(nm)
+    ids[j] <- paste0(chrom, ":", pos - 1L)      # 0-based, as every id in this package is
+  }
+  colnames(codes) <- ids
+  names(levs) <- ids
+  list(codes = codes, levels = levs)
+}
+
+# Colours for the extra call states, chosen to stay apart from the three the plot already
+# uses. Taking the next entries off the shared palette is not enough: it hands back an orange
+# for `alternate 1` that sits next to the existing `alternate`, and a triallelic column then
+# reads as an ordinary one. Pick greedily on worst-case CIEDE2000 across all three
+# dichromacies instead, which is the same measure `colour_blind_distance()` reports.
+.distinct_fills <- function(used, n) {
+  if (n <= 0) return(character(0))
+  cand <- setdiff(color_palette(min(12L, max(8L, n + 5L))), unname(used))
+  picked <- character(0)
+  for (i in seq_len(n)) {
+    if (!length(cand)) break
+    score <- vapply(cand, function(cc)
+      min(colour_blind_distance(c(unname(used), picked), cc), na.rm = TRUE), numeric(1))
+    best <- cand[which.max(score)]
+    picked <- c(picked, best)
+    cand <- setdiff(cand, best)
+  }
+  # a palette that ran out is better short than recycled into a duplicate
+  picked
+}
+
+# What to call the set of alleles a sample carries at one marker. A biallelic marker keeps
+# the wording the plot has always used, so adding a multiallelic marker beside biallelic ones
+# does not rename the calls they were already showing.
+.allele_set_name <- function(a, n_alleles) {
+  one <- function(i) if (i == 0L) "reference"
+                     else if (n_alleles <= 2) "alternate" else paste("alternate", i)
+  if (length(a) == 1L) return(one(a))
+  if (n_alleles <= 2 && identical(a, 0:1)) return("mixed")
+  paste(vapply(a, one, character(1)), collapse = " + ")
+}
+
 # What a dosage means depends on which allele it counts, and the two codings are
 # indistinguishable from the matrix alone -- 2 is homozygous alternate under alt dosage and
 # homozygous reference under ref dosage. Getting it backwards silently mislabels the whole
 # plot, so the object is asked rather than assumed.
-.geno_calls <- function(v, allele) {
+.geno_calls <- function(v, allele, snp_id = NULL, state_levels = NULL) {
   idx <- if (identical(allele, "ref")) 3L - v else v + 1L
-  factor(.GENO_LEVELS[idx], levels = .GENO_LEVELS)
+  out <- .GENO_LEVELS[idx]
+  # a marker read as allele sets carries its own states, and its `value` indexes those
+  for (id in names(state_levels)) {
+    hit <- which(snp_id == id)
+    if (length(hit)) out[hit] <- state_levels[[id]][v[hit] + 1L]
+  }
+  extra <- setdiff(unlist(state_levels, use.names = FALSE), .GENO_LEVELS)
+  factor(out, levels = c(.GENO_LEVELS, extra))
 }
 
 .resolve_allele <- function(x, allele) {
@@ -63,13 +145,39 @@
     # .dendro_segments() puts leaf k of the *clustered order* at x = k; the heatmap numbers
     # its rows the same way inside the block, so the leaf index IS the row index
     base <- min(rows$.row[rows$.split == b]) - 1
-    data.frame(y = s$x + base, yend = s$xend + base, x = s$y, xend = s$yend,
-               .split = b, stringsAsFactors = FALSE)
+    cbind(data.frame(y = s$x + base, yend = s$xend + base, x = s$y, xend = s$yend),
+          .split_cols(rows, rep(b, length(s$x))))
   })
   segs <- do.call(rbind, segs[!vapply(segs, is.null, logical(1))])
   if (is.null(segs) || !nrow(segs)) return(NULL)
-  segs$.split <- factor(segs$.split, levels = levels(rows$.split))
+  rownames(segs) <- NULL
   segs
+}
+
+# ---- one block per level, or per combination of levels ---------------------------------
+# The rows carry `.split`, one factor whose levels are the blocks in drawing order, and --
+# when `split` named more than one column -- `.split1`, `.split2`, ... holding each column's
+# own factor. The panels facet on those, so ggplot draws one strip per column ("Northern" |
+# "REF") instead of a single pasted label, while `.split` stays the one key every other
+# piece of bookkeeping (row numbering, dendrogram anchors) is written against.
+.split_vars <- function(rows) {
+  nested <- grep("^\\.split[0-9]+$", names(rows), value = TRUE)
+  if (length(nested)) nested else ".split"
+}
+
+# The split columns for a set of blocks, by the block's `.split` label. Every panel that
+# facets alongside the heatmap builds its data with this, so they all share the same factors.
+.split_cols <- function(rows, blocks) {
+  vars <- unique(c(".split", .split_vars(rows)))
+  out <- rows[match(as.character(blocks), as.character(rows$.split)), vars, drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+.split_facet <- function(rows) {
+  facets <- lapply(.split_vars(rows), function(v) call("[[", quote(.data), v))
+  ggplot2::facet_grid(rows = do.call(ggplot2::vars, facets), scales = "free_y",
+                      space = "free_y")
 }
 
 # Which SNPs to mark: `chr:pos` ids, bare positions, a gene name resolved in `genes`, or an
@@ -123,11 +231,26 @@
 #' and keep the pruned one for PCA / UMAP / admixture, where pruning is what you want; the
 #' plot says so when the object records that it was pruned.
 #'
-#' `spacing` decides what the horizontal axis means, and the two answers show different
+#' `spacing` decides what the horizontal axis means, and the three answers show different
 #' things. `"even"` gives every SNP the same width, which is how the haplotype structure is
 #' easiest to read but says nothing about distance. `"genomic"` puts each SNP at its real
 #' coordinate, so a dense cluster of SNPs looks dense -- correct about position, but sparse
-#' stretches become wide empty bands.
+#' stretches become wide empty bands, and SNPs closer together than one mark width merge into
+#' a single block that cannot be told from one wide SNP.
+#'
+#' `"gapped"` is the middle ground: every SNP keeps a full readable column as under `"even"`,
+#' and an empty stretch of genome buys blank columns -- one per `gap_unit`, up to `gap_max`
+#' for any single gap. A desert then reads as a visible gap instead of vanishing, without a
+#' long one taking over the panel. `gap_unit` defaults to a fiftieth of the window, so
+#' ordinary spacing between SNPs costs nothing and only a stretch noticeably emptier than the
+#' rest opens up. The cap is what keeps it a compression rather than a coordinate: distances
+#' come out ordered and roughly proportional, not to scale, so read it for "there is a lot of
+#' nothing here", not for how much.
+#'
+#' It also gives the gene track somewhere to draw. Under `"even"` a gene with no genotyped SNP
+#' has no columns and is dropped from the track with a message; under `"gapped"` the blank
+#' columns are real space, so a gene sitting in a desert still appears, in about the right
+#' place.
 #'
 #' Either way a SNP is only ever drawn over the genes it really falls in. Under `"even"` the
 #' axis counts SNPs, so a gene's box is exactly the columns it holds: its width says how many
@@ -142,8 +265,13 @@
 #' @param region The interval to draw: a gene name from `genes`, a range
 #'   (`"13:1,720,000-1,730,000"`), a whole chromosome, or a one-row data frame with
 #'   chr/start/end.
-#' @param split Optional metadata column whose levels block the rows. Samples are clustered
-#'   inside each block, and the blocks keep the column's level order.
+#' @param split Optional metadata column(s) whose levels block the rows. Samples are
+#'   clustered inside each block, and the blocks keep the column's level order -- a factor's
+#'   levels are honoured, so a `region` ordered geographically stays geographic. More than
+#'   one column nests the blocks in the order given: `split = c("region", "PIN_variant")`
+#'   makes one block per region, each divided by variant, with a strip per column and only
+#'   the combinations that hold a sample drawn. Samples missing any of the columns are
+#'   dropped with a message.
 #' @param genotypes Optional alternative calls to draw: a genotype matrix (samples x SNPs
 #'   with `chr:pos` column names), a [load_genotypes()] list, or another [PopStructure]. `NULL`
 #'   (default) uses `x`'s own matrix. Metadata, grouping and the active sample set always come
@@ -166,7 +294,13 @@
 #'   indistinguishable from the matrix, and getting it backwards mislabels every call.
 #' @param samples Optional sample ids to keep.
 #' @param spacing `"even"` (default) gives every SNP equal width; `"genomic"` places each at
-#'   its real coordinate.
+#'   its real coordinate; `"gapped"` keeps the equal widths and inserts blank columns for
+#'   empty stretches of genome, so distance is visible without the SNPs shrinking.
+#' @param gap_unit,gap_max Under `"gapped"` spacing, base pairs of empty genome per blank
+#'   column and the most blank columns any one gap may claim (default `10`). `gap_unit`
+#'   defaults to `NULL`, a fiftieth of the window; lower it to exaggerate distance, raise it
+#'   to play it down. `gap_max` stops a single desert from squeezing every SNP into the
+#'   margin.
 #' @param cluster Cluster the samples (default `TRUE`). `FALSE` keeps them in the order they
 #'   arrive, which is worth doing when the metadata order is the point.
 #' @param dendrogram Draw the dendrogram beside the rows (needs `cluster`).
@@ -189,7 +323,17 @@
 #' @param snp_width Width of each mark under `"genomic"` spacing, in base pairs. `NULL`
 #'   (default) uses 0.5% of the window, wide enough to see and narrow enough to leave the
 #'   gaps between SNPs visible.
-#' @param colours,colors Named fill colours for `reference` / `mixed` / `alternate`.
+#' @param additional_genotypes Optional VCF/BCF path(s) holding markers the genotype matrix
+#'   cannot express. A dosage counts copies of one allele, so a site with three alleles
+#'   collapses every non-reference call to the same number -- which is why such sites are
+#'   usually dropped from a callset in the first place. Markers given here are read as the
+#'   **set of alleles** each sample carries, so `reference`, `alternate 1`, `alternate 2` and
+#'   the mixed states between them stay distinct. Needs `bcftools` on `PATH`; samples are
+#'   matched by name, and a position already in the genotypes is an error. Only the states
+#'   that actually occur are added to the legend: the full enumeration of a triallelic site
+#'   is seven, and most of them are ordinarily empty.
+#' @param colours,colors Named fill colours for `reference` / `mixed` / `alternate`, and for
+#'   any state an `additional_genotypes` marker contributes.
 #' @param na_colour,na_color Fill for missing calls.
 #' @param show_sample_names Label the rows. `NULL` (default) labels them when there are at
 #'   most 40 samples.
@@ -203,17 +347,19 @@
 #' @export
 plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                                    genotypes = NULL, samples = NULL,
-                                   spacing = c("even", "genomic"),
+                                   spacing = c("even", "genomic", "gapped"),
                                    cluster = TRUE, dendrogram = TRUE, dend_width = 0.15,
                                    border = TRUE, border_colour = "grey45",
                                    allele = NULL,
                                    mark_snps = NULL, mark_colour = "#B2182B",
                                    genes = NULL, gene_track = NULL, gene_label_angle = 0,
                                    pad = 0, min_span = 0, max_snps = 2000, snp_width = NULL,
+                                   gap_unit = NULL, gap_max = 10,
                                    colours = NULL, na_colour = "grey85",
                                    show_sample_names = NULL,
                                    reference = DEFAULT_REFERENCE,
                                    annotation_colours = NULL,
+                                   additional_genotypes = NULL,
                                    border_color = NULL, colors = NULL, na_color = NULL,
                                    annotation_colors = NULL) {
   annotation_colours <- .alias_arg("annotation_colours", "annotation_colors")
@@ -226,6 +372,37 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
 
   gt <- .haplotype_genotypes(x, genotypes)
   G <- gt$G
+  # Markers the dosage matrix cannot express -- a site with three alleles collapses every
+  # non-reference call to one number -- read from their own callset as allele sets and
+  # spliced in here, before the window is chosen, so they are laid out like any other column.
+  state_levels <- list()
+  for (v in additional_genotypes) {
+    add <- .read_genotype_sets(v)
+    have <- unique(normalise_chr(sub(":.*", "", colnames(G))))
+    lookup <- stats::setNames(unique(sub(":.*", "", colnames(G))), have)
+    as_have <- lookup[normalise_chr(sub(":.*", "", colnames(add$codes)))]
+    ids <- ifelse(is.na(as_have), colnames(add$codes),
+                  paste0(as_have, ":", sub(".*:", "", colnames(add$codes))))
+    colnames(add$codes) <- ids
+    names(add$levels) <- ids
+    miss <- setdiff(rownames(G), rownames(add$codes))
+    if (length(miss))
+      stop(sprintf("%d of the genotypes' samples are not in %s (e.g. %s)", length(miss),
+                   basename(v), paste(utils::head(miss, 3), collapse = ", ")), call. = FALSE)
+    clash <- intersect(colnames(G), ids)
+    if (length(clash))
+      stop(sprintf("%s is already in the genotypes; drop it there if this call replaces it",
+                   paste(clash, collapse = ", ")), call. = FALSE)
+    # A left join on the genotypes being plotted: the marker is usually called on the whole
+    # cohort while the figure shows a subset, so extras are expected -- but say how many, or
+    # a name mismatch that silently drops half the callset looks like a clean merge.
+    spare <- setdiff(rownames(add$codes), rownames(G))
+    if (length(spare))
+      message(sprintf("%s has %d sample(s) not in the genotypes; they are left out",
+                      basename(v), length(spare)))
+    G <- cbind(G, add$codes[rownames(G), , drop = FALSE])
+    state_levels <- c(state_levels, add$levels)
+  }
   if (!is.null(samples)) {
     keep <- rownames(G) %in% samples
     if (!any(keep)) stop("none of `samples` are in the genotypes", call. = FALSE)
@@ -253,7 +430,8 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   # ---- rows: blocked by the metadata, clustered inside each block ----------
   blocks <- .row_blocks(x, split, rownames(G))
   if (!is.null(blocks$dropped))
-    message("dropped ", blocks$dropped, " sample(s) with no ", split)
+    message("dropped ", blocks$dropped, " sample(s) with no ",
+            paste(split, collapse = " / "))
   G <- G[names(blocks$f), , drop = FALSE]
   ord <- .cluster_within(G, blocks$f, cluster)
   row_ids <- unlist(lapply(ord, `[[`, "ids"), use.names = FALSE)
@@ -261,6 +439,9 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
     sample = row_ids,
     .split = factor(as.character(blocks$f[row_ids]), levels = levels(blocks$f)),
     stringsAsFactors = FALSE)
+  # nested splits keep each column's own factor beside the combined key (see .split_vars)
+  if (!is.null(blocks$parts))
+    rows <- cbind(rows, blocks$parts[match(row_ids, rownames(blocks$parts)), , drop = FALSE])
   # rows are numbered top to bottom within the whole plot; each facet then shows its own slice
   rows$.row <- seq_len(nrow(rows))
 
@@ -273,8 +454,9 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
     value = as.vector(G[row_ids, , drop = FALSE]),
     stringsAsFactors = FALSE)
   long$.row <- rows$.row[match(long$sample, rows$sample)]
-  long$.split <- rows$.split[match(long$sample, rows$sample)]
-  long$call <- .geno_calls(long$value, allele %||% gt$allele %||% .resolve_allele(x, NULL))
+  long <- cbind(long, .split_cols(rows, rows$.split[match(long$sample, rows$sample)]))
+  long$call <- .geno_calls(long$value, allele %||% gt$allele %||% .resolve_allele(x, NULL),
+                           long$snp_id, state_levels)
   # LD pruning keeps one SNP out of each correlated run, which is exactly what a shared
   # haplotype is made of, so a pruned panel understates the very structure this plot is for.
   if (isTRUE(gt$pruned))
@@ -282,7 +464,7 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
             "pruning and the haplotype blocks will look thinner than they are; rebuild with ",
             "`load_genotypes(..., prune = FALSE)` for a haplotype view")
 
-  tiles <- .snp_tile_x(sel, spacing, snp_width)
+  tiles <- .snp_tile_x(sel, spacing, snp_width, gap_unit = gap_unit, gap_max = gap_max)
   gene_boxes <- .gene_boxes_in_x(genes, iv, sel, tiles, spacing)
   # a mark must never straddle into a gene the SNP is not in (see .clip_tiles_to_genes)
   if (spacing == "genomic") tiles <- .clip_tiles_to_genes(tiles, sel, gene_boxes)
@@ -292,9 +474,17 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   xlim <- if (spacing == "genomic") c(min(iv$start, min(tiles$xmin)),
                                       max(iv$end, max(tiles$xmax)))
           else c(min(tiles$xmin), max(tiles$xmax))
+  # a gene box interpolated past the outermost SNP would be clipped away; let the axis hold it
+  if (spacing == "gapped" && !is.null(gene_boxes) && nrow(gene_boxes))
+    xlim <- c(min(xlim[1], gene_boxes$.gene_xmin), max(xlim[2], gene_boxes$.gene_xmax))
 
   # ---- the heatmap ---------------------------------------------------------
   fills <- .GENO_FILL
+  extra <- intersect(setdiff(levels(long$call), names(fills)), as.character(long$call))
+  if (length(extra)) {
+    got <- .distinct_fills(fills, length(extra))
+    fills <- c(fills, stats::setNames(rep(got, length.out = length(extra)), extra))
+  }
   if (!is.null(colours)) fills[names(colours)] <- unname(colours)
   labels <- if (is.null(show_sample_names)) nrow(rows) <= 40 else isTRUE(show_sample_names)
 
@@ -304,13 +494,19 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                    ymin = .data$.row - 0.5, ymax = .data$.row + 0.5, fill = .data$call),
       colour = if (border) border_colour else NA,
       linewidth = if (border) 0.06 else 0) +
-    ggplot2::scale_fill_manual(values = fills, na.value = na_colour, drop = FALSE,
-                               name = "call",
+    ggplot2::scale_fill_manual(values = fills, na.value = na_colour,
+                               # the three base calls always, plus only those extra states a
+                               # marker actually produced -- a triallelic site has seven and
+                               # is normally missing most of them
+                               limits = unique(c(.GENO_LEVELS,
+                                                 intersect(levels(long$call),
+                                                           as.character(long$call)))),
+                               drop = FALSE, name = "call",
                                guide = ggplot2::guide_legend(order = .HAP_LEGEND_CALL)) +
     ggplot2::scale_y_reverse(
       breaks = if (labels) rows$.row, labels = if (labels) rows$sample,
       expand = ggplot2::expansion(0)) +
-    .haplotype_x_scale(sel, spacing, iv, xlim) +
+    .haplotype_x_scale(sel, spacing, iv, xlim, x_of = tiles$x) +
     ggplot2::theme_bw(base_size = 10) +
     ggplot2::theme(panel.grid = ggplot2::element_blank(),
                    panel.spacing.y = grid::unit(2, "pt"),
@@ -327,9 +523,7 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
       p <- p + ggplot2::geom_vline(xintercept = mx, colour = mark_colour, linewidth = 0.35)
   }
   faceted <- nlevels(rows$.split) > 1
-  if (faceted)
-    p <- p + ggplot2::facet_grid(rows = ggplot2::vars(.data$.split), scales = "free_y",
-                                 space = "free_y", switch = NULL)
+  if (faceted) p <- p + .split_facet(rows)
 
   # ---- dendrogram beside the rows, gene track underneath -------------------
   dend <- if (dendrogram && cluster) .dendro_panel(.block_dendro(ord, rows), rows,
@@ -353,7 +547,8 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   row_in <- if (labels) 0.16 else max(0.015, min(0.09, .HAP_ROWS_IN / nrow(rows)))
   attr(out, "plasgenomics_dims") <- c(
     width = .ZOOM_WIDTH_IN + (if (labels) 1 else 0) +
-      (if (is.null(ann)) 0 else attr(ann, "ann_in") + 0.6),
+      # the strips sit beside the annotation panel, one per split column
+      (if (is.null(ann)) 0 else attr(ann, "ann_in") + 0.6 * length(.split_vars(rows))),
     height = max(3, row_in * nrow(rows) + 0.3 * max(1L, nlevels(rows$.split)) + 1) +
       if (is.null(track)) 0 else attr(track, "track_in"))
   out
@@ -400,9 +595,10 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
     # A factor annotation keeps every level it was built with, so a level whose samples
     # are all outside this plot would otherwise be drawn as a legend key with nothing
     # behind it -- and blank, wherever the shared colour map has no entry for it.
-    d <- data.frame(
-      .row = rows$.row, .split = rows$.split, x = k,
-      value = droplevels(.as_group_factor(meta[[cc]][match(rows$sample, key)])))
+    d <- cbind(
+      data.frame(.row = rows$.row, x = k,
+                 value = droplevels(.as_group_factor(meta[[cc]][match(rows$sample, key)]))),
+      .split_cols(rows, rows$.split))
     lev <- levels(d$value)
     maps[[cc]] <- .fill_palette_gaps(maps[[cc]], lev, meta, cc)
     maps[[cc]] <- .merge_palette(maps[[cc]], ann_colours[[cc]], lev, cc)
@@ -429,9 +625,7 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
       plot.margin = ggplot2::margin(l = 2, r = 2, t = 0, b = 0),
       strip.background = ggplot2::element_rect(fill = "grey95", colour = NA),
       strip.text.y.right = ggplot2::element_text(angle = 0))
-  if (faceted)
-    p <- p + ggplot2::facet_grid(rows = ggplot2::vars(.data$.split), scales = "free_y",
-                                 space = "free_y")
+  if (faceted) p <- p + .split_facet(rows)
   attr(p, "ann_in") <- .HAP_ANN_IN * length(cols)
   p
 }
@@ -480,22 +674,36 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   list(G = G, allele = src$allele, pruned = src$pruned)
 }
 
-# The metadata column that blocks the rows, as a factor over the samples being drawn.
+# The metadata column(s) that block the rows, as a factor over the samples being drawn.
+# Several columns nest: the first is the outer block and each later one divides it, with
+# every column's own level order kept (so an ordered factor stays ordered) and only the
+# combinations that actually hold a sample surviving. `parts` then carries each column's
+# factor, one row per kept sample, so the panels can facet on all of them.
 .row_blocks <- function(x, split, ids) {
-  if (is.null(split)) {
+  if (is.null(split) || !length(split)) {
     f <- factor(rep("all", length(ids)), levels = "all")
     names(f) <- ids
-    return(list(f = f, dropped = NULL))
+    return(list(f = f, dropped = NULL, parts = NULL))
   }
   meta <- x$get_meta()
-  if (is.null(meta) || !split %in% names(meta))
-    stop("`split = \"", split, "\"` is not a metadata column", call. = FALSE)
+  missing <- if (is.null(meta)) split else setdiff(split, names(meta))
+  if (length(missing))
+    stop("`split = \"", paste(missing, collapse = "\", \""), "\"` is not a metadata column",
+         call. = FALSE)
   key <- if ("sample" %in% names(meta)) meta$sample else rownames(meta)
-  v <- meta[[split]][match(ids, key)]
-  f <- .as_group_factor(v)
-  names(f) <- ids
-  keep <- !is.na(f)
-  list(f = droplevels(f[keep]), dropped = if (all(keep)) NULL else sum(!keep))
+  parts <- lapply(split, function(cc) .as_group_factor(meta[[cc]][match(ids, key)]))
+  keep <- Reduce(`&`, lapply(parts, function(v) !is.na(v)))
+  parts <- lapply(parts, function(v) droplevels(v[keep]))
+  f <- if (length(parts) == 1) parts[[1]] else
+    droplevels(interaction(parts, sep = " / ", lex.order = TRUE))
+  names(f) <- ids[keep]
+  out <- list(f = f, dropped = if (all(keep)) NULL else sum(!keep), parts = NULL)
+  if (length(parts) > 1) {
+    out$parts <- as.data.frame(stats::setNames(parts, paste0(".split", seq_along(parts))),
+                               stringsAsFactors = FALSE)
+    rownames(out$parts) <- ids[keep]
+  }
+  out
 }
 
 # Tile edges per SNP. Even spacing gives each column the same width. So does genomic spacing,
@@ -503,19 +711,53 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
 # how far apart the SNPs are. Stretching each tile to meet its neighbours would fill the gaps
 # back in and hide exactly that -- and would make an isolated SNP a wide block purely because
 # nothing was called near it.
-.snp_tile_x <- function(sel, spacing, snp_width = NULL) {
+.snp_tile_x <- function(sel, spacing, snp_width = NULL, gap_unit = NULL, gap_max = 10) {
   n <- nrow(sel)
   if (spacing == "even" || n == 1)
     return(list(xmin = seq_len(n) - 0.5, xmax = seq_len(n) + 0.5))
+  if (spacing == "gapped") {
+    x <- .gapped_x(sel$pos, gap_unit, gap_max)
+    return(list(xmin = x - 0.5, xmax = x + 0.5, x = x))
+  }
   pos <- sel$pos
   span <- max(diff(range(pos)), 1)
   w <- if (!is.null(snp_width)) snp_width else max(span * 0.005, 1)
   list(xmin = pos - w / 2, xmax = pos + w / 2)
 }
 
+# Column index for each SNP under "gapped" spacing: one column per SNP, plus blank columns
+# where the genome between two SNPs is empty.
+#
+# Even spacing draws a 40 kb desert and a 40 bp gap identically; genomic spacing draws the
+# desert honestly and the SNPs in it too small to read. This keeps every SNP one readable
+# column wide and spends `1` blank column per `gap_unit` of empty sequence, so a gap is
+# visible and roughly proportional without a long one taking over the panel -- `gap_max`
+# caps what any single gap can claim.
+.gapped_x <- function(pos, gap_unit = NULL, gap_max = 10) {
+  n <- length(pos)
+  if (n <= 1) return(seq_len(n))
+  gaps <- diff(pos)
+  # A fixed number of base pairs per blank column cannot suit both a 40 kb gene window and a
+  # whole chromosome, so the default is a fiftieth of the window: ordinary spacing between
+  # SNPs stays under it and costs nothing, while a stretch of genome noticeably emptier than
+  # the rest buys columns in proportion. Give a number to fix it instead.
+  if (is.null(gap_unit)) gap_unit <- max(diff(range(pos)) / 50, 1)
+  blanks <- pmin(floor(gaps / gap_unit), gap_max)
+  cumsum(c(1, 1 + blanks))
+}
+
+# Genomic position -> plot x, for anything that is not a SNP (a gene edge, a marked site).
+# Piecewise linear between the SNP anchors, so a coordinate between two SNPs lands between
+# their columns, and the blank columns of a gap are real space something can be drawn in.
+.gapped_pos_to_x <- function(v, pos, x) {
+  if (!length(v)) return(numeric(0))
+  if (length(pos) == 1) return(rep(x[1], length(v)))
+  stats::approx(pos, x, xout = v, rule = 2, ties = "ordered")$y
+}
+
 # Under even spacing the axis counts SNPs, so it is labelled with the coordinates of a few of
 # them rather than pretending the numbers are positions.
-.haplotype_x_scale <- function(sel, spacing, iv, xlim) {
+.haplotype_x_scale <- function(sel, spacing, iv, xlim, x_of = NULL) {
   if (spacing == "genomic") {
     unit <- if (diff(xlim) >= 1e4) 1e3 else 1
     return(ggplot2::scale_x_continuous(
@@ -525,9 +767,14 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
       expand = ggplot2::expansion(0)))
   }
   at <- unique(round(seq(1, nrow(sel), length.out = min(nrow(sel), 6))))
+  # the axis counts columns either way, so it is labelled with the coordinates of a few SNPs
+  # rather than pretending the numbers are positions
+  breaks <- if (spacing == "gapped") x_of[at] else at
+  name <- if (spacing == "gapped")
+    paste0("chromosome ", iv$chr, ": ", nrow(sel), " SNPs, gaps compressed")
+  else paste0("chromosome ", iv$chr, ": ", nrow(sel), " SNPs, evenly spaced")
   ggplot2::scale_x_continuous(
-    name = paste0("chromosome ", iv$chr, ": ", nrow(sel), " SNPs, evenly spaced"),
-    breaks = at,
+    name = name, breaks = breaks,
     labels = format(round(sel$pos[at] / 1000, 1), big.mark = ",", trim = TRUE),
     expand = ggplot2::expansion(0))
 }
@@ -535,6 +782,9 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
 # Positions -> the plot's x units (a column index under even spacing).
 .marks_to_x <- function(marks, sel, tiles, spacing) {
   if (spacing == "genomic") return(marks)
+  # gapped spacing has blank columns between the SNPs, so a marked position with no SNP of
+  # its own still has somewhere to sit: interpolate it rather than dropping it
+  if (spacing == "gapped") return(.gapped_pos_to_x(marks, sel$pos, tiles$x))
   i <- match(marks, sel$pos)
   # a marked position with no genotyped SNP has no column to sit on
   (seq_len(nrow(sel)))[i[!is.na(i)]]
@@ -553,6 +803,7 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
     g$.gene_xmax <- as.numeric(g$end)
     return(g)
   }
+  if (spacing == "gapped") return(.gapped_gene_boxes(g, sel, tiles$x))
 
   # Under even spacing the axis counts SNPs, so a gene's extent on it is exactly the columns it
   # holds -- nothing else is well defined. Interpolating its genomic bounds onto the axis instead
@@ -575,6 +826,44 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   g$.gene_xmin <- vapply(in_gene, function(i) min(i) - 0.5, numeric(1))
   g$.gene_xmax <- vapply(in_gene, function(i) max(i) + 0.5, numeric(1))
   g
+}
+
+# Gene boxes under gapped spacing: interpolated onto the axis, then held out of any SNP
+# column the gene does not contain.
+#
+# The blank columns are real room, so a gene is not restricted to the columns it holds the way
+# it is under even spacing -- one sitting in a desert with no genotyped SNP still gets drawn,
+# in about the right place, which is most of the point of the mode. But interpolation alone
+# would let a gene lying in a *small* gap reach under a neighbouring SNP's tile, and a tile
+# drawn over a gene it is not in is the one thing the track must never say. So each box is
+# clipped to the space between the flanking columns that are outside it, and a gene with no
+# room left is dropped and reported, as under even spacing.
+.gapped_gene_boxes <- function(g, sel, x) {
+  lo <- .gapped_pos_to_x(as.numeric(g$start), sel$pos, x)
+  hi <- .gapped_pos_to_x(as.numeric(g$end), sel$pos, x)
+  for (j in seq_len(nrow(g))) {
+    gs <- as.numeric(g$start[j]); ge <- as.numeric(g$end[j])
+    inside <- which(sel$pos >= gs & sel$pos < ge)
+    # a gene always covers the columns it holds, whatever interpolation says
+    if (length(inside)) {
+      lo[j] <- min(lo[j], min(x[inside]) - 0.5)
+      hi[j] <- max(hi[j], max(x[inside]) + 0.5)
+    }
+    left <- x[sel$pos < gs]
+    right <- x[sel$pos >= ge]
+    if (length(left)) lo[j] <- max(lo[j], max(left) + 0.5)
+    if (length(right)) hi[j] <- min(hi[j], min(right) - 0.5)
+  }
+  g$.gene_xmin <- lo
+  g$.gene_xmax <- hi
+  empty <- !(hi > lo)
+  if (any(empty))
+    message(sum(empty), " gene(s) in the window have no room on the axis under `spacing = ",
+            "\"gapped\"` -- no genotyped SNP and no gap to sit in: ",
+            paste(utils::head(g$name[empty], 5), collapse = ", "),
+            if (sum(empty) > 5) ", ..." else "")
+  g <- g[!empty, , drop = FALSE]
+  if (!nrow(g)) NULL else g
 }
 
 # Keep a genomic-spacing mark from spilling into a gene it is not in: each SNP's fixed-width
@@ -613,9 +902,8 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   # global range is just as wrong, since `space = "free_y"` then gives every block the same
   # height regardless of how many samples it has.
   lim <- lapply(split(rows$.row, rows$.split), function(r) c(min(r) - 0.5, max(r) + 0.5))
-  anchor <- data.frame(
-    y = unlist(lim, use.names = FALSE), x = 0,
-    .split = factor(rep(names(lim), each = 2), levels = levels(rows$.split)))
+  anchor <- cbind(data.frame(y = unlist(lim, use.names = FALSE), x = 0),
+                  .split_cols(rows, rep(names(lim), each = 2)))
 
   p <- ggplot2::ggplot(segs) +
     ggplot2::geom_segment(ggplot2::aes(x = .data$x, xend = .data$xend, y = .data$y,
@@ -632,9 +920,7 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
                    panel.spacing.y = grid::unit(2, "pt"),
                    strip.text = ggplot2::element_blank(),
                    strip.background = ggplot2::element_blank())
-  if (faceted)
-    p <- p + ggplot2::facet_grid(rows = ggplot2::vars(.data$.split), scales = "free_y",
-                                 space = "free_y")
+  if (faceted) p <- p + .split_facet(rows)
   p
 }
 

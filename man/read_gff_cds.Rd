@@ -26,15 +26,11 @@ cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
 cds
 
 \dontrun{
-# a whole released annotation, read straight from the web
-cds <- read_gff_cds(paste0("https://plasmodb.org/common/downloads/Current_Release/",
-                           "Pfalciparum3D7/gff/data/PlasmoDB-68_Pfalciparum3D7.gff"))
-# Ensembl Protists works too, despite naming its attributes differently
-cds <- read_gff_cds(paste0("https://ftp.ensemblgenomes.ebi.ac.uk/pub/protists/current/",
-                           "gff3/plasmodium_falciparum/",
-                           "Plasmodium_falciparum.GCA000002765v3.63.gff3.gz"))
+# a whole released annotation, read straight from the web -- gzipped is fine.
+# ensembl_gff_url() builds the path, so it need not be looked up by hand.
+cds <- read_gff_cds(ensembl_gff_url("falciparum"))
 }
 }
 \seealso{
-\code{\link[=aa_intervals]{aa_intervals()}}
+\code{\link[=aa_intervals]{aa_intervals()}}, \code{\link[=ensembl_gff_url]{ensembl_gff_url()}}
 }

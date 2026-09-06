@@ -16,13 +16,22 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    # A full matrix leg runs in 5-10 min; the ceiling is for a cold dependency cache.
+    # Without it a job that hangs in setup holds a runner for the 6-hour default, and the
+    # run neither passes nor fails. R devel has no binary packages on Posit Package
+    # Manager, so a cold cache there means every dependency (igraph, ggplot2, the
+    # Bioconductor ones) is compiled from source -- more than 25 min. The cache is only
+    # saved when the install step succeeds, so a ceiling the cold build cannot meet would
+    # leave that leg failing on every run; hence its own, longer limits.
+    timeout-minutes: ${{ matrix.config.job-timeout || 40 }}
     strategy:
       fail-fast: false
       matrix:
         config:
           - {os: macos-latest,   r: 'release'}
           - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release',
+             deps-timeout: 60, job-timeout: 75}
           - {os: ubuntu-latest,  r: 'release'}
           - {os: ubuntu-latest,  r: 'oldrel-1'}
     env:
@@ -33,13 +42,17 @@ jobs:
 
       - uses: r-lib/actions/setup-pandoc@v2
 
+      # Installing R takes well under a minute; a cap here turns the occasional hung
+      # download into a failure the retry workflow can act on, rather than a stalled job.
       - uses: r-lib/actions/setup-r@v2
+        timeout-minutes: 10
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
+        timeout-minutes: ${{ matrix.config.deps-timeout || 25 }}
         with:
           extra-packages: any::rcmdcheck
           needs: check
@@ -56,6 +69,7 @@ jobs:
   pkgdown-config:
     runs-on: ubuntu-latest
     name: pkgdown config
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -65,6 +79,7 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
+        timeout-minutes: 10
         with:
           use-public-rspm: true
 
