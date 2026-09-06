@@ -33,7 +33,9 @@
 #' @return A named numeric vector, one worst-case distance per vision type.
 #' @examples
 #' colour_blind_distance(color_palette(6))
-#' colour_blind_distance(RColorBrewer::brewer.pal(6, "Paired"))  # deutan pairs collapse
+#' # ColorBrewer "Paired", 6 colours: its light/dark pairs collapse for deutan vision
+#' paired6 <- c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99", "#E31A1C")
+#' colour_blind_distance(paired6)
 #' @export
 colour_blind_distance <- function(x, y = NULL,
                                   vision = c("normal", "deutan", "protan", "tritan")) {
@@ -73,7 +75,9 @@ color_blind_distance <- colour_blind_distance
     p <- .cvd_prevalence[[v]]
     out <- .cvd_kinds[[v]]
     if (nzchar(p)) out <- paste0(out, "  (", p, ")")
-    if (show_distance) out <- paste0(out, "\nΔE ", sprintf("%.1f", de[[v]]))
+    # ASCII on purpose: a Greek delta cannot be drawn by pdf()'s default Latin-1 encoding,
+    # which is what R CMD check (and many users) render examples with
+    if (show_distance) out <- paste0(out, "\ndE ", sprintf("%.1f", de[[v]]))
     out
   }, character(1))
   df$vision <- factor(df$vision, levels = rev(vision), labels = rev(lab))
@@ -145,7 +149,7 @@ plot_colour_blind_check <- function(palettes, subtitles = NULL, title = NULL,
   fig <- patchwork::wrap_plots(panels, ncol = 1)
   cap <- if (isTRUE(caption)) paste(
     "Colour blindness simulated with colorspace::deutan / protan / tritan",
-    "(Machado et al. 2009). ΔE is the smallest CIEDE2000 distance between any two",
+    "(Machado et al. 2009). dE is the smallest CIEDE2000 distance between any two",
     "swatches in that row - higher is harder to confuse; above ~5 is distinguishable,",
     "above ~10 comfortably so.") else if (isFALSE(caption)) NULL else caption
   if (!is.null(cap) && requireNamespace("scales", quietly = TRUE))

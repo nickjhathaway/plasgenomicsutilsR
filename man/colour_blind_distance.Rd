@@ -36,5 +36,7 @@ as CIEDE2000 distance -- roughly, below ~5 is a confusion risk, above ~10 is com
 }
 \examples{
 colour_blind_distance(color_palette(6))
-colour_blind_distance(RColorBrewer::brewer.pal(6, "Paired"))  # deutan pairs collapse
+# ColorBrewer "Paired", 6 colours: its light/dark pairs collapse for deutan vision
+paired6 <- c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99", "#E31A1C")
+colour_blind_distance(paired6)
 }
