@@ -9,11 +9,13 @@ tandem_repeats_to_avoid(
   min_width_by_period = c(`1` = 11, `2` = 12, `3` = 21),
   min_width = 50,
   gap = 0,
-  dedupe = FALSE
+  dedupe = FALSE,
+  rule = c("record", "block")
 )
 }
 \arguments{
-\item{x}{A \code{\link[=tandem_repeats]{tandem_repeats()}} table, or anything \code{\link[=tandem_repeats]{tandem_repeats()}} accepts.}
+\item{x}{A \code{\link[=tandem_repeats]{tandem_repeats()}} table, or anything \code{\link[=tandem_repeats]{tandem_repeats()}} accepts; or the block
+table from \code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}}.}
 
 \item{min_width_by_period}{Minimum total width (bp) to flag, per period. A named
 numeric vector whose names are periods, or an unnamed one read as periods 1, 2, 3, ...
@@ -31,29 +33,46 @@ whose unit is the same up to rotation or reverse complement -- \code{TAT} within
 that way. Such a record adds nothing: the container has the same period and at least
 the width, so the blocks and every flag come out the same; only \code{n_repeats} and the
 \code{repeat_units} list, which no longer names both spellings, change.}
+
+\item{rule}{\code{"record"} or \code{"block"}; see above.}
 }
 \value{
 The \code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}} table restricted to the blocks to avoid, without the
 \code{avoid} column.
 }
 \description{
-The whole recipe in one call: flag each repeat by its period and length
-(\code{\link[=flag_tandem_repeats]{flag_tandem_repeats()}}), merge repeats that run into one another
-(\code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}}), and keep a merged run when any repeat in it was flagged or
-when the run as a whole is at least \code{min_width} long -- a chain of individually harmless
-short repeats adds up to a stretch that slips like a long one. Subtract the result
-from your targets with \code{\link[=bed_subtract]{bed_subtract()}}, padding by a few bases so a primer cannot end
-right at a repeat's edge.
+The whole recipe in one call: merge repeats that run into one another
+(\code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}}), apply the period and length thresholds
+(\code{\link[=flag_tandem_repeats]{flag_tandem_repeats()}}), keep what is flagged. Subtract the result from your targets
+with \code{\link[=bed_subtract]{bed_subtract()}}, padding by a few bases so a primer cannot end right at a repeat's
+edge.
 }
 \details{
-This reproduces the mask the HEOME Pf3D7 design used, which was made in three steps:
-per-record thresholds, every repeat merged and runs of 50 bp or more kept, and the two
-sets merged. The one difference is that a short unflagged repeat abutting a flagged one
-is absorbed into its block here, extending it by at most those few bases.
+\code{rule} says what the thresholds are applied to:
+\itemize{
+\item \code{"record"} (the default): each repeat is judged on its own width, then merged; a
+merged run is kept when any repeat in it was flagged, or when the run as a whole
+reaches \code{min_width}, since a chain of individually harmless short repeats adds up to a
+stretch that slips like a long one. This reproduces the mask the HEOME Pf3D7 design
+used (per-record thresholds; every repeat merged and runs of 50 bp or more kept; the two
+sets merged), except that a short unflagged repeat abutting a flagged one is absorbed
+into its block, extending it by at most those few bases.
+\item \code{"block"}: repeats are merged first (with \code{gap}) and each block is judged on its
+\emph{combined} width, held to the lowest threshold among the periods it contains. An 8 bp
+\code{A} run within 10 bp of a 9 bp \code{ATA} run is neither flagged alone, but together with
+the bases between them they are a 20 bp stretch holding a homopolymer, and 20 is past
+the homopolymer's 11. The combined width is the block's span, gap included.
+}
 }
 \examples{
 avoid <- tandem_repeats_to_avoid(pf3d7_tandem_repeats())
 nrow(avoid); sum(avoid$width)                # blocks, and bases masked
+
+# stricter: merge repeats within 10 bp and judge each block on its combined width,
+# with homopolymers and dinucleotides held to the trinucleotide length
+strict <- tandem_repeats_to_avoid(pf3d7_tandem_repeats(), rule = "block", gap = 10,
+                                  min_width_by_period = c("1" = 21, "2" = 21, "3" = 21))
+nrow(strict); sum(strict$width)
 
 # the targets: a few genes minus the repeats, with 10 bp of clearance around each
 genes <- PF3D7_GENES[PF3D7_GENES$name \%in\% c("pfcrt", "pfdhfr", "pfkelch13"), ]

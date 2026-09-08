@@ -166,6 +166,33 @@ bed_subtract <- function(locs1, locs2,
   stop("`x` needs a `chrom` (or `chr`) column", call. = FALSE)
 }
 
+# `pfcrt`, `pfcrt`, `pfcrt` -> `pfcrt_1`, `pfcrt_2`, `pfcrt_3`; twelve of one name get
+# `_01` .. `_12`: zero-padded to the width of that name's own count, in the order given
+.make_names_unique <- function(nm) {
+  key <- ifelse(is.na(nm), "\001NA", nm)
+  dup <- key %in% key[duplicated(key)]
+  if (!any(dup)) return(nm)
+  idx <- stats::ave(seq_along(key), key, FUN = seq_along)
+  cnt <- stats::ave(seq_along(key), key, FUN = length)
+  nm[dup] <- paste0(nm[dup], "_", sprintf(paste0("%0", nchar(cnt[dup]), "d"), idx[dup]))
+  nm
+}
+
+# the BED name field: a column, or `chrom-start-end` when asked for (or when uniqueness is
+# wanted and there is no column to make unique)
+.bed_names <- function(df, name_col, chrom_v, start_v, end_v, name_is_coords,
+                       make_names_unique, fmt) {
+  if (isTRUE(name_is_coords) || (isTRUE(make_names_unique) && is.null(name_col)) ||
+      (is.null(name_col) && !is.null(fmt$always) && fmt$always)) {
+    nm <- paste0(chrom_v, "-", fmt$num(start_v), "-", fmt$num(end_v))
+  } else if (!is.null(name_col)) {
+    nm <- as.character(df[[name_col]])
+  } else {
+    return(NULL)
+  }
+  nm
+}
+
 #' Write an interval table as a BED file
 #'
 #' Three columns, tab separated, no header, `start` 0-based half-open -- what `bedtools`
@@ -188,7 +215,15 @@ bed_subtract <- function(locs1, locs2,
 #'   `<assembly>_chrom` column, `"chrom"`, and `"chr"` that the table has (see above).
 #' @param name Column to use as the BED name field, or `NULL` for none. Defaults to `"name"`
 #'   when the table has it.
+#' @param name_is_coords Write `chrom-start-end` (`Pf3D7_07_v3-403221-403363`) as the name
+#'   field instead of a column (default `FALSE`).
+#' @param make_names_unique Make the name field unique within the file (default `FALSE`):
+#'   a name that occurs more than once gets `_1`, `_2`, ... in file order, zero-padded to the
+#'   width of that name's count (`_01` to `_12` for twelve). Combines with `name_is_coords`,
+#'   so identical coordinates written twice get distinct names. With no name column and
+#'   `name_is_coords = FALSE`, the coordinates are used as the names to make unique.
 #' @param sort Sort by chromosome and start (default `TRUE`), which is what the tools want.
+#'   Numbering for uniqueness follows the written order.
 #' @return `file`, invisibly.
 #' @seealso [bed_subtract()]
 #' @examples
@@ -196,7 +231,8 @@ bed_subtract <- function(locs1, locs2,
 #'                  end = c(403626, 403703), name = c("pfcrt-76", "pfcrt-102"))
 #' write_bed(iv, file.path(tempdir(), "targets.bed"))
 #' @export
-write_bed <- function(x, file, name = NULL, sort = TRUE, chrom = NULL) {
+write_bed <- function(x, file, name = NULL, sort = TRUE, chrom = NULL,
+                      name_is_coords = FALSE, make_names_unique = FALSE) {
   df <- as.data.frame(x, stringsAsFactors = FALSE)
   ch <- chrom %||% .bed_chrom_col(names(df))
   if (!ch %in% names(df))
@@ -208,12 +244,116 @@ write_bed <- function(x, file, name = NULL, sort = TRUE, chrom = NULL) {
   if (!is.null(name) && !name %in% names(df))
     stop("no `", name, "` column to use as the BED name field", call. = FALSE)
 
-  out <- data.frame(chrom = as.character(df[[ch]]),
-                    start = format(as.numeric(df$start), scientific = FALSE, trim = TRUE),
-                    end = format(as.numeric(df$end), scientific = FALSE, trim = TRUE),
+  num <- function(v) format(as.numeric(v), scientific = FALSE, trim = TRUE)
+  chrom_v <- as.character(df[[ch]])
+  start_v <- as.numeric(df$start); end_v <- as.numeric(df$end)
+  out <- data.frame(chrom = chrom_v, start = num(start_v), end = num(end_v),
                     stringsAsFactors = FALSE)
-  if (!is.null(name)) out$name <- as.character(df[[name]])
+  nm <- .bed_names(df, name, chrom_v, start_v, end_v, name_is_coords, make_names_unique,
+                   list(num = num))
+  if (!is.null(nm)) out$name <- nm
   if (sort) out <- out[order(out$chrom, as.numeric(out$start)), , drop = FALSE]
+  if (isTRUE(make_names_unique)) out$name <- .make_names_unique(out$name)
+  utils::write.table(out, file, sep = "\t", quote = FALSE,
+                     row.names = FALSE, col.names = FALSE)
+  invisible(file)
+}
+
+#' Write an interval table as a six-column BED, with optional metadata
+#'
+#' The BED6 layout: `chrom`, `start`, `end`, `name`, `score`, `strand`, tab separated, no
+#' header, `start` 0-based half-open. An optional seventh column carries any other columns
+#' of the table as `[field=value;field=value;]`, the form `elucidator` reads metadata in
+#' (`meta_cols`; the name `meta` is kept for sample-metadata tables throughout the package).
+#'
+#' Defaults follow the table: `name` is its `name` column, else `chrom-start-end`; `score`
+#' is its `score` column, else the interval's width in bp; `strand` is its `strand` column,
+#' else `+`. The chromosome column is chosen as [write_bed()] does, preferring the
+#' reference's own spelling. Missing values in `name`, `score` and `strand` are written as
+#' `.`.
+#'
+#' Metadata fields and values are written as-is, whitespace included, except that `;` --
+#' the separator -- is replaced by `semicolon` (default `:`) so a value can never split a
+#' field. Numbers are written in full, never in scientific notation.
+#'
+#' @param x,file,chrom,sort As for [write_bed()].
+#' @param name,score,strand Columns to write in those fields, or `NULL` for the defaults
+#'   above.
+#' @inheritParams write_bed
+#' @param meta_cols Columns to carry in the seventh column, as a character vector of names,
+#'   or `TRUE` for every column not already written. `NULL` (the default) writes six columns.
+#' @param semicolon What replaces a `;` inside a metadata field or value.
+#' @return `file`, invisibly.
+#' @seealso [write_bed()] for the three- or four-column form.
+#' @examples
+#' targets <- bed_subtract(PF3D7_GENES[PF3D7_GENES$name == "pfcrt", ],
+#'                         tandem_repeats_to_avoid(pf3d7_tandem_repeats()), pad = 10)
+#' f <- file.path(tempdir(), "pfcrt_pieces.bed")
+#' write_bed6(targets, f, meta_cols = c("gene_id", "piece"))
+#' readLines(f)[1:2]
+#'
+#' # every piece is called "pfcrt": number them, or name them by their coordinates
+#' write_bed6(targets, f, make_names_unique = TRUE)
+#' readLines(f)[1:2]
+#' write_bed6(targets, f, name_is_coords = TRUE)
+#' readLines(f)[1:2]
+#' @export
+write_bed6 <- function(x, file, name = NULL, score = NULL, strand = NULL, meta_cols = NULL,
+                       semicolon = ":", chrom = NULL, sort = TRUE,
+                       name_is_coords = FALSE, make_names_unique = FALSE) {
+  df <- as.data.frame(x, stringsAsFactors = FALSE)
+  ch <- chrom %||% .bed_chrom_col(names(df))
+  if (!ch %in% names(df))
+    stop("no `", ch, "` column to use as the chromosome", call. = FALSE)
+  miss <- setdiff(c("start", "end"), names(df))
+  if (length(miss))
+    stop("`x` needs column(s): ", paste(miss, collapse = ", "), call. = FALSE)
+  pick <- function(arg, default_col, what) {
+    if (is.null(arg)) return(if (default_col %in% names(df)) default_col else NULL)
+    if (!is.character(arg) || length(arg) != 1L || !arg %in% names(df))
+      stop("no `", arg, "` column to use as the BED ", what, " field", call. = FALSE)
+    arg
+  }
+  name_col <- pick(name, "name", "name")
+  score_col <- pick(score, "score", "score")
+  strand_col <- pick(strand, "strand", "strand")
+
+  num <- function(v) format(as.numeric(v), scientific = FALSE, trim = TRUE)
+  chrom_v <- as.character(df[[ch]])
+  start_v <- as.numeric(df$start); end_v <- as.numeric(df$end)
+  out <- data.frame(
+    chrom = chrom_v, start = num(start_v), end = num(end_v),
+    name = .bed_names(df, name_col, chrom_v, start_v, end_v, name_is_coords,
+                      make_names_unique, list(num = num, always = TRUE)),
+    score = if (is.null(score_col)) num(end_v - start_v) else {
+      v <- df[[score_col]]; if (is.numeric(v)) num(v) else as.character(v) },
+    strand = if (is.null(strand_col)) rep("+", nrow(df)) else as.character(df[[strand_col]]),
+    stringsAsFactors = FALSE)
+  for (col in c("name", "score", "strand")) out[[col]][is.na(out[[col]])] <- "."
+
+  if (!is.null(meta_cols) && !isFALSE(meta_cols)) {
+    used <- c(ch, "start", "end", name_col, score_col, strand_col)
+    cols <- if (isTRUE(meta_cols)) setdiff(names(df), used) else as.character(meta_cols)
+    bad <- setdiff(cols, names(df))
+    if (length(bad))
+      stop("no column(s) to carry as metadata: ", paste(bad, collapse = ", "), call. = FALSE)
+    if (!is.character(semicolon) || length(semicolon) != 1L)
+      stop("`semicolon` must be one string", call. = FALSE)
+    clean <- function(v) gsub(";", semicolon, v, fixed = TRUE)
+    if (length(cols)) {
+      vals <- lapply(cols, function(col) {
+        v <- df[[col]]
+        v <- if (is.numeric(v)) num(v) else as.character(v)
+        v[is.na(v)] <- "NA"
+        paste0(clean(col), "=", clean(v), ";")
+      })
+      out$meta <- paste0("[", do.call(paste0, vals), "]")
+    } else {
+      out$meta <- "[]"
+    }
+  }
+  if (sort) out <- out[order(out$chrom, as.numeric(out$start)), , drop = FALSE]
+  if (isTRUE(make_names_unique)) out$name <- .make_names_unique(out$name)
   utils::write.table(out, file, sep = "\t", quote = FALSE,
                      row.names = FALSE, col.names = FALSE)
   invisible(file)

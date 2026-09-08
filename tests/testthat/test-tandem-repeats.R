@@ -292,3 +292,91 @@ test_that("on the bundled table dedupe leaves the mask block for block", {
   expect_equal(b[, c("chr", "start", "end")], a[, c("chr", "start", "end")])
   expect_lt(sum(b$n_repeats), sum(a$n_repeats))
 })
+
+test_that("the block rule judges the combined width by the lowest threshold present", {
+  # an 8 bp A run and a 9 bp ATA run 3 bp apart: neither flagged alone, one 20 bp block
+  # holding a homopolymer when merged within 10 bp
+  close <- data.frame(chrom = "Pf3D7_07_v3", start = c(100, 111), end = c(108, 120),
+                      name = c("A_x8", "ATA_x3"))
+  expect_equal(flag_tandem_repeats(close)$avoid, c(FALSE, FALSE))
+  blk <- flag_tandem_repeats(merge_tandem_repeats(close, gap = 10))
+  expect_equal(nrow(blk), 1L)
+  expect_equal(blk$width, 20)
+  expect_equal(blk$periods, "1,3")
+  expect_true(blk$avoid)
+  # the trinucleotide alone would need 21
+  expect_false(flag_tandem_repeats(merge_tandem_repeats(close[2, ], gap = 10))$avoid)
+  # raise the homopolymer threshold to 21 and the block is kept
+  expect_false(flag_tandem_repeats(merge_tandem_repeats(close, gap = 10),
+                                   c("1" = 21, "2" = 21, "3" = 21))$avoid)
+  # no period rule at all: min_width only
+  expect_false(flag_tandem_repeats(merge_tandem_repeats(close, gap = 10), NULL)$avoid)
+  expect_true(flag_tandem_repeats(merge_tandem_repeats(close, gap = 10), NULL, min_width = 20)$avoid)
+
+  # through tandem_repeats_to_avoid: the record rule keeps nothing, the block rule the block
+  expect_equal(nrow(tandem_repeats_to_avoid(close, gap = 10)), 0L)
+  b <- tandem_repeats_to_avoid(close, gap = 10, rule = "block")
+  expect_equal(c(b$start, b$end), c(100, 120))
+  expect_false("avoid" %in% names(b))
+  # not merged (gap 0), the 8 bp A run is under 11 and the 9 bp ATA under 21
+  expect_equal(nrow(tandem_repeats_to_avoid(close, rule = "block")), 0L)
+  expect_error(tandem_repeats_to_avoid(close, rule = "nope"), "should be one of")
+
+  # a block with unparsed names only has the width rule
+  anon <- data.frame(chrom = "Pf3D7_07_v3", start = c(100, 130), end = c(120, 160),
+                     name = c("x", "y"))
+  suppressMessages(a <- flag_tandem_repeats(merge_tandem_repeats(anon, gap = 10)))
+  expect_true(a$avoid)                                   # 60 bp >= 50
+  suppressMessages(expect_false(any(flag_tandem_repeats(merge_tandem_repeats(anon), NULL)$avoid)))  # 20 and 30 bp
+})
+
+test_that("on the bundled table the block rule is a superset of the record rule", {
+  tr <- pf3d7_tandem_repeats()
+  rec <- tandem_repeats_to_avoid(tr, gap = 10)
+  blk <- tandem_repeats_to_avoid(tr, gap = 10, rule = "block")
+  expect_equal(nrow(bed_subtract(rec, blk)), 0L)      # everything the record rule masks, block masks
+  expect_gt(sum(blk$width), sum(rec$width))
+})
+
+test_that("write_bed6 writes six columns with sensible defaults and a metadata column", {
+  x <- data.frame(Pf3D7_chrom = c("Pf3D7_07_v3", "Pf3D7_04_v3"), chrom = c("7", "4"),
+                  start = c(1000, 2e6), end = c(1100, 2000050), name = c("a", NA),
+                  strand = c("-", "+"), gene_id = c("G1", "G2"), note = c("x; y", NA),
+                  stringsAsFactors = FALSE)
+  f <- tempfile(fileext = ".bed")
+  write_bed6(x, f)
+  lines <- strsplit(readLines(f), "\t", fixed = TRUE)
+  expect_equal(lengths(lines), c(6L, 6L))
+  expect_equal(lines[[1]], c("Pf3D7_04_v3", "2000000", "2000050", ".", "50", "+"))   # sorted; NA name -> .
+  expect_equal(lines[[2]], c("Pf3D7_07_v3", "1000", "1100", "a", "100", "-"))
+
+  # a score column is used when present; an explicit column wins; a missing one errors
+  x$score <- c(0.5, 7)
+  write_bed6(x, f)
+  expect_equal(strsplit(readLines(f), "\t")[[2]][5], "0.5")
+  write_bed6(x, f, score = "gene_id")
+  expect_equal(strsplit(readLines(f), "\t")[[2]][5], "G1")
+  expect_error(write_bed6(x, f, name = "nope"), "no `nope` column")
+  expect_error(write_bed6(data.frame(start = 1, end = 2), f), "needs a `chrom`")
+
+  # metadata: named columns, semicolons replaced, NA written, brackets kept
+  write_bed6(x, f, meta_cols = c("gene_id", "note"))
+  lines <- strsplit(readLines(f), "\t", fixed = TRUE)
+  expect_equal(lengths(lines), c(7L, 7L))
+  expect_equal(lines[[2]][7], "[gene_id=G1;note=x: y;]")
+  expect_equal(lines[[1]][7], "[gene_id=G2;note=NA;]")
+  write_bed6(x, f, meta_cols = "note", semicolon = "|")
+  expect_equal(strsplit(readLines(f), "\t")[[2]][7], "[note=x| y;]")
+  # TRUE carries every column not already written
+  write_bed6(x, f, meta_cols = TRUE)
+  m <- strsplit(readLines(f), "\t")[[2]][7]
+  expect_true(startsWith(m, "[") && endsWith(m, "]"))
+  expect_true(grepl("chrom=7;", m, fixed = TRUE))
+  expect_false(grepl("Pf3D7_chrom=", m, fixed = TRUE))
+  expect_error(write_bed6(x, f, meta_cols = "nope"), "nope")
+
+  # no name / strand columns: chrom-start-end and +
+  y <- data.frame(chr = "Pf3D7_07_v3", start = 10, end = 20)
+  write_bed6(y, f)
+  expect_equal(strsplit(readLines(f), "\t")[[1]], c("Pf3D7_07_v3", "10", "20", "Pf3D7_07_v3-10-20", "10", "+"))
+})

@@ -288,7 +288,9 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   clearance out of a set of target genes for `write_bed()`. `read_gff_features()` reads a
   gene's exons, introns, CDS or span out of a GFF as 0-based intervals, for the
   gene-to-exons-to-subtraction flow when the intronic repeats are not wanted at all.
-  `bed_merge()` is the plain interval merge underneath.
+  `write_bed6()` writes the six-column form with an optional `[field=value;]` metadata
+  column. `genomic_range_aa_positions()` then says which residues of which transcript
+  each remaining piece covers. `bed_merge()` is the plain interval merge underneath.
 - **Coordinates are 0-based throughout** (`?"plasgenomicsutilsR-coordinates"`) — intervals
   half-open `[start, end)` as in BED, and variant positions 0-based too, so there is one
   rule and no part of the package to remember an exception for. Sources that number

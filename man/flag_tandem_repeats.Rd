@@ -11,7 +11,8 @@ flag_tandem_repeats(
 )
 }
 \arguments{
-\item{x}{A \code{\link[=tandem_repeats]{tandem_repeats()}} table, or anything \code{\link[=tandem_repeats]{tandem_repeats()}} accepts.}
+\item{x}{A \code{\link[=tandem_repeats]{tandem_repeats()}} table, or anything \code{\link[=tandem_repeats]{tandem_repeats()}} accepts; or the block
+table from \code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}}.}
 
 \item{min_width_by_period}{Minimum total width (bp) to flag, per period. A named
 numeric vector whose names are periods, or an unnamed one read as periods 1, 2, 3, ...
@@ -43,11 +44,12 @@ These are the thresholds the HEOME Pf3D7 design used. Tighten or loosen them per
 period, add periods (\code{c("1" = 11, "2" = 12, "3" = 21, "4" = 30)}), or drop the period
 rules altogether (\code{min_width_by_period = NULL}) to flag on total length only.
 
-Flags are per record. Two repeats that run into each other -- an \code{A} homopolymer into
-an \code{AT} run, one trinucleotide into another -- are each judged on their own here;
-\code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}} joins them, and \code{\link[=tandem_repeats_to_avoid]{tandem_repeats_to_avoid()}} is the two steps
-together, with a merged run flagged when any member is or when the run as a whole
-reaches \code{min_width}.
+\strong{Records or blocks.} Given a \code{\link[=tandem_repeats]{tandem_repeats()}} table, each repeat is judged on its own
+width. Given the blocks from \code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}}, each block is judged on its
+\emph{combined} width, held to the lowest threshold among the periods it contains: a block
+holding a homopolymer is flagged from 11 bp however much of it is something else, so an
+8 bp \code{A} run flowing into a 9 bp \code{ATA} run is avoided as one stretch although neither
+would be on its own. \code{\link[=tandem_repeats_to_avoid]{tandem_repeats_to_avoid()}} offers both as \code{rule}.
 }
 \examples{
 bed <- data.frame(chrom = "Pf3D7_07_v3", start = c(100, 200, 300, 400),
@@ -57,6 +59,13 @@ bed <- data.frame(chrom = "Pf3D7_07_v3", start = c(100, 200, 300, 400),
                            "Pf3D7_07_v3-300-320__AAT_x6.67",  # 20 bp trinucleotide: kept
                            "Pf3D7_07_v3-400-460__TATTG_x12")) # 60 bp: flagged
 flag_tandem_repeats(bed)[, c("repeat_unit", "period", "width", "avoid")]
+
+# merged first: an 8 bp A run and a 9 bp ATA run 3 bp apart make one 20 bp block, which
+# the homopolymer rule (11 bp) catches although neither repeat is flagged alone
+close <- data.frame(chrom = "Pf3D7_07_v3", start = c(100, 111), end = c(108, 120),
+                    name = c("A_x8", "ATA_x3"))
+flag_tandem_repeats(close)$avoid
+flag_tandem_repeats(merge_tandem_repeats(close, gap = 10))[, c("width", "periods", "avoid")]
 }
 \seealso{
 \code{\link[=tandem_repeats_to_avoid]{tandem_repeats_to_avoid()}}, \code{\link[=merge_tandem_repeats]{merge_tandem_repeats()}}

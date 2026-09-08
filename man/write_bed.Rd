@@ -4,7 +4,15 @@
 \alias{write_bed}
 \title{Write an interval table as a BED file}
 \usage{
-write_bed(x, file, name = NULL, sort = TRUE, chrom = NULL)
+write_bed(
+  x,
+  file,
+  name = NULL,
+  sort = TRUE,
+  chrom = NULL,
+  name_is_coords = FALSE,
+  make_names_unique = FALSE
+)
 }
 \arguments{
 \item{x}{An interval table (\code{chrom}/\code{chr}, \code{start}, \code{end}), e.g. from \code{\link[=bed_subtract]{bed_subtract()}}.}
@@ -14,10 +22,20 @@ write_bed(x, file, name = NULL, sort = TRUE, chrom = NULL)
 \item{name}{Column to use as the BED name field, or \code{NULL} for none. Defaults to \code{"name"}
 when the table has it.}
 
-\item{sort}{Sort by chromosome and start (default \code{TRUE}), which is what the tools want.}
+\item{sort}{Sort by chromosome and start (default \code{TRUE}), which is what the tools want.
+Numbering for uniqueness follows the written order.}
 
 \item{chrom}{Column holding the chromosome name to write. Defaults to the first of a
 \verb{<assembly>_chrom} column, \code{"chrom"}, and \code{"chr"} that the table has (see above).}
+
+\item{name_is_coords}{Write \code{chrom-start-end} (\code{Pf3D7_07_v3-403221-403363}) as the name
+field instead of a column (default \code{FALSE}).}
+
+\item{make_names_unique}{Make the name field unique within the file (default \code{FALSE}):
+a name that occurs more than once gets \verb{_1}, \verb{_2}, ... in file order, zero-padded to the
+width of that name's count (\verb{_01} to \verb{_12} for twelve). Combines with \code{name_is_coords},
+so identical coordinates written twice get distinct names. With no name column and
+\code{name_is_coords = FALSE}, the coordinates are used as the names to make unique.}
 }
 \value{
 \code{file}, invisibly.

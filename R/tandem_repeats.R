@@ -248,13 +248,15 @@ pf3d7_tandem_repeats <- function() {
 #' period, add periods (`c("1" = 11, "2" = 12, "3" = 21, "4" = 30)`), or drop the period
 #' rules altogether (`min_width_by_period = NULL`) to flag on total length only.
 #'
-#' Flags are per record. Two repeats that run into each other -- an `A` homopolymer into
-#' an `AT` run, one trinucleotide into another -- are each judged on their own here;
-#' [merge_tandem_repeats()] joins them, and [tandem_repeats_to_avoid()] is the two steps
-#' together, with a merged run flagged when any member is or when the run as a whole
-#' reaches `min_width`.
+#' **Records or blocks.** Given a [tandem_repeats()] table, each repeat is judged on its own
+#' width. Given the blocks from [merge_tandem_repeats()], each block is judged on its
+#' *combined* width, held to the lowest threshold among the periods it contains: a block
+#' holding a homopolymer is flagged from 11 bp however much of it is something else, so an
+#' 8 bp `A` run flowing into a 9 bp `ATA` run is avoided as one stretch although neither
+#' would be on its own. [tandem_repeats_to_avoid()] offers both as `rule`.
 #'
-#' @param x A [tandem_repeats()] table, or anything [tandem_repeats()] accepts.
+#' @param x A [tandem_repeats()] table, or anything [tandem_repeats()] accepts; or the block
+#'   table from [merge_tandem_repeats()].
 #' @param min_width_by_period Minimum total width (bp) to flag, per period. A named
 #'   numeric vector whose names are periods, or an unnamed one read as periods 1, 2, 3, ...
 #'   in order. `NULL` for no per-period rule.
@@ -270,21 +272,39 @@ pf3d7_tandem_repeats <- function() {
 #'                            "Pf3D7_07_v3-300-320__AAT_x6.67",  # 20 bp trinucleotide: kept
 #'                            "Pf3D7_07_v3-400-460__TATTG_x12")) # 60 bp: flagged
 #' flag_tandem_repeats(bed)[, c("repeat_unit", "period", "width", "avoid")]
+#'
+#' # merged first: an 8 bp A run and a 9 bp ATA run 3 bp apart make one 20 bp block, which
+#' # the homopolymer rule (11 bp) catches although neither repeat is flagged alone
+#' close <- data.frame(chrom = "Pf3D7_07_v3", start = c(100, 111), end = c(108, 120),
+#'                     name = c("A_x8", "ATA_x3"))
+#' flag_tandem_repeats(close)$avoid
+#' flag_tandem_repeats(merge_tandem_repeats(close, gap = 10))[, c("width", "periods", "avoid")]
 #' @export
 flag_tandem_repeats <- function(x, min_width_by_period = c("1" = 11, "2" = 12, "3" = 21),
                                 min_width = 50) {
-  x <- .as_tandem_repeats(x)
+  is_block <- is.data.frame(x) && all(c("periods", "width") %in% names(x)) &&
+    !"period" %in% names(x)
+  if (!is_block) x <- .as_tandem_repeats(x)
   thr <- .period_thresholds(min_width_by_period)
   if (!is.numeric(min_width) || length(min_width) != 1L || is.na(min_width))
     stop("`min_width` must be one number", call. = FALSE)
   w <- x$width
   avoid <- !is.na(w) & w >= min_width
   if (length(thr)) {
-    t <- unname(thr[as.character(x$period)])
+    t <- if (is_block) .block_threshold(x$periods, thr) else unname(thr[as.character(x$period)])
     avoid <- avoid | (!is.na(t) & w >= t)
   }
   x$avoid <- avoid
   x
+}
+
+# a merged block is judged by the lowest threshold among the periods it contains: a run
+# holding a homopolymer is held to the homopolymer's length, whatever else is in it
+.block_threshold <- function(periods, thr) {
+  vapply(strsplit(as.character(periods), ",", fixed = TRUE), function(p) {
+    t <- thr[p]
+    if (!length(t) || all(is.na(t))) NA_real_ else min(t, na.rm = TRUE)
+  }, numeric(1))
 }
 
 # --- merging --------------------------------------------------------------------------------
@@ -477,21 +497,30 @@ merge_tandem_repeats <- function(x, gap = 0, dedupe = FALSE) {
 
 #' The tandem repeats a target design should avoid
 #'
-#' The whole recipe in one call: flag each repeat by its period and length
-#' ([flag_tandem_repeats()]), merge repeats that run into one another
-#' ([merge_tandem_repeats()]), and keep a merged run when any repeat in it was flagged or
-#' when the run as a whole is at least `min_width` long -- a chain of individually harmless
-#' short repeats adds up to a stretch that slips like a long one. Subtract the result
-#' from your targets with [bed_subtract()], padding by a few bases so a primer cannot end
-#' right at a repeat's edge.
+#' The whole recipe in one call: merge repeats that run into one another
+#' ([merge_tandem_repeats()]), apply the period and length thresholds
+#' ([flag_tandem_repeats()]), keep what is flagged. Subtract the result from your targets
+#' with [bed_subtract()], padding by a few bases so a primer cannot end right at a repeat's
+#' edge.
 #'
-#' This reproduces the mask the HEOME Pf3D7 design used, which was made in three steps:
-#' per-record thresholds, every repeat merged and runs of 50 bp or more kept, and the two
-#' sets merged. The one difference is that a short unflagged repeat abutting a flagged one
-#' is absorbed into its block here, extending it by at most those few bases.
+#' `rule` says what the thresholds are applied to:
+#'
+#' * `"record"` (the default): each repeat is judged on its own width, then merged; a
+#'   merged run is kept when any repeat in it was flagged, or when the run as a whole
+#'   reaches `min_width`, since a chain of individually harmless short repeats adds up to a
+#'   stretch that slips like a long one. This reproduces the mask the HEOME Pf3D7 design
+#'   used (per-record thresholds; every repeat merged and runs of 50 bp or more kept; the two
+#'   sets merged), except that a short unflagged repeat abutting a flagged one is absorbed
+#'   into its block, extending it by at most those few bases.
+#' * `"block"`: repeats are merged first (with `gap`) and each block is judged on its
+#'   *combined* width, held to the lowest threshold among the periods it contains. An 8 bp
+#'   `A` run within 10 bp of a 9 bp `ATA` run is neither flagged alone, but together with
+#'   the bases between them they are a 20 bp stretch holding a homopolymer, and 20 is past
+#'   the homopolymer's 11. The combined width is the block's span, gap included.
 #'
 #' @inheritParams flag_tandem_repeats
 #' @inheritParams merge_tandem_repeats
+#' @param rule `"record"` or `"block"`; see above.
 #' @return The [merge_tandem_repeats()] table restricted to the blocks to avoid, without the
 #'   `avoid` column.
 #' @seealso [pf3d7_tandem_repeats()] for the bundled input, [bed_subtract()] for what to do
@@ -499,6 +528,12 @@ merge_tandem_repeats <- function(x, gap = 0, dedupe = FALSE) {
 #' @examples
 #' avoid <- tandem_repeats_to_avoid(pf3d7_tandem_repeats())
 #' nrow(avoid); sum(avoid$width)                # blocks, and bases masked
+#'
+#' # stricter: merge repeats within 10 bp and judge each block on its combined width,
+#' # with homopolymers and dinucleotides held to the trinucleotide length
+#' strict <- tandem_repeats_to_avoid(pf3d7_tandem_repeats(), rule = "block", gap = 10,
+#'                                   min_width_by_period = c("1" = 21, "2" = 21, "3" = 21))
+#' nrow(strict); sum(strict$width)
 #'
 #' # the targets: a few genes minus the repeats, with 10 bp of clearance around each
 #' genes <- PF3D7_GENES[PF3D7_GENES$name %in% c("pfcrt", "pfdhfr", "pfkelch13"), ]
@@ -509,11 +544,20 @@ merge_tandem_repeats <- function(x, gap = 0, dedupe = FALSE) {
 #' }
 #' @export
 tandem_repeats_to_avoid <- function(x, min_width_by_period = c("1" = 11, "2" = 12, "3" = 21),
-                                    min_width = 50, gap = 0, dedupe = FALSE) {
-  flagged <- flag_tandem_repeats(x, min_width_by_period = min_width_by_period,
-                                 min_width = min_width)
-  blocks <- merge_tandem_repeats(flagged, gap = gap, dedupe = dedupe)
-  keep <- blocks$avoid | blocks$width >= min_width
+                                    min_width = 50, gap = 0, dedupe = FALSE,
+                                    rule = c("record", "block")) {
+  rule <- match.arg(rule)
+  if (rule == "record") {
+    flagged <- flag_tandem_repeats(x, min_width_by_period = min_width_by_period,
+                                   min_width = min_width)
+    blocks <- merge_tandem_repeats(flagged, gap = gap, dedupe = dedupe)
+    keep <- blocks$avoid | blocks$width >= min_width
+  } else {
+    blocks <- merge_tandem_repeats(x, gap = gap, dedupe = dedupe)
+    blocks <- flag_tandem_repeats(blocks, min_width_by_period = min_width_by_period,
+                                  min_width = min_width)
+    keep <- blocks$avoid
+  }
   out <- blocks[keep, , drop = FALSE]
   out$avoid <- NULL
   out
