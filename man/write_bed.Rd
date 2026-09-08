@@ -16,8 +16,8 @@ when the table has it.}
 
 \item{sort}{Sort by chromosome and start (default \code{TRUE}), which is what the tools want.}
 
-\item{chrom}{Column holding the chromosome name to write. Defaults to \code{"chrom"} when the
-table has it, else \code{"chr"}.}
+\item{chrom}{Column holding the chromosome name to write. Defaults to the first of a
+\verb{<assembly>_chrom} column, \code{"chrom"}, and \code{"chr"} that the table has (see above).}
 }
 \value{
 \code{file}, invisibly.
@@ -28,10 +28,15 @@ and \verb{bcftools mpileup -R} expect. A fourth \code{name} column is written wh
 one, since a BED that says what each interval is survives being looked at later.
 }
 \details{
-\strong{\code{chrom} is preferred over \code{chr}.} Tables in this package carry both: \code{chr} normalised
-for matching (\code{"7"}), and \code{chrom} as the source file spells it (\code{"Pf3D7_07_v3"}). A BED is
-read by other tools against a real reference, so it has to carry the name the FASTA and
-the BAMs use -- writing the normalised one produces a file that matches nothing, silently.
+\strong{The reference's own spelling is preferred.} A BED is read by other tools against a
+real reference, so it has to carry the name the FASTA and the BAMs use -- writing a
+normalised one produces a file that matches nothing, silently. Tables in this package
+carry two kinds of chromosome column, and the default picks the one with the full name:
+a \verb{<assembly>_chrom} column first (\code{Pf3D7_chrom} in \link{PF3D7_GENES} and the other bundled
+datasets, where \code{chrom} is the short \code{"7"}), then \code{chrom} (which \code{\link[=aa_intervals]{aa_intervals()}},
+\code{\link[=tandem_repeats]{tandem_repeats()}} and friends fill with the source spelling, keeping \code{chr} for the
+normalised \code{"7"}), then \code{chr}. Pieces from \code{\link[=bed_subtract]{bed_subtract()}} keep their \code{locs1} columns,
+so a gene table cut by a mask still writes the right names.
 }
 \examples{
 iv <- data.frame(chr = c("Pf3D7_07_v3", "Pf3D7_07_v3"), start = c(403623, 403700),

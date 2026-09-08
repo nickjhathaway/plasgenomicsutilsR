@@ -4,7 +4,7 @@
 \alias{gene_ibd_pairs}
 \title{Sample pairs sharing IBD over each gene}
 \usage{
-gene_ibd_pairs(x, genes = NULL, within = 0)
+gene_ibd_pairs(x, genes = NULL, within = 0, add_meta_cols = NULL, meta = NULL)
 }
 \arguments{
 \item{x}{An \link{IbdResults} built with \verb{blocks =}.}
@@ -15,6 +15,13 @@ frame (\code{name}, \code{chr}/\code{chrom}, \code{start}, \code{end}). Several 
 \item{within}{Pad each gene interval by this many bp on both sides when deciding
 whether a block overlaps it (default \code{0}). Coverage is always measured against the
 gene's own span, so a block that reaches only into the padding covers \code{0}.}
+
+\item{add_meta_cols}{Metadata columns to attach to both ends of each pair. Each \code{col}
+becomes \code{sample1_col} and \code{sample2_col}, in the order asked for -- so a sharing pair can
+be read as within- or between-group without a second join. A sample missing from \code{meta}
+gets \code{NA}; factor columns keep their level order.}
+
+\item{meta}{Sample metadata for \code{add_meta_cols}; taken from \code{x} when it carries one.}
 }
 \value{
 A tibble with one row per pair x block x gene:
@@ -39,6 +46,7 @@ unrelated.}
 \item{\code{covered_bp}, \code{percent_covered}}{width of that portion, and it as a percentage
 of the gene's length.}
 }
+plus a pair of columns for each of \code{add_meta_cols}.
 }
 \description{
 An adjacency list of the pairs that are IBD across one or more genes: one row per
@@ -55,6 +63,10 @@ spanning it.
 ibd <- ibd_results(blocks = "hmm.txt", genes = PF_EXAMPLE_DRUG_GENES)
 pairs <- gene_ibd_pairs(ibd, genes = c("pfcrt", "pfdhps"))
 subset(pairs, coverage == "complete")
+
+# labelled with where each end came from, to split sharing within a site from between
+p <- gene_ibd_pairs(ibd, genes = "pfcrt", add_meta_cols = "region")
+table(within_region = p$sample1_region == p$sample2_region)
 }
 }
 \seealso{

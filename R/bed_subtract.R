@@ -26,19 +26,18 @@
              end = as.numeric(df[[end]]), stringsAsFactors = FALSE)
 }
 
-# merge overlapping/abutting intervals of one chromosome, given sorted starts
-.merge_spans <- function(s, e) {
+# merge overlapping/abutting intervals of one chromosome (or ones within `gap` bases).
+# Vectorised: a running maximum of the end handles a short interval nested in a long one,
+# and a mask of tens of thousands of blocks (a genome's tandem repeats) merges in
+# milliseconds where an append loop took minutes.
+.merge_spans <- function(s, e, gap = 0) {
   if (!length(s)) return(list(s = numeric(), e = numeric()))
   o <- order(s, e); s <- s[o]; e <- e[o]
-  ms <- s[1]; me <- e[1]; out_s <- numeric(); out_e <- numeric()
-  for (i in seq_along(s)[-1]) {
-    if (s[i] <= me) {
-      me <- max(me, e[i])
-    } else {
-      out_s <- c(out_s, ms); out_e <- c(out_e, me); ms <- s[i]; me <- e[i]
-    }
-  }
-  list(s = c(out_s, ms), e = c(out_e, me))
+  cm <- cummax(e)
+  n <- length(s)
+  new_block <- c(TRUE, s[-1] > cm[-n] + gap)
+  starts <- which(new_block)
+  list(s = s[starts], e = cm[c(starts[-1] - 1L, n)])
 }
 
 #' Subtract one set of genomic intervals from another
@@ -65,12 +64,18 @@
 #' @param chrom1,start1,end1 Column names in `locs1` (defaults `"chr"`, `"start"`, `"end"`;
 #'   `"chrom"` is accepted as a chromosome alias).
 #' @param chrom2,start2,end2 As above for `locs2` when it is a table.
+#' @param pad Widen every `locs2` interval by this many bases on each side before
+#'   subtracting (default `0`). Masking tandem repeats for a primer design, say, wants the
+#'   repeat plus a few bases of clearance, so nothing ends right at a repeat's edge.
+#'   Clamped at the start of the chromosome.
 #' @param min_width Drop leftover pieces narrower than this (default `1`, i.e. keep every
 #'   base). Raise it to ignore slivers.
 #' @return A tibble of the uncovered pieces: every `locs1` column, with `start`/`end`
 #'   replaced by the piece's own bounds, plus `piece` (which piece of that row this is) and
 #'   `width`. Rows of `locs1` covered completely are absent. Input row order is kept.
-#' @seealso [bed_intersect()] for the overlap, [write_bed()] to write the result out.
+#' @seealso [bed_intersect()] for the overlap, [bed_merge()] for joining intervals,
+#'   [tandem_repeats_to_avoid()] for a mask worth subtracting, [write_bed()] to write the
+#'   result out.
 #' @examples
 #' cds <- read_gff_cds(system.file("extdata", "pf3d7_drug_gene_cds.gff",
 #'                                 package = "plasgenomicsutilsR"))
@@ -81,11 +86,16 @@
 #' have <- paste0("Pf3D7_07_v3:", want$start[want$aa_position == 76] + 1)
 #' gaps <- bed_subtract(want, have)
 #' gaps[, c("name", "aa_position", "start", "end", "width")]
+#'
+#' # a gene minus the tandem repeats a primer should avoid, with 10 bp of clearance
+#' crt <- PF3D7_GENES[PF3D7_GENES$name == "pfcrt", ]
+#' mask <- tandem_repeats_to_avoid(pf3d7_tandem_repeats())
+#' bed_subtract(crt, mask, pad = 10)[, c("start", "end", "piece", "width")]
 #' @export
 bed_subtract <- function(locs1, locs2,
                          chrom1 = "chr", start1 = "start", end1 = "end",
                          chrom2 = "chr", start2 = "start", end2 = "end",
-                         min_width = 1) {
+                         pad = 0, min_width = 1) {
   a <- as.data.frame(locs1, stringsAsFactors = FALSE)
   if (!nrow(a)) return(tibble::as_tibble(a))
   ch1 <- if (chrom1 %in% names(a)) chrom1 else if ("chrom" %in% names(a)) "chrom" else
@@ -95,6 +105,12 @@ bed_subtract <- function(locs1, locs2,
     stop(sprintf("locs1 has no column(s): %s", paste(miss, collapse = ", ")), call. = FALSE)
 
   b <- .as_interval_table(locs2, chrom2, start2, end2)
+  if (!is.numeric(pad) || length(pad) != 1L || is.na(pad) || pad < 0)
+    stop("`pad` must be one number >= 0", call. = FALSE)
+  if (pad > 0) {
+    b$start <- pmax(0, b$start - pad)
+    b$end <- b$end + pad
+  }
   ac <- normalise_chr(a[[ch1]])
   as_ <- as.numeric(a[[start1]]); ae <- as.numeric(a[[end1]])
   bc <- normalise_chr(b$chr)
@@ -141,21 +157,35 @@ bed_subtract <- function(locs1, locs2,
   tibble::as_tibble(out)
 }
 
+# the column carrying the reference's own chromosome spelling, by the package's conventions
+.bed_chrom_col <- function(nms) {
+  ref <- grep("_chrom$", nms, value = TRUE)
+  if (length(ref)) return(ref[1])
+  if ("chrom" %in% nms) return("chrom")
+  if ("chr" %in% nms) return("chr")
+  stop("`x` needs a `chrom` (or `chr`) column", call. = FALSE)
+}
+
 #' Write an interval table as a BED file
 #'
 #' Three columns, tab separated, no header, `start` 0-based half-open -- what `bedtools`
 #' and `bcftools mpileup -R` expect. A fourth `name` column is written when the table has
 #' one, since a BED that says what each interval is survives being looked at later.
 #'
-#' **`chrom` is preferred over `chr`.** Tables in this package carry both: `chr` normalised
-#' for matching (`"7"`), and `chrom` as the source file spells it (`"Pf3D7_07_v3"`). A BED is
-#' read by other tools against a real reference, so it has to carry the name the FASTA and
-#' the BAMs use -- writing the normalised one produces a file that matches nothing, silently.
+#' **The reference's own spelling is preferred.** A BED is read by other tools against a
+#' real reference, so it has to carry the name the FASTA and the BAMs use -- writing a
+#' normalised one produces a file that matches nothing, silently. Tables in this package
+#' carry two kinds of chromosome column, and the default picks the one with the full name:
+#' a `<assembly>_chrom` column first (`Pf3D7_chrom` in [PF3D7_GENES] and the other bundled
+#' datasets, where `chrom` is the short `"7"`), then `chrom` (which [aa_intervals()],
+#' [tandem_repeats()] and friends fill with the source spelling, keeping `chr` for the
+#' normalised `"7"`), then `chr`. Pieces from [bed_subtract()] keep their `locs1` columns,
+#' so a gene table cut by a mask still writes the right names.
 #'
 #' @param x An interval table (`chrom`/`chr`, `start`, `end`), e.g. from [bed_subtract()].
 #' @param file Path to write.
-#' @param chrom Column holding the chromosome name to write. Defaults to `"chrom"` when the
-#'   table has it, else `"chr"`.
+#' @param chrom Column holding the chromosome name to write. Defaults to the first of a
+#'   `<assembly>_chrom` column, `"chrom"`, and `"chr"` that the table has (see above).
 #' @param name Column to use as the BED name field, or `NULL` for none. Defaults to `"name"`
 #'   when the table has it.
 #' @param sort Sort by chromosome and start (default `TRUE`), which is what the tools want.
@@ -168,9 +198,7 @@ bed_subtract <- function(locs1, locs2,
 #' @export
 write_bed <- function(x, file, name = NULL, sort = TRUE, chrom = NULL) {
   df <- as.data.frame(x, stringsAsFactors = FALSE)
-  ch <- chrom %||% if ("chrom" %in% names(df)) "chrom" else
-    if ("chr" %in% names(df)) "chr" else
-      stop("`x` needs a `chrom` (or `chr`) column", call. = FALSE)
+  ch <- chrom %||% .bed_chrom_col(names(df))
   if (!ch %in% names(df))
     stop("no `", ch, "` column to use as the chromosome", call. = FALSE)
   miss <- setdiff(c("start", "end"), names(df))

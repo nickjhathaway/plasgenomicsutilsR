@@ -13,6 +13,11 @@ test_that("normalise_chr strips assorted spellings", {
   expect_equal(normalise_chr("14"), "14")
   expect_equal(normalise_chr(3), "3")
   expect_equal(normalise_chr(c("Pf3D7_01_v3", "chr2")), c("1", "2"))
+  # the organelles collapse to the keys the bundled datasets use, so a FASTA-named table
+  # (a tandem-repeat BED, say) joins PF3D7_GENES on every sequence
+  expect_equal(normalise_chr(c("Pf3D7_API_v3", "API", "Pf_M76611", "Pf3D7_MIT_v3", "MIT")),
+               c("API", "API", "MIT", "MIT", "MIT"))
+  expect_true(all(unique(PF3D7_GENES$chrom) %in% c(1:14, "API", "MIT")))
 })
 
 test_that("_pkgdown.yml indexes every vignette and every export", {

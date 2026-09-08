@@ -19,6 +19,44 @@
   df
 }
 
+# The pair table itself, whether it arrived as one, as a path, or inside an IbdResults.
+.pair_fraction_of <- function(pairs) {
+  if (inherits(pairs, "IbdResults")) {
+    pf <- pairs$get_pair_fraction()
+    if (is.null(pf))
+      stop("this IbdResults has no pair table; build it with ",
+           "ibd_results(pair_fraction = ) or call $set_pair_fraction()", call. = FALSE)
+    return(pf)
+  }
+  if (is.character(pairs) && length(pairs) == 1) return(.read_maybe(pairs, "pair table"))
+  pairs
+}
+
+# The pair table reduced to the edges above the cutoff, plus the samples it covers. Shared by
+# plot_ibd_pair_network() and ibd_pair_clusters(), so the table and the picture cannot
+# disagree about which pairs are linked.
+.pair_edges <- function(pairs, weight = NULL, min_ibd = 0.01, samples = NULL) {
+  df <- as.data.frame(.pair_fraction_of(pairs), stringsAsFactors = FALSE)
+  if (!nrow(df)) stop("the pair table is empty", call. = FALSE)
+  df <- .pair_endpoints(df)
+
+  if (is.null(weight)) weight <- .PAIR_FRACTION_COL
+  if (!weight %in% names(df))
+    stop("the pair table has no column '", weight, "'. Available: ",
+         paste(names(df), collapse = ", "), call. = FALSE)
+  df$.w <- suppressWarnings(as.numeric(df[[weight]]))
+
+  all_samples <- unique(c(df$sample1, df$sample2))
+  if (!is.null(samples)) {
+    all_samples <- intersect(all_samples, as.character(samples))
+    df <- df[df$sample1 %in% all_samples & df$sample2 %in% all_samples, , drop = FALSE]
+  }
+  keep <- !is.na(df$.w) & df$.w > min_ibd
+  list(edges = data.frame(from = df$sample1[keep], to = df$sample2[keep],
+                          weight = df$.w[keep], stringsAsFactors = FALSE),
+       analyzed = all_samples, weight_col = weight)
+}
+
 #' Genome-wide IBD relatedness network
 #'
 #' Nodes are samples; an edge joins a pair sharing more than `min_ibd` of the genome IBD, and
@@ -83,13 +121,6 @@ plot_ibd_pair_network <- function(pairs, meta = NULL, weight = NULL, min_ibd = 0
                                   title = NULL, subtitle = TRUE, seed = 42,
                                   colour_group = NULL, colours = NULL, na_color = NULL, edge_color = NULL) {
   meta <- .normalise_meta(meta)
-  # An outline needs a shape that has one, and only 21-25 do. Honouring `border` alongside
-  # `shape_group` would mean silently replacing the caller's shapes with circles, so it is
-  # refused instead: the two encodings want the same property of the mark.
-  if (!is.null(border) && !is.na(border) && !is.null(shape_group))
-    stop("`border` cannot be combined with `shape_group`: an outline needs a filled shape ",
-         "(21-25), and only those carry a fill separate from the outline, so the shapes you ",
-         "asked for would have to be discarded. Drop one of the two.", call. = FALSE)
   color_group <- .alias_arg("color_group", "colour_group")
   colors <- .alias_arg("colors", "colours")
   na_colour <- .alias_arg("na_colour", "na_color")
@@ -105,34 +136,10 @@ plot_ibd_pair_network <- function(pairs, meta = NULL, weight = NULL, min_ibd = 0
   .need_package("igraph", "plot_ibd_pair_network()")
   .need_package("ggraph", "plot_ibd_pair_network()")
 
-  if (inherits(pairs, "IbdResults")) {
-    if (is.null(meta)) meta <- pairs$get_meta()
-    pf <- pairs$get_pair_fraction()
-    if (is.null(pf))
-      stop("this IbdResults has no pair table; build it with ",
-           "ibd_results(pair_fraction = ) or call $set_pair_fraction()", call. = FALSE)
-    pairs <- pf
-  } else if (is.character(pairs) && length(pairs) == 1) {
-    pairs <- .read_maybe(pairs, "pair table")
-  }
-  df <- as.data.frame(pairs, stringsAsFactors = FALSE)
-  if (!nrow(df)) stop("the pair table is empty", call. = FALSE)
-  df <- .pair_endpoints(df)
-
-  if (is.null(weight)) weight <- .PAIR_FRACTION_COL
-  if (!weight %in% names(df))
-    stop("the pair table has no column '", weight, "'. Available: ",
-         paste(names(df), collapse = ", "), call. = FALSE)
-  df$.w <- suppressWarnings(as.numeric(df[[weight]]))
-
-  all_samples <- unique(c(df$sample1, df$sample2))
-  if (!is.null(samples)) {
-    all_samples <- intersect(all_samples, as.character(samples))
-    df <- df[df$sample1 %in% all_samples & df$sample2 %in% all_samples, , drop = FALSE]
-  }
-  keep <- !is.na(df$.w) & df$.w > min_ibd
-  edges <- data.frame(from = df$sample1[keep], to = df$sample2[keep],
-                      weight = df$.w[keep], stringsAsFactors = FALSE)
+  if (inherits(pairs, "IbdResults") && is.null(meta)) meta <- pairs$get_meta()
+  pe <- .pair_edges(pairs, weight, min_ibd, samples)
+  edges <- pe$edges
+  all_samples <- pe$analyzed
   if (!nrow(edges) && !include_isolated) {
     stop("no pair shares more than min_ibd = ", min_ibd,
          " (lower it, or set include_isolated = TRUE to still show the samples)", call. = FALSE)

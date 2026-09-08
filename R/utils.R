@@ -90,3 +90,52 @@
   meta[[want]] <- .as_id_chr(meta[[want]])
   meta
 }
+
+
+# --- carrying sample metadata onto a result table ------------------------------------------
+# Shared by ibd_pair_clusters(), ibd_pair_links() and gene_ibd_pairs(), so a bad column name
+# is reported the same way wherever `add_meta_cols` is offered. `meta` arrives normalised --
+# each exported function does that itself.
+.meta_cols_for <- function(cols, meta, new, out) {
+  cols <- as.character(cols)
+  if (is.null(meta) || !is.data.frame(meta))
+    stop("`add_meta_cols` needs meta; build with ibd_results(meta = ), or pass meta = ",
+         call. = FALSE)
+  if (!"sample" %in% names(meta))
+    stop("`meta` has no `sample` column to match the rows on", call. = FALSE)
+  miss <- setdiff(cols, names(meta))
+  if (length(miss))
+    stop("meta has no column ", paste0("'", miss, "'", collapse = ", "), ". Available: ",
+         paste(setdiff(names(meta), "sample"), collapse = ", "), call. = FALSE)
+  clash <- intersect(new(cols), names(out))
+  if (length(clash))
+    stop("`add_meta_cols` would overwrite ", paste0("'", clash, "'", collapse = ", "),
+         ", which this table already reports; rename the column in `meta` first.",
+         call. = FALSE)
+  cols
+}
+
+# One column per metadata column, keyed on the table's `sample`. Indexing by match() rather
+# than merging keeps the row order and a factor's level order, and gives a sample that is not
+# in the metadata an NA instead of dropping its row.
+.add_sample_meta <- function(out, cols, meta) {
+  if (is.null(cols)) return(out)
+  cols <- .meta_cols_for(cols, meta, identity, out)
+  i <- match(out$sample, meta$sample)
+  for (col in cols) out[[col]] <- meta[[col]][i]
+  out
+}
+
+# The same, but for a table whose rows are pairs: each column lands on both endpoints.
+.add_endpoint_meta <- function(out, cols, meta) {
+  if (is.null(cols)) return(out)
+  cols <- .meta_cols_for(cols, meta,
+                         function(z) c(paste0("sample1_", z), paste0("sample2_", z)), out)
+  i1 <- match(out$sample1, meta$sample)
+  i2 <- match(out$sample2, meta$sample)
+  for (col in cols) {
+    out[[paste0("sample1_", col)]] <- meta[[col]][i1]
+    out[[paste0("sample2_", col)]] <- meta[[col]][i2]
+  }
+  out
+}

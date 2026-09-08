@@ -67,8 +67,8 @@ unpruned biallelic SNPs (an intentional, documented ascertainment for illustrati
 Contents: a list of `genotype` (258 × 2000 integer matrix) and `meta` (`sample`,
 `country`, `site`, `region`).
 
-`pf3d7_drug_gene_cds.gff` is the CDS features of six *P. falciparum* 3D7 drug-resistance
-genes, copied verbatim out of `PlasmoDB-55_Pfalciparum3D7.gff` (VEuPathDB): *pfdhfr*
+`pf3d7_drug_gene_cds.gff` is every feature (gene, mRNA, exon, CDS and UTR rows) of six
+*P. falciparum* 3D7 drug-resistance genes, copied verbatim out of `PlasmoDB-55_Pfalciparum3D7.gff` (VEuPathDB): *pfdhfr*
 `PF3D7_0417200`, *pfmdr1* `PF3D7_0523000`, *pfaat1* `PF3D7_0629500`, *pfcrt* `PF3D7_0709000`,
 *pfdhps* `PF3D7_0810800` and *pfkelch13* `PF3D7_1343700`. Real coordinates, so codon intervals
 computed from it are the published ones (*pfcrt* 76 at `Pf3D7_07_v3:403,624-403,626`).
@@ -77,7 +77,8 @@ The six were chosen to cover what the conversion has to get right: *pfcrt* has 1
 exons, four of whose codons straddle an intron; *pfkelch13* and *pfaat1* are on the minus
 strand; and every gene carries markers quoted by residue in the literature. Used by
 `read_gff_cds()` / `aa_intervals()` / `snp_aa_positions()` examples and the
-*Amino acids and genomic coordinates* article.
+*Amino acids and genomic coordinates* article, and by `read_gff_features()` (exons and
+introns, for the *Avoiding tandem repeats* article).
 
 `pf3d7_drug_gene_regions.fasta.gz` exists so the **tests** can check `snp_aa_positions()`'s
 `ref_codon` / `ref_aa` against real published residues without touching the network. It is not
@@ -93,3 +94,27 @@ The reference residues it yields are the published ones — *pfcrt* 76 `AAA`/K, 
 `TGT`/C, *pfdhfr* 108 `AGC`/S, *pfmdr1* 86 `AAT`/N. *pfdhps* 437 reads `GGT`/G, because 3D7 itself
 carries the 437G allele the A437G marker is named for — the reference is not the wild type, here
 or in general, so the test asserts `G` deliberately rather than treating it as a failure.
+
+## Pf3D7 tandem repeats
+
+`pf3d7_tandem_repeats.rds`, loaded by `pf3d7_tandem_repeats()`, is every short tandem repeat
+found in the *P. falciparum* 3D7 reference (`Pf3D7.fasta`, PlasmoDB), so nobody has to run the
+finders again. About 272,000 records over all 16 sequences, apicoplast and mitochondrion
+included.
+
+**Provenance.** The `combined.bed` of the HEOME redesign (April 2021): the union of Tandem
+Repeats Finder, `trf Pf3D7.fasta 2 7 7 80 10 50 1000 -f -d -m -h` (match 2, mismatch 7, indel
+7, match/indel probabilities 80/10, minimum score 50, maximum period 1000), converted with
+`elucidator TandemRepeatFinderOutputToBed`, and `elucidator findSimpleTandemRepeatLocations
+--maxRepeatUnitSize 10`, an exhaustive search for perfect repeats of units up to 10 bp that
+`trf` is inconsistent about. Sorted and de-duplicated; the same span can appear twice with
+different units where the two finders aligned it differently.
+
+**Storage.** Only the first four BED fields carry information, and the name is
+`chrom-start-end__UNIT_xCOPIES`, so the file holds `chrom` and `repeat_unit` as factors,
+`start`/`end` as integers and `copies`, xz-compressed, and the name is rebuilt on load.
+`copies` is stored only for the 4% of records (`trf` alignments with indels) where it is not
+`width / unit_size` to the finder's six significant digits; the rest are `NA` in the file
+and recomputed. 18 MB of BED becomes about 1.1 MB, and `data-raw/PF3D7_TANDEM_REPEATS.R`
+checks the rebuilt names are byte-identical to the source. Coordinates are 0-based half-open
+as in the BED.

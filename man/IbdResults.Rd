@@ -67,6 +67,8 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
     \item \href{#method-IbdResults-add_ibd_clusters}{\code{IbdResults$add_ibd_clusters()}}
     \item \href{#method-IbdResults-plot_ibd_network}{\code{IbdResults$plot_ibd_network()}}
     \item \href{#method-IbdResults-plot_ibd_pair_network}{\code{IbdResults$plot_ibd_pair_network()}}
+    \item \href{#method-IbdResults-ibd_pair_clusters}{\code{IbdResults$ibd_pair_clusters()}}
+    \item \href{#method-IbdResults-ibd_pair_links}{\code{IbdResults$ibd_pair_links()}}
     \item \href{#method-IbdResults-pair_fraction_summary}{\code{IbdResults$pair_fraction_summary()}}
     \item \href{#method-IbdResults-pos_selection_genes}{\code{IbdResults$pos_selection_genes()}}
     \item \href{#method-IbdResults-clone}{\code{IbdResults$clone()}}
@@ -639,6 +641,47 @@ the usual "everything except these" form.}
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{...}}{Passed to \code{\link[=plot_ibd_pair_network]{plot_ibd_pair_network()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-ibd_pair_clusters"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-ibd_pair_clusters}{}}}
+\subsection{\code{IbdResults$ibd_pair_clusters()}}{
+  Which samples the genome-wide IBD network connects, and the
+single-linkage cluster each falls in (see \code{\link[=ibd_pair_clusters]{ibd_pair_clusters()}}). Needs the pair
+table.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$ibd_pair_clusters(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=ibd_pair_clusters]{ibd_pair_clusters()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-ibd_pair_links"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-ibd_pair_links}{}}}
+\subsection{\code{IbdResults$ibd_pair_links()}}{
+  The sample pairs the genome-wide IBD network draws an edge between (see
+\code{\link[=ibd_pair_links]{ibd_pair_links()}}). Needs the pair table.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$ibd_pair_links(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=ibd_pair_links]{ibd_pair_links()}}.}
     }
     \if{html}{\out{</div>}}
   }
