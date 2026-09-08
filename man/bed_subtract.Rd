@@ -13,6 +13,7 @@ bed_subtract(
   chrom2 = "chr",
   start2 = "start",
   end2 = "end",
+  pad = 0,
   min_width = 1
 )
 }
@@ -27,6 +28,11 @@ a genotype matrix or \code{\link[=load_genotypes]{load_genotypes()}} list (its c
 \code{"chrom"} is accepted as a chromosome alias).}
 
 \item{chrom2, start2, end2}{As above for \code{locs2} when it is a table.}
+
+\item{pad}{Widen every \code{locs2} interval by this many bases on each side before
+subtracting (default \code{0}). Masking tandem repeats for a primer design, say, wants the
+repeat plus a few bases of clearance, so nothing ends right at a repeat's edge.
+Clamped at the start of the chromosome.}
 
 \item{min_width}{Drop leftover pieces narrower than this (default \code{1}, i.e. keep every
 base). Raise it to ignore slivers.}
@@ -65,7 +71,14 @@ want <- aa_intervals(data.frame(transcript_id = c("pfcrt", "pfcrt", "pfkelch13")
 have <- paste0("Pf3D7_07_v3:", want$start[want$aa_position == 76] + 1)
 gaps <- bed_subtract(want, have)
 gaps[, c("name", "aa_position", "start", "end", "width")]
+
+# a gene minus the tandem repeats a primer should avoid, with 10 bp of clearance
+crt <- PF3D7_GENES[PF3D7_GENES$name == "pfcrt", ]
+mask <- tandem_repeats_to_avoid(pf3d7_tandem_repeats())
+bed_subtract(crt, mask, pad = 10)[, c("start", "end", "piece", "width")]
 }
 \seealso{
-\code{\link[=bed_intersect]{bed_intersect()}} for the overlap, \code{\link[=write_bed]{write_bed()}} to write the result out.
+\code{\link[=bed_intersect]{bed_intersect()}} for the overlap, \code{\link[=bed_merge]{bed_merge()}} for joining intervals,
+\code{\link[=tandem_repeats_to_avoid]{tandem_repeats_to_avoid()}} for a mask worth subtracting, \code{\link[=write_bed]{write_bed()}} to write the
+result out.
 }

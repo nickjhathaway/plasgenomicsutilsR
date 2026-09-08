@@ -5,7 +5,7 @@
 [![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-> **Version 0.4.0** — early development; APIs, defaults, and outputs may change
+> **Version 0.4.1** — early development; APIs, defaults, and outputs may change
 > between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** — the
@@ -278,6 +278,19 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
   `overlap` / `only1` / `only2`. Bundled region tracks `PF3D7_CORE_REGIONS` (core vs.
   subtelomeric/hypervariable) and `PF3D7_PARALOG_GENES` let you classify genes, e.g.
   `bed_intersect(PF3D7_GENES, PF3D7_CORE_REGIONS)$only1` are the subtelomeric genes.
+- **Tandem repeats** — `pf3d7_tandem_repeats()` is every short tandem repeat in the Pf3D7
+  reference (Tandem Repeats Finder plus an exhaustive simple-repeat search, bundled so
+  nobody re-runs them); `tandem_repeats()` reads the same kind of BED for any genome.
+  `tandem_repeats_to_avoid()` flags runs by the *period* of their unit and their length
+  (homopolymers from 11 bp, dinucleotides from 12, trinucleotides from 21, anything from
+  50 — all adjustable), merges runs that flow into one another (an `A` homopolymer into an
+  `AT` run), and `bed_subtract(genes, mask, pad = 10)` then cuts the repeats plus 10 bp of
+  clearance out of a set of target genes for `write_bed()`. `read_gff_features()` reads a
+  gene's exons, introns, CDS or span out of a GFF as 0-based intervals, for the
+  gene-to-exons-to-subtraction flow when the intronic repeats are not wanted at all.
+  `write_bed6()` writes the six-column form with an optional `[field=value;]` metadata
+  column. `genomic_range_aa_positions()` then says which residues of which transcript
+  each remaining piece covers. `bed_merge()` is the plain interval merge underneath.
 - **Coordinates are 0-based throughout** (`?"plasgenomicsutilsR-coordinates"`) — intervals
   half-open `[start, end)` as in BED, and variant positions 0-based too, so there is one
   rule and no part of the package to remember an exception for. Sources that number

@@ -20,6 +20,8 @@ reference:
   - plot_pairwise_ibd_for_genes
   - plot_ibd_network
   - plot_ibd_pair_network
+  - ibd_pair_clusters
+  - ibd_pair_links
 - title: Genome-wide IBD between groups
   desc: >
     The per-pair IBD fraction reduced to one row per pair of metadata groups, over every
@@ -159,17 +161,32 @@ reference:
   - annotate_snps
   - aa_intervals
   - snp_aa_positions
+  - genomic_range_aa_positions
   - read_gff_cds
+  - read_gff_features
   - ensembl_gff_url
   - ensembl_genome_url
   - ensembl_species
   - ENSEMBL_PROTISTS_RELEASE
   - bed_intersect
   - bed_subtract
+  - bed_merge
   - write_bed
+  - write_bed6
   - haplotype_samples
   - subset_genotypes
   - plasgenomicsutilsR-coordinates
+- title: Tandem repeats
+  desc: >
+    Short tandem repeats a polymerase slips on: read a repeat finder's BED, flag runs by the
+    period of their unit and their length, merge runs that flow into one another, and
+    subtract the result from a set of targets.
+  contents:
+  - tandem_repeats
+  - flag_tandem_repeats
+  - merge_tandem_repeats
+  - tandem_repeats_to_avoid
+  - pf3d7_tandem_repeats
 - title: Example & reference data
   contents:
   - example_ibd_results
@@ -205,4 +222,5 @@ articles:
   contents:
   - cohorts-and-subsets
   - filling-in-missed-calls
+  - tandem-repeats
   - coverage-qc

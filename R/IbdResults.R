@@ -440,6 +440,17 @@ IbdResults <- R6::R6Class(
     #' @param ... Passed to [plot_ibd_pair_network()].
     plot_ibd_pair_network = function(...) plot_ibd_pair_network(self, ...),
 
+    #' @description Which samples the genome-wide IBD network connects, and the
+    #'   single-linkage cluster each falls in (see [ibd_pair_clusters()]). Needs the pair
+    #'   table.
+    #' @param ... Passed to [ibd_pair_clusters()].
+    ibd_pair_clusters = function(...) ibd_pair_clusters(self, ...),
+
+    #' @description The sample pairs the genome-wide IBD network draws an edge between (see
+    #'   [ibd_pair_links()]). Needs the pair table.
+    #' @param ... Passed to [ibd_pair_links()].
+    ibd_pair_links = function(...) ibd_pair_links(self, ...),
+
     #' @description Genome-wide IBD sharing summarised over the sample pairs spanning each
     #'   pair of metadata groups (see [pair_fraction_summary()]). Needs the pair table.
     #' @param group Metadata column defining the groups (default the declared group column).

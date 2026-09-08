@@ -47,6 +47,11 @@
 #' @param within Pad each gene interval by this many bp on both sides when deciding
 #'   whether a block overlaps it (default `0`). Coverage is always measured against the
 #'   gene's own span, so a block that reaches only into the padding covers `0`.
+#' @param add_meta_cols Metadata columns to attach to both ends of each pair. Each `col`
+#'   becomes `sample1_col` and `sample2_col`, in the order asked for -- so a sharing pair can
+#'   be read as within- or between-group without a second join. A sample missing from `meta`
+#'   gets `NA`; factor columns keep their level order.
+#' @param meta Sample metadata for `add_meta_cols`; taken from `x` when it carries one.
 #' @return A tibble with one row per pair x block x gene:
 #'   \describe{
 #'     \item{`sample1`, `sample2`}{the IBD pair, ordered so `sample1 < sample2`.}
@@ -69,6 +74,7 @@
 #'     \item{`covered_bp`, `percent_covered`}{width of that portion, and it as a percentage
 #'       of the gene's length.}
 #'   }
+#'   plus a pair of columns for each of `add_meta_cols`.
 #' @seealso [gene_ibd_overlap()] for the per-group-pair fractions,
 #'   [plasgenomicsutilsR-coordinates] for the interval convention.
 #' @examples
@@ -76,9 +82,16 @@
 #' ibd <- ibd_results(blocks = "hmm.txt", genes = PF_EXAMPLE_DRUG_GENES)
 #' pairs <- gene_ibd_pairs(ibd, genes = c("pfcrt", "pfdhps"))
 #' subset(pairs, coverage == "complete")
+#'
+#' # labelled with where each end came from, to split sharing within a site from between
+#' p <- gene_ibd_pairs(ibd, genes = "pfcrt", add_meta_cols = "region")
+#' table(within_region = p$sample1_region == p$sample2_region)
 #' }
 #' @export
-gene_ibd_pairs <- function(x, genes = NULL, within = 0) {
+gene_ibd_pairs <- function(x, genes = NULL, within = 0, add_meta_cols = NULL, meta = NULL) {
+  if (!is.null(add_meta_cols) && is.null(meta) && inherits(x, "IbdResults"))
+    meta <- x$get_meta()
+  meta <- .normalise_meta(meta)
   blocks <- x$get_blocks()
   if (is.null(blocks)) {
     stop("this IbdResults has no IBD blocks; build it with ibd_results(blocks = )",
@@ -124,17 +137,18 @@ gene_ibd_pairs <- function(x, genes = NULL, within = 0) {
   }
   out <- out[!vapply(out, is.null, logical(1))]
   if (!length(out)) {
-    return(tibble::tibble(
+    return(.add_endpoint_meta(tibble::tibble(
       sample1 = character(0), sample2 = character(0), chr = character(0),
       block_start = numeric(0), block_end = numeric(0), gene = character(0),
       name = character(0), gene_id = character(0), gene_start = numeric(0),
       gene_end = numeric(0), coverage = character(0), covered_start = numeric(0),
       covered_end = numeric(0), covered_bp = numeric(0), percent_covered = numeric(0),
-      gene_cluster_id = integer(0), gene_cluster_size = integer(0)))
+      gene_cluster_id = integer(0), gene_cluster_size = integer(0)),
+      add_meta_cols, meta))
   }
   res <- do.call(rbind, out)
   res$gene <- factor(res$gene, levels = gtrack$.label[gtrack$.label %in% res$gene])
   res <- res[order(res$gene, res$sample1, res$sample2), , drop = FALSE]
   rownames(res) <- NULL
-  tibble::as_tibble(res)
+  .add_endpoint_meta(tibble::as_tibble(res), add_meta_cols, meta)
 }

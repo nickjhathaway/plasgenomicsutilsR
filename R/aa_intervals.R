@@ -91,33 +91,8 @@
 #' }
 #' @export
 read_gff_cds <- function(gff) {
-  if (length(gff) != 1 || !is.character(gff))
-    stop("`gff` must be one path or URL to a GFF file", call. = FALSE)
-  is_url <- grepl("^(https?|ftp)://", gff)
-  if (!is_url && !file.exists(gff))
-    stop("no such file: ", gff, call. = FALSE)
-  cols <- c("seqid", "source", "type", "start", "end", "score", "strand", "phase", "attr")
-  if (is_url) {
-    # read.delim() gunzips a local path on its own, but a remote stream has to be decompressed
-    # here -- and read through readLines(), since read.table() cannot push back on the
-    # binary-mode connection that gzcon() gives.
-    con <- if (grepl("\\.gz$", gff)) gzcon(url(gff, open = "rb")) else url(gff)
-    on.exit(try(close(con), silent = TRUE), add = TRUE)
-    txt <- readLines(con, warn = FALSE)
-  } else {
-    txt <- readLines(gff, warn = FALSE)
-  }
-  # A GFF3 may end with a `##FASTA` directive and the sequences themselves. Those lines are not
-  # tab-delimited records, so they have to come off before parsing -- and they are worth
-  # keeping, since they are the reference bases snp_aa_positions() needs.
-  fa_at <- which(grepl("^##FASTA", txt))
-  seqs <- NULL
-  if (length(fa_at)) {
-    seqs <- .parse_fasta(txt[seq(fa_at[1] + 1L, length(txt))])
-    txt <- txt[seq_len(fa_at[1] - 1L)]
-  }
-  g <- utils::read.delim(text = txt, header = FALSE, comment.char = "#", quote = "",
-                         stringsAsFactors = FALSE, col.names = cols)
+  parsed <- .read_gff(gff)
+  g <- parsed$records; seqs <- parsed$sequence
   cds <- g[g$type == "CDS", , drop = FALSE]
   if (!nrow(cds)) stop("no CDS features in ", gff, call. = FALSE)
 

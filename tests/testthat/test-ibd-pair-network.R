@@ -251,3 +251,185 @@ test_that("border outlines the nodes, and refuses to fight the shape encoding", 
   # and with the border off, shapes behave exactly as before
   expect_s3_class(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, shape_group = grp), "ggplot")
 })
+
+
+# --- ibd_pair_clusters() / ibd_pair_links() -----------------------------------------------
+# make_pairs(): s1-s2 0.80, s2-s3 0.40, s4-s5 0.05, everything else 0.001. At min_ibd = 0.03
+# that is one chain {s1,s2,s3}, one pair {s4,s5}, and s6 alone.
+
+test_that("the clusters are the components the network draws", {
+  cl <- ibd_pair_clusters(make_pairs(), min_ibd = 0.03)
+  expect_equal(names(cl), c("sample", "connected", "cluster_id", "cluster_size",
+                            "n_links", "max_ibd"))
+  expect_equal(nrow(cl), 6)
+
+  expect_setequal(cl$sample[cl$connected], c("s1", "s2", "s3", "s4", "s5"))
+  expect_equal(cl$sample[!cl$connected], "s6")
+
+  # ids run largest cluster first, like gene_cluster_id
+  expect_equal(sort(cl$sample[cl$cluster_id %in% 1]), c("s1", "s2", "s3"))
+  expect_equal(sort(cl$sample[cl$cluster_id %in% 2]), c("s4", "s5"))
+  expect_equal(cl$cluster_size[match(c("s1", "s4"), cl$sample)], c(3L, 2L))
+  # a sample connected to nobody gets NA, not a cluster of its own
+  expect_true(is.na(cl$cluster_id[cl$sample == "s6"]))
+  expect_true(is.na(cl$cluster_size[cl$sample == "s6"]))
+})
+
+test_that("single linkage joins a chain whose ends never share directly", {
+  # s1 and s3 share 0.001, well under the cutoff, yet both sit in cluster 1 through s2
+  cl <- ibd_pair_clusters(make_pairs(), min_ibd = 0.03)
+  expect_equal(cl$cluster_id[cl$sample == "s1"], cl$cluster_id[cl$sample == "s3"])
+  expect_equal(cl$n_links[match(c("s1", "s2", "s3", "s6"), cl$sample)], c(1L, 2L, 1L, 0L))
+  expect_equal(cl$max_ibd[match(c("s1", "s2", "s3"), cl$sample)], c(0.80, 0.80, 0.40))
+  expect_true(is.na(cl$max_ibd[cl$sample == "s6"]))
+})
+
+test_that("connected samples come first, unconnected last", {
+  cl <- ibd_pair_clusters(make_pairs(), min_ibd = 0.03)
+  expect_equal(cl$sample, c("s1", "s2", "s3", "s4", "s5", "s6"))
+  expect_false(any(diff(cl$connected) > 0))   # never unconnected then connected again
+})
+
+test_that("min_ibd moves the boundary the same way it does in the plot", {
+  # 0.06 drops the s4-s5 edge (they share 0.05); 0.5 leaves only s1-s2
+  expect_setequal(with(ibd_pair_clusters(make_pairs(), min_ibd = 0.06),
+                       sample[!connected]), c("s4", "s5", "s6"))
+  expect_setequal(with(ibd_pair_clusters(make_pairs(), min_ibd = 0.5),
+                       sample[connected]), c("s1", "s2"))
+  # nobody linked at all: every sample still comes back, all unconnected
+  none <- ibd_pair_clusters(make_pairs(), min_ibd = 0.99)
+  expect_equal(nrow(none), 6)
+  expect_false(any(none$connected))
+  expect_true(all(is.na(none$cluster_id)))
+})
+
+test_that("the counts match what the plot puts in its subtitle", {
+  skip_if_no_graph()
+  for (mi in c(0.03, 0.06, 0.5)) {
+    cl <- ibd_pair_clusters(make_pairs(), min_ibd = mi)
+    p <- plot_ibd_pair_network(make_pairs(), min_ibd = mi)
+    expect_match(p$labels$subtitle,
+                 sprintf("^%d samples, %d pairs sharing", nrow(cl),
+                         nrow(ibd_pair_links(make_pairs(), min_ibd = mi))), info = mi)
+    n_iso <- sum(!cl$connected)
+    expect_match(p$labels$subtitle, sprintf("\\(%d unconnected\\)", n_iso), info = mi)
+  }
+})
+
+test_that("ibd_pair_links is the edge list, highest sharing first", {
+  e <- ibd_pair_links(make_pairs(), min_ibd = 0.03)
+  expect_equal(names(e), c("sample1", "sample2", "ibd_fraction"))
+  expect_equal(e$ibd_fraction, c(0.80, 0.40, 0.05))
+  expect_equal(paste(e$sample1, e$sample2), c("s1 s2", "s2 s3", "s4 s5"))
+  # the samples those edges touch are exactly the connected ones
+  cl <- ibd_pair_clusters(make_pairs(), min_ibd = 0.03)
+  expect_setequal(unique(c(e$sample1, e$sample2)), cl$sample[cl$connected])
+})
+
+test_that("`weight` and `samples` are honoured, and a bad column is named", {
+  df <- make_pairs()
+  df$ibd_fraction_full_genome <- df$ibd_fraction_accessible / 2
+  expect_equal(ibd_pair_links(df, weight = "ibd_fraction_full_genome",
+                              min_ibd = 0.03)$ibd_fraction, c(0.40, 0.20))
+  sub <- ibd_pair_clusters(df, min_ibd = 0.03, samples = c("s1", "s2", "s6"))
+  expect_equal(sub$sample, c("s1", "s2", "s6"))
+  expect_equal(sub$sample[!sub$connected], "s6")
+  expect_error(ibd_pair_clusters(df, weight = "nope"), "no column 'nope'")
+})
+
+test_that("an IbdResults carrying a pair table can be asked directly", {
+  ibd <- ibd_results(pair_fraction = make_pairs(), meta = make_meta())
+  expect_equal(ibd$ibd_pair_clusters(min_ibd = 0.03),
+               ibd_pair_clusters(make_pairs(), min_ibd = 0.03))
+  expect_equal(nrow(ibd$ibd_pair_links(min_ibd = 0.03)), 3)
+  expect_error(ibd_pair_clusters(ibd_results(meta = make_meta())), "no pair table")
+})
+
+test_that("add_meta_cols puts each column on both ends, in the order asked for", {
+  meta <- make_meta()
+  meta$country <- c("UG", "UG", "TZ", "TZ", "KE", "KE")
+  e <- ibd_pair_links(make_pairs(), min_ibd = 0.03,
+                      add_meta_cols = c("region", "country"), meta = meta)
+  expect_equal(names(e), c("sample1", "sample2", "ibd_fraction",
+                           "sample1_region", "sample2_region",
+                           "sample1_country", "sample2_country"))
+  # s1-s2 are both region A; s2-s3 spans A and B
+  expect_equal(as.character(e$sample1_region), c("A", "A", "B"))
+  expect_equal(as.character(e$sample2_region), c("A", "B", "C"))
+  expect_equal(e$sample1_country, c("UG", "UG", "TZ"))
+  # a single column is fine, and the edges themselves are untouched
+  one <- ibd_pair_links(make_pairs(), min_ibd = 0.03, add_meta_cols = "region", meta = meta)
+  expect_equal(one[, 1:3], ibd_pair_links(make_pairs(), min_ibd = 0.03))
+})
+
+test_that("a factor metadata column keeps its level order on both ends", {
+  # make_meta() orders region C < B < A, which a merge would turn alphabetical
+  meta <- make_meta()
+  e <- ibd_pair_links(make_pairs(), min_ibd = 0.03, add_meta_cols = "region", meta = meta)
+  expect_s3_class(e$sample1_region, "factor")
+  expect_equal(levels(e$sample1_region), c("C", "B", "A"))
+  expect_equal(levels(e$sample2_region), c("C", "B", "A"))
+})
+
+test_that("meta comes from the IbdResults when there is one", {
+  ibd <- ibd_results(pair_fraction = make_pairs(), meta = make_meta())
+  e <- ibd$ibd_pair_links(min_ibd = 0.03, add_meta_cols = "region")
+  expect_equal(as.character(e$sample1_region), c("A", "A", "B"))
+  # an explicit meta still wins over the object's
+  other <- make_meta(); other$region <- "Z"
+  expect_true(all(ibd$ibd_pair_links(min_ibd = 0.03, add_meta_cols = "region",
+                                     meta = other)$sample1_region == "Z"))
+})
+
+test_that("a sample missing from meta gets NA rather than losing its edge", {
+  meta <- make_meta()[1:2, ]                       # s3..s6 unknown
+  e <- ibd_pair_links(make_pairs(), min_ibd = 0.03, add_meta_cols = "region", meta = meta)
+  expect_equal(nrow(e), 3)
+  expect_equal(is.na(e$sample2_region), c(FALSE, TRUE, TRUE))
+})
+
+test_that("add_meta_cols says what is wrong when it cannot be honoured", {
+  expect_error(ibd_pair_links(make_pairs(), add_meta_cols = "region"), "needs meta")
+  expect_error(ibd_pair_links(make_pairs(), add_meta_cols = "nope", meta = make_meta()),
+               "no column 'nope'")
+  # the error names what it could have used instead
+  expect_error(ibd_pair_links(make_pairs(), add_meta_cols = "nope", meta = make_meta()),
+               "region, marker")
+})
+
+test_that("add_meta_cols reads a capitalised sample column like everything else does", {
+  meta <- make_meta()
+  names(meta)[names(meta) == "sample"] <- "Sample"
+  e <- suppressMessages(
+    ibd_pair_links(make_pairs(), min_ibd = 0.03, add_meta_cols = "region", meta = meta))
+  expect_equal(as.character(e$sample1_region), c("A", "A", "B"))
+})
+
+test_that("ibd_pair_clusters carries metadata onto each sample", {
+  meta <- make_meta()
+  meta$country <- c("UG", "UG", "TZ", "TZ", "KE", "KE")
+  cl <- ibd_pair_clusters(make_pairs(), min_ibd = 0.03,
+                          add_meta_cols = c("region", "country"), meta = meta)
+  expect_equal(names(cl), c("sample", "connected", "cluster_id", "cluster_size",
+                            "n_links", "max_ibd", "region", "country"))
+  expect_equal(as.character(cl$region), c("A", "A", "B", "B", "C", "C"))
+  expect_equal(cl$country, c("UG", "UG", "TZ", "TZ", "KE", "KE"))
+  # a factor keeps its level order here too, and the rest of the table is untouched
+  expect_equal(levels(cl$region), c("C", "B", "A"))
+  expect_equal(cl[, 1:6], ibd_pair_clusters(make_pairs(), min_ibd = 0.03))
+  # and it reaches an unconnected sample as readily as a clustered one
+  expect_equal(as.character(cl$region[cl$sample == "s6"]), "C")
+})
+
+test_that("ibd_pair_clusters takes meta from the IbdResults, and refuses a name clash", {
+  ibd <- ibd_results(pair_fraction = make_pairs(), meta = make_meta())
+  expect_equal(as.character(ibd$ibd_pair_clusters(min_ibd = 0.03,
+                                                 add_meta_cols = "region")$region),
+               c("A", "A", "B", "B", "C", "C"))
+  # a metadata column named like one the table already reports would be silently overwritten
+  clash <- make_meta(); clash$connected <- "yes"
+  expect_error(ibd_pair_clusters(make_pairs(), add_meta_cols = "connected", meta = clash),
+               "would overwrite 'connected'")
+  expect_error(ibd_pair_clusters(make_pairs(), add_meta_cols = "nope", meta = make_meta()),
+               "no column 'nope'")
+})

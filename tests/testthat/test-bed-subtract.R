@@ -95,3 +95,38 @@ test_that("write_bed writes the contig name the reference uses, not the normalis
   expect_error(write_bed(want, f2, chrom = "nope"), "no `nope` column")
   expect_error(write_bed(data.frame(start = 1, end = 2), f2), "needs a `chrom`")
 })
+
+test_that("write_bed / write_bed6 can name by coordinates and make names unique", {
+  x <- data.frame(chrom = "Pf3D7_07_v3", start = c(100, 100, 300, rep(500, 12)),
+                  end = c(200, 200, 400, rep(600, 12)),
+                  name = c("g", "g", "h", rep("k", 12)), stringsAsFactors = FALSE)
+  f <- tempfile(fileext = ".bed")
+  col4 <- function(f) vapply(strsplit(readLines(f), "\t", fixed = TRUE), `[`, "", 4)
+
+  write_bed(x, f)
+  expect_equal(col4(f)[1:3], c("g", "g", "h"))
+  write_bed(x, f, make_names_unique = TRUE)
+  n <- col4(f)
+  expect_equal(n[1:3], c("g_1", "g_2", "h"))                    # a unique name is untouched
+  expect_equal(n[4:15], paste0("k_", sprintf("%02d", 1:12)))    # twelve: two digits
+  write_bed(x, f, name_is_coords = TRUE)
+  expect_equal(col4(f)[1:2], rep("Pf3D7_07_v3-100-200", 2))
+  write_bed(x, f, name_is_coords = TRUE, make_names_unique = TRUE)
+  expect_equal(col4(f)[1:3], c("Pf3D7_07_v3-100-200_1", "Pf3D7_07_v3-100-200_2", "Pf3D7_07_v3-300-400"))
+  # no name column: uniqueness falls back to the coordinates
+  write_bed(x[, 1:3], f, make_names_unique = TRUE)
+  expect_equal(col4(f)[1:2], c("Pf3D7_07_v3-100-200_1", "Pf3D7_07_v3-100-200_2"))
+  write_bed(x[, 1:3], f)
+  expect_equal(lengths(strsplit(readLines(f), "\t"))[1], 3L)
+
+  # numbering follows the written (sorted) order
+  y <- data.frame(chrom = "Pf3D7_07_v3", start = c(900, 100), end = c(950, 150), name = "z")
+  write_bed6(y, f, make_names_unique = TRUE)
+  lines <- strsplit(readLines(f), "\t", fixed = TRUE)
+  expect_equal(vapply(lines, `[`, "", 4), c("z_1", "z_2"))
+  expect_equal(vapply(lines, `[`, "", 2), c("100", "900"))
+  write_bed6(y, f, name_is_coords = TRUE, make_names_unique = TRUE, meta_cols = "name")
+  lines <- strsplit(readLines(f), "\t", fixed = TRUE)
+  expect_equal(vapply(lines, `[`, "", 4), c("Pf3D7_07_v3-100-150", "Pf3D7_07_v3-900-950"))
+  expect_equal(vapply(lines, `[`, "", 7), rep("[name=z;]", 2))
+})

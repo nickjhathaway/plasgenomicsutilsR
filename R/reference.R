@@ -63,20 +63,25 @@ get_reference <- function(ref_id = DEFAULT_REFERENCE) {
 
 #' Normalise a chromosome name to a bare number string
 #'
-#' `"Pf3D7_07_v3"`, `"chr7"`, `"07"`, `7` all become `"7"`.
+#' `"Pf3D7_07_v3"`, `"chr7"`, `"07"`, `7` all become `"7"`. The organelles follow the
+#' bundled datasets: the apicoplast (`"Pf3D7_API_v3"`) becomes `"API"` and the mitochondrion
+#' (`"Pf_M76611"`, `"Pf3D7_MIT_v3"`) `"MIT"`, so a table read from a FASTA-named file joins
+#' [PF3D7_GENES] on every sequence, not just the fourteen chromosomes.
 #'
 #' @param c A chromosome name (character or numeric), scalar or vector.
 #' @return Character vector of normalised chromosome ids.
 #' @examples
 #' # every spelling of a chromosome collapses to the same key, so tables from
 #' # different tools join
-#' normalise_chr(c("Pf3D7_07_v3", "chr7", "7", "Pf3D7_API_v3"))
+#' normalise_chr(c("Pf3D7_07_v3", "chr7", "7", "Pf3D7_API_v3", "Pf_M76611"))
 #' @export
 normalise_chr <- function(c) {
   s <- as.character(c)
   s <- sub("^(Pf3D7_|PvP01_|Pf_)0*([0-9]+).*$", "\\2", s)
   s <- sub("^chr", "", s)
   s <- sub("^0+([0-9])", "\\1", s)
+  s[grepl("^Pf3D7_API", s) | s == "API"] <- "API"
+  s[grepl("^Pf3D7_MIT", s) | s %in% c("Pf_M76611", "M76611", "MIT")] <- "MIT"
   s[s == ""] <- "0"
   s
 }
