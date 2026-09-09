@@ -37,6 +37,9 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # Hosted runners have 4 cores. Let each package's own compile use them; the
+      # package-level parallelism is `Ncpus` on setup-r below.
+      MAKEFLAGS: -j4
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +53,11 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+          # setup-r writes `options(Ncpus = 1)` into the Rprofile by default, and pak
+          # takes that as its number of install workers -- so with a cold cache it built
+          # the 146 dependencies one at a time (32 min on R devel, where nothing is
+          # binary). 4 workers matches the runner's cores.
+          Ncpus: 4
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         timeout-minutes: ${{ matrix.config.deps-timeout || 25 }}
