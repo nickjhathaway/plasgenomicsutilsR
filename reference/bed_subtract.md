@@ -19,6 +19,7 @@ bed_subtract(
   chrom2 = "chr",
   start2 = "start",
   end2 = "end",
+  pad = 0,
   min_width = 1
 )
 ```
@@ -46,6 +47,13 @@ bed_subtract(
 - chrom2, start2, end2:
 
   As above for `locs2` when it is a table.
+
+- pad:
+
+  Widen every `locs2` interval by this many bases on each side before
+  subtracting (default `0`). Masking tandem repeats for a primer design,
+  say, wants the repeat plus a few bases of clearance, so nothing ends
+  right at a repeat's edge. Clamped at the start of the chromosome.
 
 - min_width:
 
@@ -80,6 +88,10 @@ throughout this package, so an interval abutting another
 
 [`bed_intersect()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.md)
 for the overlap,
+[`bed_merge()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_merge.md)
+for joining intervals,
+[`tandem_repeats_to_avoid()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats_to_avoid.md)
+for a mask worth subtracting,
 [`write_bed()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed.md)
 to write the result out.
 
@@ -102,4 +114,27 @@ gaps[, c("name", "aa_position", "start", "end", "width")]
 #> 2 PF3D7_0709000.1-AA76           76  403623  403624     1
 #> 3 PF3D7_0709000.1-AA76           76  403625  403626     1
 #> 4 PF3D7_1343700.1-AA580         580 1725257 1725260     3
+
+# a gene minus the tandem repeats a primer should avoid, with 10 bp of clearance
+crt <- PF3D7_GENES[PF3D7_GENES$name == "pfcrt", ]
+mask <- tandem_repeats_to_avoid(pf3d7_tandem_repeats())
+bed_subtract(crt, mask, pad = 10)[, c("start", "end", "piece", "width")]
+#> # A tibble: 15 × 4
+#>     start    end piece width
+#>     <dbl>  <dbl> <int> <dbl>
+#>  1 403221 403363     1   142
+#>  2 403480 403823     2   343
+#>  3 403899 404123     3   224
+#>  4 404281 404418     4   137
+#>  5 404478 404524     5    46
+#>  6 404561 404692     6   131
+#>  7 404725 404877     7   152
+#>  8 404929 405103     8   174
+#>  9 405146 405263     9   117
+#> 10 405342 405454    10   112
+#> 11 405510 405635    11   125
+#> 12 405736 405883    12   147
+#> 13 405921 405961    13    40
+#> 14 406022 406129    14   107
+#> 15 406175 406317    15   142
 ```

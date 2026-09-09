@@ -8,7 +8,15 @@ interval is survives being looked at later.
 ## Usage
 
 ``` r
-write_bed(x, file, name = NULL, sort = TRUE, chrom = NULL)
+write_bed(
+  x,
+  file,
+  name = NULL,
+  sort = TRUE,
+  chrom = NULL,
+  name_is_coords = FALSE,
+  make_names_unique = FALSE
+)
 ```
 
 ## Arguments
@@ -30,12 +38,28 @@ write_bed(x, file, name = NULL, sort = TRUE, chrom = NULL)
 - sort:
 
   Sort by chromosome and start (default `TRUE`), which is what the tools
-  want.
+  want. Numbering for uniqueness follows the written order.
 
 - chrom:
 
-  Column holding the chromosome name to write. Defaults to `"chrom"`
-  when the table has it, else `"chr"`.
+  Column holding the chromosome name to write. Defaults to the first of
+  a `<assembly>_chrom` column, `"chrom"`, and `"chr"` that the table has
+  (see above).
+
+- name_is_coords:
+
+  Write `chrom-start-end` (`Pf3D7_07_v3-403221-403363`) as the name
+  field instead of a column (default `FALSE`).
+
+- make_names_unique:
+
+  Make the name field unique within the file (default `FALSE`): a name
+  that occurs more than once gets `_1`, `_2`, ... in file order,
+  zero-padded to the width of that name's count (`_01` to `_12` for
+  twelve). Combines with `name_is_coords`, so identical coordinates
+  written twice get distinct names. With no name column and
+  `name_is_coords = FALSE`, the coordinates are used as the names to
+  make unique.
 
 ## Value
 
@@ -43,12 +67,22 @@ write_bed(x, file, name = NULL, sort = TRUE, chrom = NULL)
 
 ## Details
 
-**`chrom` is preferred over `chr`.** Tables in this package carry both:
-`chr` normalised for matching (`"7"`), and `chrom` as the source file
-spells it (`"Pf3D7_07_v3"`). A BED is read by other tools against a real
-reference, so it has to carry the name the FASTA and the BAMs use –
-writing the normalised one produces a file that matches nothing,
-silently.
+**The reference's own spelling is preferred.** A BED is read by other
+tools against a real reference, so it has to carry the name the FASTA
+and the BAMs use – writing a normalised one produces a file that matches
+nothing, silently. Tables in this package carry two kinds of chromosome
+column, and the default picks the one with the full name: a
+`<assembly>_chrom` column first (`Pf3D7_chrom` in
+[PF3D7_GENES](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PF3D7_GENES.md)
+and the other bundled datasets, where `chrom` is the short `"7"`), then
+`chrom` (which
+[`aa_intervals()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/aa_intervals.md),
+[`tandem_repeats()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats.md)
+and friends fill with the source spelling, keeping `chr` for the
+normalised `"7"`), then `chr`. Pieces from
+[`bed_subtract()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_subtract.md)
+keep their `locs1` columns, so a gene table cut by a mask still writes
+the right names.
 
 ## See also
 

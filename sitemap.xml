@@ -11,6 +11,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/index.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/plasgenomicsutilsR.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/population-structure.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/articles/tandem-repeats.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/authors.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/index.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/DEFAULT_REFERENCE.html</loc></url>
@@ -30,6 +31,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/annotate_snps.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/available_references.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_intersect.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_merge.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_subtract.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/beta_score.html</loc></url>
@@ -41,10 +43,14 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_species.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_ibd_results.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/example_pop_structure.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/flag_tandem_repeats.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_overlap.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/gene_ibd_pairs.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/genomic_range_aa_positions.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/get_reference.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/haplotype_samples.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_clusters.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_links.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_results.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ihs_windows.html</loc></url>
@@ -54,12 +60,14 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_pop_structure.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/merge_genotypes.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/merge_tandem_repeats.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/meta_colors.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/n_pcs_for_variance.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/normalise_chr.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pair_fraction_summary.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/parasite_haplotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pdf_device.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pf3d7_tandem_repeats.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-package.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_admixture.html</loc></url>
@@ -99,6 +107,7 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pos_selection_genes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_coverage.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_cds.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_features.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_ld_decay.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.html</loc></url>
@@ -115,7 +124,10 @@
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_haplotypes.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tajima_d_pvalue.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats_to_avoid.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/top_differentiating_snps.html</loc></url>
 <url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed.html</loc></url>
+<url><loc>https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed6.html</loc></url>
 </urlset>
 

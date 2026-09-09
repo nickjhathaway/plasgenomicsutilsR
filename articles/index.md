@@ -24,5 +24,7 @@
   subsets](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/cohorts-and-subsets.md):
 - [Filling in missed
   calls](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/filling-in-missed-calls.md):
+- [Avoiding tandem
+  repeats](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/tandem-repeats.md):
 - [Coverage
   QC](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/coverage-qc.md):

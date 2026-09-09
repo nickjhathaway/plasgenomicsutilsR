@@ -29,6 +29,10 @@ Genome-wide and group-by-group IBD figures.
   : IBD network at a gene or locus
 - [`plot_ibd_pair_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pair_network.md)
   : Genome-wide IBD relatedness network
+- [`ibd_pair_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_clusters.md)
+  : Genome-wide IBD clusters, and which samples are connected
+- [`ibd_pair_links()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_links.md)
+  : The IBD pairs a network draws
 
 ## Genome-wide IBD between groups
 
@@ -263,8 +267,12 @@ convention.
   : Genomic interval of an amino-acid position
 - [`snp_aa_positions()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/snp_aa_positions.md)
   : The amino acid a SNP falls in
+- [`genomic_range_aa_positions()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/genomic_range_aa_positions.md)
+  : The amino acids a genomic range covers
 - [`read_gff_cds()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_cds.md)
   : Read the CDS features of a GFF
+- [`read_gff_features()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_features.md)
+  : Exons, introns, CDS or spans of genes, from a GFF
 - [`ensembl_gff_url()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_gff_url.md)
   [`ensembl_genome_url()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ensembl_gff_url.md)
   : Ensembl Protists download URLs
@@ -276,14 +284,35 @@ convention.
   : Intersect two sets of genomic intervals
 - [`bed_subtract()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_subtract.md)
   : Subtract one set of genomic intervals from another
+- [`bed_merge()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_merge.md)
+  : Merge overlapping or nearby intervals
 - [`write_bed()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed.md)
   : Write an interval table as a BED file
+- [`write_bed6()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed6.md)
+  : Write an interval table as a six-column BED, with optional metadata
 - [`haplotype_samples()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/haplotype_samples.md)
   : The samples a haplotype set kept
 - [`subset_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/subset_genotypes.md)
   : Restrict a genotype panel to a set of samples
 - [`plasgenomicsutilsR-coordinates`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)
   : Genomic coordinate conventions
+
+## Tandem repeats
+
+Short tandem repeats a polymerase slips on: read a repeat finder’s BED,
+flag runs by the period of their unit and their length, merge runs that
+flow into one another, and subtract the result from a set of targets.
+
+- [`tandem_repeats()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats.md)
+  : Read a table of short tandem repeats
+- [`flag_tandem_repeats()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/flag_tandem_repeats.md)
+  : Flag the tandem repeats a polymerase is likely to slip on
+- [`merge_tandem_repeats()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/merge_tandem_repeats.md)
+  : Merge tandem repeats that run into one another
+- [`tandem_repeats_to_avoid()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats_to_avoid.md)
+  : The tandem repeats a target design should avoid
+- [`pf3d7_tandem_repeats()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pf3d7_tandem_repeats.md)
+  : Tandem repeats of the Pf3D7 reference genome
 
 ## Example & reference data
 

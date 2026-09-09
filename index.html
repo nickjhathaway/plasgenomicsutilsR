@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,6 +47,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>Working with the data</h6></li>
     <li><a class="dropdown-item" href="articles/cohorts-and-subsets.html">Cohorts and subsets</a></li>
     <li><a class="dropdown-item" href="articles/filling-in-missed-calls.html">Filling in missed calls</a></li>
+    <li><a class="dropdown-item" href="articles/tandem-repeats.html">Avoiding tandem repeats</a></li>
     <li><a class="dropdown-item" href="articles/coverage-qc.html">Coverage QC</a></li>
   </ul>
 </li>
@@ -69,7 +70,7 @@
 <!-- badges: start -->
 
 <blockquote>
-<p><strong>Version 0.4.0</strong> — early development; APIs, defaults, and outputs may change between versions.</p>
+<p><strong>Version 0.4.1</strong> — early development; APIs, defaults, and outputs may change between versions.</p>
 </blockquote>
 <p>R utilities for <strong>visualizing and analyzing Plasmodium genomics data</strong> — the R-side companion to the Python package <a href="https://github.com/nickjhathaway/plasgenomicsutils" class="external-link"><code>plasgenomicsutils</code></a>, which does the heavy post-processing compute (VCF filtering/harmonization, IBD analysis) and writes plain tables that this package reads and plots.</p>
 <p>Reference-genome facts are namespaced by species (see <code><a href="reference/get_reference.html">get_reference()</a></code>), so the tools generalize beyond <em>Plasmodium falciparum</em>.</p>
@@ -148,6 +149,7 @@
 <li><p><strong>Coverage QC</strong> — <code><a href="reference/read_coverage.html">read_coverage()</a></code>, <code><a href="reference/coverage_qc.html">coverage_qc()</a></code>, <code><a href="reference/plot_coverage_summary.html">plot_coverage_summary()</a></code>, <code><a href="reference/plot_coverage_by_chrom.html">plot_coverage_by_chrom()</a></code> and <code><a href="reference/plot_coverage_dropout.html">plot_coverage_dropout()</a></code> read and plot the depth tables from <code>plasgenomicsutils coverage_depth_stats</code> / <code>coverage_dropout_regions</code>. Breadth matters more than mean depth: sWGA can give a respectable average while leaving much of the genome at zero, and only the breadth column shows it.</p></li>
 <li><p><strong>Within-host mixtures</strong> — <code><a href="reference/plot_wsaf.html">plot_wsaf()</a></code> draws the per-sample heterozygous allele fractions written by <code>plasgenomicsutils wsaf_profile --sites-out</code>, one small histogram per sample, coloured by whether the sample is monoclonal, has a dominant clone worth filtering to, or carries a strain too large to remove. Mass against zero is one dominant strain, a band near 0.5 is a co-dominant one. <code>scales = "fixed"</code> shares one y axis so panel heights compare how <em>many</em> heterozygous sites each sample has.</p></li>
 <li><p><strong>Genomic intervals</strong> — <code><a href="reference/bed_intersect.html">bed_intersect()</a></code> overlaps two BED-style interval tables (configurable <code>chr</code>/<code>start</code>/<code>end</code> columns, chromosome spellings reconciled) and returns <code>overlap</code> / <code>only1</code> / <code>only2</code>. Bundled region tracks <code>PF3D7_CORE_REGIONS</code> (core vs. subtelomeric/hypervariable) and <code>PF3D7_PARALOG_GENES</code> let you classify genes, e.g. <code>bed_intersect(PF3D7_GENES, PF3D7_CORE_REGIONS)$only1</code> are the subtelomeric genes.</p></li>
+<li><p><strong>Tandem repeats</strong> — <code><a href="reference/pf3d7_tandem_repeats.html">pf3d7_tandem_repeats()</a></code> is every short tandem repeat in the Pf3D7 reference (Tandem Repeats Finder plus an exhaustive simple-repeat search, bundled so nobody re-runs them); <code><a href="reference/tandem_repeats.html">tandem_repeats()</a></code> reads the same kind of BED for any genome. <code><a href="reference/tandem_repeats_to_avoid.html">tandem_repeats_to_avoid()</a></code> flags runs by the <em>period</em> of their unit and their length (homopolymers from 11 bp, dinucleotides from 12, trinucleotides from 21, anything from 50 — all adjustable), merges runs that flow into one another (an <code>A</code> homopolymer into an <code>AT</code> run), and <code>bed_subtract(genes, mask, pad = 10)</code> then cuts the repeats plus 10 bp of clearance out of a set of target genes for <code><a href="reference/write_bed.html">write_bed()</a></code>. <code><a href="reference/read_gff_features.html">read_gff_features()</a></code> reads a gene’s exons, introns, CDS or span out of a GFF as 0-based intervals, for the gene-to-exons-to-subtraction flow when the intronic repeats are not wanted at all. <code><a href="reference/write_bed6.html">write_bed6()</a></code> writes the six-column form with an optional <code>[field=value;]</code> metadata column. <code><a href="reference/genomic_range_aa_positions.html">genomic_range_aa_positions()</a></code> then says which residues of which transcript each remaining piece covers. <code><a href="reference/bed_merge.html">bed_merge()</a></code> is the plain interval merge underneath.</p></li>
 <li><p><strong>Coordinates are 0-based throughout</strong> (<code><a href="reference/plasgenomicsutilsR-coordinates.html">?"plasgenomicsutilsR-coordinates"</a></code>) — intervals half-open <code>[start, end)</code> as in BED, and variant positions 0-based too, so there is one rule and no part of the package to remember an exception for. Sources that number differently are converted once at the boundary: the PlasmoDB GFF where the gene datasets are built, <code>hmmibd-rs</code> block ends when an <code>IbdResults</code> reads them, and VCF <code>POS</code> in the Python package before any table reaches R. <code>PF3D7_GENES</code> gives each gene’s <strong>CDS</strong> span (the translated extent, introns included, UTRs excluded).</p></li>
 <li><p>Reference registry: <code><a href="reference/get_reference.html">get_reference()</a></code>, <code><a href="reference/available_references.html">available_references()</a></code>, <code><a href="reference/normalise_chr.html">normalise_chr()</a></code>, <code>PF3D7_CORE_CHROM_LENGTHS_BP</code>.</p></li>
 </ul>

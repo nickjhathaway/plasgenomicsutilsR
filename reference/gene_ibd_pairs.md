@@ -10,7 +10,7 @@ sharing ones.
 ## Usage
 
 ``` r
-gene_ibd_pairs(x, genes = NULL, within = 0)
+gene_ibd_pairs(x, genes = NULL, within = 0, add_meta_cols = NULL, meta = NULL)
 ```
 
 ## Arguments
@@ -33,6 +33,19 @@ gene_ibd_pairs(x, genes = NULL, within = 0)
   whether a block overlaps it (default `0`). Coverage is always measured
   against the gene's own span, so a block that reaches only into the
   padding covers `0`.
+
+- add_meta_cols:
+
+  Metadata columns to attach to both ends of each pair. Each `col`
+  becomes `sample1_col` and `sample2_col`, in the order asked for – so a
+  sharing pair can be read as within- or between-group without a second
+  join. A sample missing from `meta` gets `NA`; factor columns keep
+  their level order.
+
+- meta:
+
+  Sample metadata for `add_meta_cols`; taken from `x` when it carries
+  one.
 
 ## Value
 
@@ -83,6 +96,8 @@ A tibble with one row per pair x block x gene:
 
   width of that portion, and it as a percentage of the gene's length.
 
+plus a pair of columns for each of `add_meta_cols`.
+
 ## Details
 
 A pair appears more than once for a gene only if it has several separate
@@ -102,5 +117,9 @@ if (FALSE) { # \dontrun{
 ibd <- ibd_results(blocks = "hmm.txt", genes = PF_EXAMPLE_DRUG_GENES)
 pairs <- gene_ibd_pairs(ibd, genes = c("pfcrt", "pfdhps"))
 subset(pairs, coverage == "complete")
+
+# labelled with where each end came from, to split sharing within a site from between
+p <- gene_ibd_pairs(ibd, genes = "pfcrt", add_meta_cols = "region")
+table(within_region = p$sample1_region == p$sample2_region)
 } # }
 ```

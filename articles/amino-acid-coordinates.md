@@ -71,33 +71,44 @@ markers <- data.frame(
   transcript_id = c("pfcrt", "pfdhps", "pfdhps", "pfdhps", "pfdhfr", "pfmdr1", "pfkelch13"),
   aa_position   = c(     76,      437,      540,      581,      108,       86,         580))
 
-aa_intervals(markers, cds, one_based_output = TRUE)[
-  , c("name", "chr", "start", "end", "codon_positions", "strand")]
+aa_intervals(markers, cds)[, c("name", "chr", "start", "end", "codon_positions", "strand")]
 #> # A tibble: 7 × 6
 #>   name                  chr     start     end codon_positions         strand
 #>   <chr>                 <chr>   <dbl>   <dbl> <chr>                   <chr> 
-#> 1 PF3D7_0709000.1-AA76  7      403624  403626 403624,403625,403626    +     
-#> 2 PF3D7_0810800.1-AA437 8      549684  549686 549684,549685,549686    +     
-#> 3 PF3D7_0810800.1-AA540 8      549993  549995 549993,549994,549995    +     
-#> 4 PF3D7_0810800.1-AA581 8      550116  550118 550116,550117,550118    +     
-#> 5 PF3D7_0417200.1-AA108 4      748409  748411 748409,748410,748411    +     
-#> 6 PF3D7_0523000.1-AA86  5      958145  958147 958145,958146,958147    +     
-#> 7 PF3D7_1343700.1-AA580 13    1725258 1725260 1725258,1725259,1725260 -
+#> 1 PF3D7_0709000.1-AA76  7      403623  403626 403624,403625,403626    +     
+#> 2 PF3D7_0810800.1-AA437 8      549683  549686 549684,549685,549686    +     
+#> 3 PF3D7_0810800.1-AA540 8      549992  549995 549993,549994,549995    +     
+#> 4 PF3D7_0810800.1-AA581 8      550115  550118 550116,550117,550118    +     
+#> 5 PF3D7_0417200.1-AA108 4      748408  748411 748409,748410,748411    +     
+#> 6 PF3D7_0523000.1-AA86  5      958144  958147 958145,958146,958147    +     
+#> 7 PF3D7_1343700.1-AA580 13    1725257 1725260 1725258,1725259,1725260 -
 ```
 
-*pfcrt* codon 76 lands at 403,624–403,626 and *pfkelch13* codon 580 at
-1,725,258–1,725,260 — the positions these mutations are reported at.
+*pfcrt* codon 76 is the interval 403,623–403,626 and *pfkelch13* codon
+580 is 1,725,257–1,725,260: **0-based half-open**, like every interval
+in the package
+([`?"plasgenomicsutilsR-coordinates"`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)),
+which is what lets the result be used as an interval table directly.
+`codon_positions` lists the three bases themselves as 1-based positions
+— 403,624, 403,625, 403,626 — since those are the numbers a mutation is
+reported at.
 
 `transcript_id` took gene symbols above because `genes` defaults to
 `PF3D7_GENES`. A transcript id (`"PF3D7_0709000.1"`) or a gene id
 (`"PF3D7_0709000"`, returning every transcript) works the same way.
 
-Coordinates come back **0-based half-open** by default, matching every
-other interval in the package
-([`?"plasgenomicsutilsR-coordinates"`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md)),
-which is what lets the result be used as an interval table directly.
-`one_based_output = TRUE`, used above, gives the 1-based numbers you
-would quote in text.
+To quote an interval in text, `one_based_output = TRUE` gives the
+1-based inclusive form instead — the one place in this article that asks
+for it:
+
+``` r
+
+aa_intervals(markers[1, ], cds, one_based_output = TRUE)[, c("name", "start", "end")]
+#> # A tibble: 1 × 3
+#>   name                  start    end
+#>   <chr>                 <dbl>  <dbl>
+#> 1 PF3D7_0709000.1-AA76 403624 403626
+```
 
 ### When a codon straddles an intron
 
@@ -106,16 +117,15 @@ of them:
 
 ``` r
 
-pfcrt_all <- aa_intervals(data.frame(transcript_id = "pfcrt", aa_position = 1:424), cds,
-                          one_based_output = TRUE)
+pfcrt_all <- aa_intervals(data.frame(transcript_id = "pfcrt", aa_position = 1:424), cds)
 subset(pfcrt_all, spans_intron)[, c("name", "start", "end", "codon_positions")]
 #> # A tibble: 4 × 4
 #>   name                   start    end codon_positions     
 #>   <chr>                  <dbl>  <dbl> <chr>               
-#> 1 PF3D7_0709000.1-AA31  403312 403491 403312,403490,403491
-#> 2 PF3D7_0709000.1-AA178 404109 404283 404109,404110,404283
-#> 3 PF3D7_0709000.1-AA272 404839 404937 404839,404936,404937
-#> 4 PF3D7_0709000.1-AA400 406071 406242 406071,406241,406242
+#> 1 PF3D7_0709000.1-AA31  403311 403491 403312,403490,403491
+#> 2 PF3D7_0709000.1-AA178 404108 404283 404109,404110,404283
+#> 3 PF3D7_0709000.1-AA272 404838 404937 404839,404936,404937
+#> 4 PF3D7_0709000.1-AA400 406070 406242 406071,406241,406242
 ```
 
 Codon 178 is bases 404,109 and 404,110 at the end of one exon, then
@@ -131,16 +141,18 @@ genomic position:
 
 ``` r
 
-snp_aa_positions(data.frame(chr = "Pf3D7_13_v3", pos = c(1725260, 1725259, 1725258)),
-                 cds, keep = "hits", one_based_snps = TRUE)[
-  , c("pos", "aa_position", "codon_base", "strand")]
+snp_aa_positions(data.frame(chr = "Pf3D7_13_v3", pos = c(1725259, 1725258, 1725257)),
+                 cds, keep = "hits")[, c("pos", "aa_position", "codon_base", "strand")]
 #> # A tibble: 3 × 4
 #>       pos aa_position codon_base strand
 #>     <dbl>       <int>      <int> <chr> 
-#> 1 1725260         580          1 -     
-#> 2 1725259         580          2 -     
-#> 3 1725258         580          3 -
+#> 1 1725259         580          1 -     
+#> 2 1725258         580          2 -     
+#> 3 1725257         580          3 -
 ```
+
+(`pos` is 0-based, as positions are throughout: 1,725,259 here is the
+base a VCF calls 1,725,260.)
 
 ## A SNP to its residue
 
@@ -149,17 +161,16 @@ The other direction, on positions around *pfdhps* codon 437:
 ``` r
 
 snp_aa_positions(data.frame(chr = "Pf3D7_08_v3",
-                            pos = c(549684, 549685, 549686, 548400, 550700)),
-                 cds, one_based_snps = TRUE)[
-  , c("pos", "gene_id", "aa_position", "codon_base", "coding")]
+                            pos = c(549683, 549684, 549685, 548399, 550699)),
+                 cds)[, c("pos", "gene_id", "aa_position", "codon_base", "coding")]
 #> # A tibble: 5 × 5
 #>      pos gene_id       aa_position codon_base coding
 #>    <dbl> <chr>               <int>      <int> <lgl> 
-#> 1 549684 PF3D7_0810800         437          1 TRUE  
-#> 2 549685 PF3D7_0810800         437          2 TRUE  
-#> 3 549686 PF3D7_0810800         437          3 TRUE  
-#> 4 548400 NA                     NA         NA FALSE 
-#> 5 550700 NA                     NA         NA FALSE
+#> 1 549683 PF3D7_0810800         437          1 TRUE  
+#> 2 549684 PF3D7_0810800         437          2 TRUE  
+#> 3 549685 PF3D7_0810800         437          3 TRUE  
+#> 4 548399 NA                     NA         NA FALSE 
+#> 5 550699 NA                     NA         NA FALSE
 ```
 
 `aa_position` is **1-based**, counting the initiator methionine as 1 —
@@ -172,7 +183,7 @@ half-open; `codon_positions` is the one place a 1-based *position* is
 reported, since those are the numbers people quote.
 
 `codon_base` says which of the codon’s three bases the SNP is, in
-transcript orientation. `548400` is intronic and `550700` past the CDS,
+transcript orientation. `548399` is intronic and `550699` past the CDS,
 so both are non-coding and come back `NA`; `keep = "hits"` drops them
 instead.
 
@@ -180,16 +191,77 @@ The two functions are exact inverses:
 
 ``` r
 
-iv <- aa_intervals(markers, cds, one_based_output = TRUE)
-mid <- as.integer(vapply(strsplit(iv$codon_positions, ","), `[`, character(1), 2))
-back <- snp_aa_positions(data.frame(chr = iv$chrom, pos = mid), cds, keep = "hits",
-                         one_based_snps = TRUE)
+iv <- aa_intervals(markers, cds)
+mid <- iv$start + 1                          # the middle base of each codon, 0-based
+back <- snp_aa_positions(data.frame(chr = iv$chrom, pos = mid), cds, keep = "hits")
 all(back$aa_position == markers$aa_position)
 #> [1] TRUE
 ```
 
 Being inside a codon is not the same as changing the residue: that needs
 the alleles, which neither function has.
+
+## A region to its residues
+
+[`genomic_range_aa_positions()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/genomic_range_aa_positions.md)
+does the SNP question for an interval: which codons of which transcripts
+does it cover. Covered means the codon’s bases lie inside the interval —
+a window starting 100 bp upstream of a gene reports from codon 1, one
+starting inside the gene from the first codon it holds whole — and
+nothing is inferred from the end positions. The use it was written for
+is a target design: a gene with its tandem repeats cut out
+([`vignette("tandem-repeats")`](https://nickjhathaway.github.io/plasgenomicsutilsR/articles/tandem-repeats.md))
+comes back in pieces, and this says which residues each piece still
+reads.
+
+``` r
+
+crt <- PF3D7_GENES[PF3D7_GENES$name == "pfcrt", ]
+pieces <- bed_subtract(crt, tandem_repeats_to_avoid(pf3d7_tandem_repeats()), pad = 10)
+genomic_range_aa_positions(pieces, cds, keep = "hits")[
+  , c("piece", "start", "end", "aa_start", "aa_end", "n_aa")]
+#> # A tibble: 13 × 6
+#>    piece  start    end aa_start aa_end  n_aa
+#>    <int>  <dbl>  <dbl>    <int>  <int> <int>
+#>  1     1 403221 403363        1     30    30
+#>  2     2 403480 403823       32    120    89
+#>  3     3 403899 404123      121    177    57
+#>  4     4 404281 404418      179    222    44
+#>  5     6 404561 404692      223    246    24
+#>  6     7 404725 404877      247    271    25
+#>  7     8 404929 405103      273    299    27
+#>  8     9 405146 405263      301    316    16
+#>  9    10 405342 405454      320    335    16
+#> 10    11 405510 405635      336    366    31
+#> 11    12 405736 405883      367    381    15
+#> 12    14 406022 406129      384    399    16
+#> 13    15 406175 406317      401    425    25
+```
+
+By default a codon counts only when all three bases are inside the
+interval; `partial = TRUE` also counts the codon the interval starts or
+ends in, and `partial_start` / `partial_end` say when that happened:
+
+``` r
+
+win <- data.frame(chr = "Pf3D7_07_v3", start = 403624, end = 403632)  # mid-76 through 78
+genomic_range_aa_positions(win, cds)[, c("aa_start", "aa_end", "n_aa")]
+#> # A tibble: 1 × 3
+#>   aa_start aa_end  n_aa
+#>      <int>  <int> <int>
+#> 1       77     78     2
+genomic_range_aa_positions(win, cds, partial = TRUE)[
+  , c("aa_start", "aa_end", "n_aa", "partial_start", "partial_end")]
+#> # A tibble: 1 × 5
+#>   aa_start aa_end  n_aa partial_start partial_end
+#>      <int>  <int> <int> <lgl>         <lgl>      
+#> 1       76     78     3 TRUE          FALSE
+```
+
+With sequence (`fasta =`, as below) it adds `aa_seq`, the reference
+residues of the covered codons in transcript order. `keep = "all"` keeps
+intervals that cover no codon, with `NA` in the result columns, so the
+rows line up with the input.
 
 ## The reference residue
 
@@ -209,12 +281,11 @@ genome <- ensembl_genome_url("falciparum")
 markers <- data.frame(
   transcript_id = c("pfcrt", "pfdhps", "pfdhps", "pfdhfr", "pfmdr1", "pfkelch13"),
   aa_position   = c(     76,      437,      581,      108,       86,         580))
-codons <- aa_intervals(markers, cds, one_based_output = TRUE)
-middle <- as.integer(vapply(strsplit(codons$codon_positions, ","), `[`, character(1), 2))
+codons <- aa_intervals(markers, cds)
+middle <- codons$start + 1                   # the middle base of each codon, 0-based
 
 snp_aa_positions(data.frame(chr = codons$chrom, pos = middle), cds, keep = "hits",
-                 one_based_snps = TRUE, fasta = genome)[
-  , c("gene_id", "aa_position", "ref_codon", "ref_aa", "strand")]
+                 fasta = genome)[, c("gene_id", "aa_position", "ref_codon", "ref_aa", "strand")]
 ```
 
     #> # A tibble: 6 × 5
@@ -269,19 +340,20 @@ writeLines(c("##gff-version 3",
              "demo\t.\tCDS\t11\t25\t.\t+\t0\tID=c1;Parent=T.1;gene_id=T",
              "##FASTA", ">demo", "CCCCCCCCCCATGAAATTTGGGTAAC"), gff)
 
-snp_aa_positions(data.frame(chr = "demo", pos = c(11, 14, 17, 20, 23)), read_gff_cds(gff),
-                 keep = "hits", one_based_snps = TRUE)[
-  , c("pos", "aa_position", "ref_codon", "ref_aa")]
+snp_aa_positions(data.frame(chr = "demo", pos = c(10, 13, 16, 19, 22)), read_gff_cds(gff),
+                 keep = "hits")[, c("pos", "aa_position", "ref_codon", "ref_aa")]
 #> 1 sequence(s) read from the GFF's own ##FASTA section
 #> # A tibble: 5 × 4
 #>     pos aa_position ref_codon ref_aa
 #>   <dbl>       <int> <chr>     <chr> 
-#> 1    11           1 ATG       M     
-#> 2    14           2 AAA       K     
-#> 3    17           3 TTT       F     
-#> 4    20           4 GGG       G     
-#> 5    23           5 TAA       *
+#> 1    10           1 ATG       M     
+#> 2    13           2 AAA       K     
+#> 3    16           3 TTT       F     
+#> 4    19           4 GGG       G     
+#> 5    22           5 TAA       *
 ```
+
+(The CDS starts at GFF position 11, which is the 0-based position 10.)
 
 Otherwise pass `fasta =` a path or URL to a genome — gzipped is fine,
 and it reads straight from the web like
@@ -308,9 +380,9 @@ rows <- grep("^#", readLines(system.file("extdata", "pf3d7_drug_gene_cds.gff",
 ensembl_style <- sub("ID=[^;]*;Parent=([^;]*);gene_id=[^;]*.*", "Parent=transcript:\\1", rows)
 
 sub(".*\t", "", rows[1])            # the attribute column as PlasmoDB writes it
-#> [1] "ID=PF3D7_0810800.1-p1-CDS1;Parent=PF3D7_0810800.1;gene_id=PF3D7_0810800;protein_source_id=PF3D7_0810800.1-p1"
+#> [1] "ID=PF3D7_0417200;Name=DHFR-TS;description=bifunctional dihydrofolate reductase-thymidylate synthase;ebi_biotype=protein_coding"
 sub(".*\t", "", ensembl_style[1])   # and as Ensembl writes it
-#> [1] "Parent=transcript:PF3D7_0810800.1"
+#> [1] "ID=PF3D7_0417200;Name=DHFR-TS;description=bifunctional dihydrofolate reductase-thymidylate synthase;ebi_biotype=protein_coding"
 ```
 
 ``` r
@@ -319,16 +391,15 @@ ens <- tempfile(fileext = ".gff")
 writeLines(ensembl_style, ens)
 
 codon76 <- function(x) aa_intervals(data.frame(transcript_id = "PF3D7_0709000.1",
-                                               aa_position = 76), x, genes = NULL,
-                                    one_based_output = TRUE)
+                                               aa_position = 76), x, genes = NULL)
 both <- rbind(codon76(cds), codon76(read_gff_cds(ens)))
 both$read_as <- c("PlasmoDB", "Ensembl")
 both[, c("read_as", "chrom", "start", "end", "gene_id")]
 #> # A tibble: 2 × 5
 #>   read_as  chrom        start    end gene_id      
 #>   <chr>    <chr>        <dbl>  <dbl> <chr>        
-#> 1 PlasmoDB Pf3D7_07_v3 403624 403626 PF3D7_0709000
-#> 2 Ensembl  Pf3D7_07_v3 403624 403626 PF3D7_0709000
+#> 1 PlasmoDB Pf3D7_07_v3 403623 403626 PF3D7_0709000
+#> 2 Ensembl  Pf3D7_07_v3 403623 403626 PF3D7_0709000
 ```
 
 ## Watch the position base

@@ -11,7 +11,8 @@ articles:
   ibd: ibd.html
   plasgenomicsutilsR: plasgenomicsutilsR.html
   population-structure: population-structure.html
-last_built: 2026-09-06T09:11Z
+  tandem-repeats: tandem-repeats.html
+last_built: 2026-09-09T00:09Z
 urls:
   reference: https://nickjhathaway.github.io/plasgenomicsutilsR/reference
   article: https://nickjhathaway.github.io/plasgenomicsutilsR/articles

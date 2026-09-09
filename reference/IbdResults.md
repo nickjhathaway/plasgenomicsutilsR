@@ -85,6 +85,10 @@ Expected columns (superset; extras are kept):
 
 - [`IbdResults$plot_ibd_pair_network()`](#method-IbdResults-plot_ibd_pair_network)
 
+- [`IbdResults$ibd_pair_clusters()`](#method-IbdResults-ibd_pair_clusters)
+
+- [`IbdResults$ibd_pair_links()`](#method-IbdResults-ibd_pair_links)
+
 - [`IbdResults$pair_fraction_summary()`](#method-IbdResults-pair_fraction_summary)
 
 - [`IbdResults$pos_selection_genes()`](#method-IbdResults-pos_selection_genes)
@@ -661,6 +665,45 @@ Needs `ibd_results(pair_fraction = )` or `$set_pair_fraction()`.
 
   Passed to
   [`plot_ibd_pair_network()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_ibd_pair_network.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$ibd_pair_clusters()`
+
+Which samples the genome-wide IBD network connects, and the
+single-linkage cluster each falls in (see
+[`ibd_pair_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_clusters.md)).
+Needs the pair table.
+
+#### Usage
+
+    IbdResults$ibd_pair_clusters(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`ibd_pair_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_clusters.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$ibd_pair_links()`
+
+The sample pairs the genome-wide IBD network draws an edge between (see
+[`ibd_pair_links()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_links.md)).
+Needs the pair table.
+
+#### Usage
+
+    IbdResults$ibd_pair_links(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`ibd_pair_links()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_links.md).
 
 ------------------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 # plasgenomicsutilsR
 
-> **Version 0.4.0** — early development; APIs, defaults, and outputs may
+> **Version 0.4.1** — early development; APIs, defaults, and outputs may
 > change between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** —
@@ -440,6 +440,34 @@ paths, not just the CRAN ones.)
   `PF3D7_PARALOG_GENES` let you classify genes, e.g.
   `bed_intersect(PF3D7_GENES, PF3D7_CORE_REGIONS)$only1` are the
   subtelomeric genes.
+
+- **Tandem repeats** —
+  [`pf3d7_tandem_repeats()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/pf3d7_tandem_repeats.md)
+  is every short tandem repeat in the Pf3D7 reference (Tandem Repeats
+  Finder plus an exhaustive simple-repeat search, bundled so nobody
+  re-runs them);
+  [`tandem_repeats()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats.md)
+  reads the same kind of BED for any genome.
+  [`tandem_repeats_to_avoid()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/tandem_repeats_to_avoid.md)
+  flags runs by the *period* of their unit and their length
+  (homopolymers from 11 bp, dinucleotides from 12, trinucleotides from
+  21, anything from 50 — all adjustable), merges runs that flow into one
+  another (an `A` homopolymer into an `AT` run), and
+  `bed_subtract(genes, mask, pad = 10)` then cuts the repeats plus 10 bp
+  of clearance out of a set of target genes for
+  [`write_bed()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed.md).
+  [`read_gff_features()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/read_gff_features.md)
+  reads a gene’s exons, introns, CDS or span out of a GFF as 0-based
+  intervals, for the gene-to-exons-to-subtraction flow when the intronic
+  repeats are not wanted at all.
+  [`write_bed6()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/write_bed6.md)
+  writes the six-column form with an optional `[field=value;]` metadata
+  column.
+  [`genomic_range_aa_positions()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/genomic_range_aa_positions.md)
+  then says which residues of which transcript each remaining piece
+  covers.
+  [`bed_merge()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/bed_merge.md)
+  is the plain interval merge underneath.
 
 - **Coordinates are 0-based throughout**
   ([`?"plasgenomicsutilsR-coordinates"`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plasgenomicsutilsR-coordinates.md))
