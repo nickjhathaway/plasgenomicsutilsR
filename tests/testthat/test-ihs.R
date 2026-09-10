@@ -422,3 +422,82 @@ test_that("a band too thin to standardise in says so", {
   expect_warning(.band_standardise(raw, raw$FREQ_MIN, 10), "fewer than 10 markers")
 })
 
+
+test_that("the unstandardised log ratio comes back, so the ratio is recoverable", {
+  set.seed(11)
+  raw <- data.frame(CHR = "Pf3D7_01_v3", POSITION = seq_len(60), FREQ_MAJ = 0.75,
+                    FREQ_MIN = runif(60, 0.05, 0.5), UNIHS = stats::rnorm(60, -0.4, 0.9))
+  b <- .band_standardise(raw, raw$FREQ_MIN, 3)
+
+  expect_true("UNIHS" %in% names(b))
+  expect_equal(b$UNIHS, raw$UNIHS)                       # passed through untouched
+  # and it is the thing `ihs` was standardised from: undo the z-score band by band and the
+  # raw values come back, which is exactly what makes exp(unihs) the EHH ratio
+  br <- unique(stats::quantile(raw$FREQ_MIN, seq(0, 1, length.out = 4)))
+  bands <- cut(raw$FREQ_MIN, br, include.lowest = TRUE)
+  m <- tapply(raw$UNIHS, bands, mean)
+  s <- tapply(raw$UNIHS, bands, stats::sd)
+  expect_equal(b$IHS, as.vector((raw$UNIHS - m[bands]) / s[bands]))
+  expect_equal(unname(exp(b$UNIHS)), exp(raw$UNIHS))
+
+  # a z-score of 0 is the band mean, which is not a ratio of 1 unless the mean happens to be
+  expect_false(isTRUE(all.equal(exp(mean(raw$UNIHS)), 1)))
+})
+
+test_that("an undefined log ratio stays NA through standardisation", {
+  # rehh returns NA for UNIHS when it cannot integrate EHH for one of the two alleles; that
+  # must travel through as NA rather than becoming a score
+  raw <- data.frame(CHR = "Pf3D7_01_v3", POSITION = seq_len(40), FREQ_MAJ = 0.8,
+                    FREQ_MIN = runif(40, 0.05, 0.5),
+                    UNIHS = c(NA_real_, stats::rnorm(39)))
+  b <- .band_standardise(raw, raw$FREQ_MIN, 2)
+  expect_true(is.na(b$UNIHS[1]))
+  expect_true(is.na(b$IHS[1]))
+  expect_true(is.na(b$LOGPVALUE[1]))
+  expect_equal(sum(is.na(b$IHS)), 1L)                    # only that one
+})
+
+test_that("run_ihs says when a marker had more than two alleles", {
+  skip_if_not_installed("rehh")
+  mk <- function(codes, probs, seed = 3) {
+    set.seed(seed); n <- 70; m <- 30
+    H <- matrix(stats::rbinom(n * m, 1, 0.4), n, m)
+    H[, 15] <- sample(codes, n, TRUE, prob = probs)
+    map <- data.frame(chr = "Pf3D7_01_v3", pos = seq(1000, by = 500, length.out = m),
+                      snp_id = paste0("Pf3D7_01_v3:",
+                                      seq(1000, by = 500, length.out = m)),
+                      stringsAsFactors = FALSE)
+    colnames(H) <- map$snp_id; rownames(H) <- paste0("s", seq_len(n))
+    structure(list(hap = H, map = map,
+                   meta = data.frame(sample = rownames(H), grp = "all",
+                                     stringsAsFactors = FALSE),
+                   filtering = list()), class = "parasite_haplotypes")
+  }
+  # a biallelic scan is silent, so the warning cannot be background noise
+  expect_no_warning(run_ihs(mk(0:1, c(.6, .4)), min_maf = 0.02))
+
+  # rehh keeps the two commonest alleles and drops the rest without saying so; this is the
+  # saying so, and it reports how much of the group went missing
+  expect_warning(run_ihs(mk(0:2, c(.5, .35, .15)), min_maf = 0.02),
+                 "more than two alleles")
+  expect_warning(run_ihs(mk(0:2, c(.5, .35, .15)), min_maf = 0.02),
+                 "Pf3D7_01_v3:8000 \\(20% of haplotypes excluded\\)")
+  # four alleles drop more than three do
+  expect_warning(run_ihs(mk(0:3, c(.4, .3, .2, .1)), min_maf = 0.02),
+                 "39% of haplotypes excluded")
+
+  # the count is of markers, not of marker-by-group pairs
+  h <- mk(0:2, c(.5, .35, .15))
+  h$meta$grp <- rep(c("a", "b"), length.out = nrow(h$hap))
+  w <- tryCatch(run_ihs(h, group = "grp", min_maf = 0.02),
+                warning = function(e) conditionMessage(e))
+  expect_match(w, "^1 marker\\(s\\)")
+
+  # the detector itself, away from rehh
+  d <- plasgenomicsutilsR:::.multiallelic_drop(mk(0:2, c(.5, .35, .15)),
+                                               seq_len(nrow(mk(0:2, c(.5, .35, .15))$hap)))
+  expect_equal(nrow(d), 1L)
+  expect_equal(d$n_alleles, 3L)
+  expect_null(plasgenomicsutilsR:::.multiallelic_drop(
+    mk(0:1, c(.6, .4)), seq_len(70)))
+})

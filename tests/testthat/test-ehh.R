@@ -444,3 +444,119 @@ test_that("a group carrying no reference allele keeps both of its alternates", {
   expect_equal(sum(attr(cur, "count")), length(rows))  # every haplotype still accounted for
   expect_equal(names(attr(cur, "count")), c("alternate 1", "alternate 2"))
 })
+
+test_that("add_ihs puts the focal SNP's score in the corner note", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("rehh")
+  hap <- hap_for_ehh()
+  # a pfcrt SNP that is variable in both countries, so both panels draw a curve
+  foc <- "Pf3D7_07_v3:405361"
+  G <- PF_EXAMPLE_DRUG_GENES
+  sc <- suppressWarnings(run_ihs(hap, group = "country", min_maf = 0.02))
+  sc_pooled <- suppressWarnings(run_ihs(hap, min_maf = 0.02))
+  ann <- function(p) {
+    i <- vapply(p$layers, function(l) is.data.frame(l$data) && "label" %in% names(l$data),
+                logical(1))
+    if (!any(i)) NULL else p$layers[[which(i)[1]]]$data
+  }
+  ehh <- function(...) plot_ehh(hap, foc, genes = G, span = 30000, ...)
+  at <- function(d, g) d$label[as.character(d$group) == g]
+
+  # off by default: the note is exactly what it was before
+  base <- ann(ehh(group = "country"))
+  expect_false(any(grepl("iHS", base$label)))
+
+  # the score joins the counts on its own line, as the magnitude, matching the scan
+  got <- suppressMessages(ann(ehh(group = "country", add_ihs = sc)))
+  want <- abs(sc$ihs[sc$pos == 405361 & sc$group == "Cambodia"])
+  expect_match(at(got, "Cambodia"), "^n = 30;.*\nabs\\(iHS\\) ")
+  expect_equal(as.numeric(sub(".*abs\\(iHS\\) ", "", at(got, "Cambodia"))), round(want, 2))
+  # the counts line itself is untouched by adding one
+  expect_equal(sub("\n.*", "", at(got, "Cambodia")), at(base, "Cambodia"))
+  # a panel the scan has no score for keeps its counts rather than borrowing the other's
+  expect_equal(at(got, "Ghana"), at(base, "Ghana"))
+  expect_message(ehh(group = "country", add_ihs = sc), "no iHS for Ghana")
+
+  # an ungrouped scan labels a pooled plot
+  pooled <- suppressMessages(ann(ehh(add_ihs = sc_pooled)))
+  expect_match(pooled$label, "abs\\(iHS\\) ")
+
+  # the bars of the conventional |iHS| render as letters at this text size, so the label
+  # spells the magnitude out instead; pin that so it cannot drift back to bars
+  expect_false(any(grepl("|", got$label, fixed = TRUE)))
+
+  # polarized, the sign is meaningful and is kept
+  signed <- sc; signed$ihs <- -abs(signed$ihs)
+  pol <- suppressMessages(ann(ehh(group = "country", polarized = TRUE, add_ihs = signed)))
+  expect_match(at(pol, "Cambodia"), "\niHS -")
+
+  # `show_freq = FALSE` leaves the score alone rather than dropping the note entirely
+  only <- suppressMessages(ann(ehh(group = "country", add_ihs = sc, show_freq = FALSE)))
+  expect_equal(as.character(only$group), "Cambodia")
+  expect_match(only$label, "^abs\\(iHS\\) ")
+
+  # running the scan here agrees with handing one in
+  ran <- suppressWarnings(suppressMessages(
+    ann(ehh(group = "country", add_ihs = TRUE, ihs_args = list(min_maf = 0.02)))))
+  expect_equal(at(ran, "Cambodia"), at(got, "Cambodia"))
+
+  # a grouped scan cannot label a pooled plot, and says so instead of picking a group
+  expect_message(ehh(add_ihs = sc), "pools every haplotype")
+  # nor can a scan that does not carry the focal SNP
+  expect_message(ehh(group = "country", add_ihs = sc[sc$pos != 405361, ]),
+                 "no iHS for Pf3D7_07_v3:405361 in the scan")
+
+  # a scan run on other haplotypes is caught by the frequency it reports at this SNP
+  moved <- sc; moved$freq_minor[moved$pos == 405361] <- 0.3
+  expect_message(ehh(group = "country", add_ihs = moved), "different set of haplotypes")
+  # ...and a matching one does not trip it, which is what makes the check worth having
+  msgs <- character(0)
+  withCallingHandlers(ehh(group = "country", add_ihs = sc),
+                      message = function(m) { msgs <<- c(msgs, conditionMessage(m))
+                                              invokeRestart("muffleMessage") })
+  expect_false(any(grepl("different set of haplotypes", msgs)))
+
+  # the two arguments that would let the note describe a different scan than the curves
+  expect_error(ehh(add_ihs = TRUE, ihs_args = list(group = "country")), "must not set")
+  expect_error(ehh(add_ihs = TRUE, ihs_args = list(polarized = TRUE)), "must not set")
+  expect_error(ehh(add_ihs = TRUE, ihs_args = list(1, 2)), "named list")
+  expect_error(ehh(add_ihs = "yes"), "TRUE, FALSE, or a run_ihs")
+  expect_error(ehh(add_ihs = sc[, c("group", "chr", "pos")]), "no 'ihs' column")
+  expect_warning(ehh(group = "country", add_ihs = sc, ihs_args = list(min_maf = 0.02)),
+                 "ignored")
+})
+
+test_that("a contrast column gives one corner line per contrast", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("rehh")
+  hap <- hap_for_ehh()
+  foc <- "Pf3D7_07_v3:405361"
+  ann <- function(p) {
+    i <- vapply(p$layers, function(l) is.data.frame(l$data) && "label" %in% names(l$data),
+                logical(1))
+    if (!any(i)) NULL else p$layers[[which(i)[1]]]$data
+  }
+  base <- data.frame(chr = "Pf3D7_07_v3", pos = 405361, group = c("Cambodia", "Ghana"),
+                     ihs = c(-3.1, 2.4), stringsAsFactors = FALSE)
+  # two named contrasts, the second missing for one panel
+  two <- rbind(cbind(base, contrast = "A"),
+               cbind(base[1, ], contrast = "B"))
+  two$ihs[3] <- 1.75
+  p <- plot_ehh(hap, foc, genes = PF_EXAMPLE_DRUG_GENES, span = 30000,
+                group = "country", add_ihs = two)
+  d <- ann(p)
+  cam <- d$label[as.character(d$group) == "Cambodia"]
+  gha <- d$label[as.character(d$group) == "Ghana"]
+  # the panel with both gets both lines, each named
+  expect_match(cam, "A abs\\(iHS\\) 3\\.10")
+  expect_match(cam, "B abs\\(iHS\\) 1\\.75")
+  # the panel with only one gets only that line, still named
+  expect_match(gha, "A abs\\(iHS\\) 2\\.40")
+  expect_false(grepl("B abs", gha))
+  expect_equal(lengths(regmatches(cam, gregexpr("abs\\(iHS\\)", cam)))[[1]], 2L)
+
+  # and a table without the column behaves exactly as it did before
+  one <- ann(plot_ehh(hap, foc, genes = PF_EXAMPLE_DRUG_GENES, span = 30000,
+                      group = "country", add_ihs = base))
+  expect_match(one$label[as.character(one$group) == "Cambodia"], "^n = .*\nabs\\(iHS\\) 3\\.10$")
+})

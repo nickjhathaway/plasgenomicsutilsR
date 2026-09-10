@@ -79,8 +79,19 @@ scan that comes back mostly \code{NA} says so.}
 \item{threads}{Threads for \pkg{rehh}.}
 }
 \value{
-A tibble with \code{group}, \code{chr}, \code{pos}, \code{snp_id}, \code{freq_minor}, \code{ihs} and
+A tibble with \code{group}, \code{chr}, \code{pos}, \code{snp_id}, \code{freq_minor}, \code{unihs}, \code{ihs} and
 \code{neg_log10_p}.
+
+\code{unihs} is the \strong{un}standardised statistic, \code{log(iHH_major / iHH_minor)} (ancestral
+over derived when \code{polarized = TRUE}), so \code{exp(unihs)} is the integrated-EHH ratio
+itself. \code{ihs} is that value z-scored within its frequency band, which is what makes
+scores comparable along the genome but also throws the scale away -- the band's mean and
+sd are not recoverable from \code{ihs} alone, so keep \code{unihs} if you ever want the ratio back.
+Note that \code{ihs = 0} does \strong{not} mean a ratio of 1: it means average for that group, and
+the average is below 1 wherever minor-allele haplotypes are systematically longer.
+
+\code{ihs} and \code{neg_log10_p} are \code{NA} wherever the integral could not be formed for one of
+the two alleles -- see the note on missing scores below.
 }
 \description{
 Scans each group for recent positive directional selection, standardising the
@@ -95,6 +106,22 @@ versus derived. That is the standard treatment for \emph{P. falciparum} and it m
 \emph{sign} of \code{ihs} should not be read as "selection on the derived allele" -- use
 \code{abs(ihs)} and \code{neg_log10_p}.
 }
+\section{Why a SNP can appear for one group only, or score \code{NA}}{
+
+The scan is per group, so a SNP is tested in a group only where it is polymorphic there
+and clears \code{min_maf} there. A variant private to one region therefore has one row, not
+one per region, and that is a statement about the cohort rather than a fault.
+
+A row can be present with \code{ihs} and \code{neg_log10_p} both \code{NA}. That means the SNP passed the
+frequency filter but \pkg{rehh} could not integrate EHH for at least one of its two
+alleles, so the log ratio is undefined. The usual causes are too few haplotypes carrying
+the minor allele for the decay to be estimated, and EHH that never falls below the cutoff
+before the data runs out -- a chromosome end, or a gap wider than \code{maxgap}. Both get more
+common in small groups and at low minor-allele counts, which is the same corner where a
+score that \emph{is} returned deserves the least trust. Treat \code{NA} as "not measurable here",
+not as "no selection".
+}
+
 \examples{
 ps <- example_pop_structure(umap = FALSE)
 hap <- parasite_haplotypes(ps, maf = 0.05)

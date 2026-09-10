@@ -426,6 +426,26 @@ IbdResults <- R6::R6Class(
     #' @param ... Passed to [gene_ibd_pairs()].
     gene_ibd_pairs = function(...) gene_ibd_pairs(self, ...),
 
+    #' @description Test whether IBD segments are longer at a locus than the sharing pairs'
+    #'   own genome-wide background (see [ibd_block_extension_test()]).
+    #' @param ... Passed to [ibd_block_extension_test()].
+    ibd_block_extension_test = function(...) ibd_block_extension_test(self, ...),
+
+    #' @description Genome-wide window scan of IBD block extension, with loci placed against
+    #'   it (see [ibd_block_extension_scan()]).
+    #' @param ... Passed to [ibd_block_extension_scan()].
+    ibd_block_extension_scan = function(...) ibd_block_extension_scan(self, ...),
+
+    #' @description IBD block extension split by carriage of a variant, the IBD analogue of
+    #'   iHS (see [ibd_block_extension_by_allele()]).
+    #' @param ... Passed to [ibd_block_extension_by_allele()].
+    ibd_block_extension_by_allele = function(...) ibd_block_extension_by_allele(self, ...),
+
+    #' @description Block extension between every pair of groups, as a triangle per locus
+    #'   (see [plot_pairwise_block_extension()]).
+    #' @param ... Passed to [plot_pairwise_block_extension()].
+    plot_pairwise_block_extension = function(...) plot_pairwise_block_extension(self, ...),
+
     #' @description Add single-linkage IBD cluster ids to the metadata.
     #' @param ... Passed to [add_ibd_clusters()].
     add_ibd_clusters = function(...) add_ibd_clusters(self, ...),

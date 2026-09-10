@@ -36,6 +36,16 @@ reference:
   - gene_ibd_overlap
   - gene_ibd_pairs
   - add_ibd_clusters
+- title: IBD segment length at a locus
+  desc: >
+    Whether IBD segments spanning a locus are longer than the sharing pairs carry
+    elsewhere, each pair measured against its own genome-wide background so that
+    differences in outcrossing between groups cancel.
+  contents:
+  - ibd_block_extension_test
+  - ibd_block_extension_scan
+  - ibd_block_extension_by_allele
+  - plot_pairwise_block_extension
 - title: Selection genes
   desc: Genes hit by an above-threshold IBD selection signal.
   contents:

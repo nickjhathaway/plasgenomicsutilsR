@@ -21,6 +21,8 @@ plot_ehh(
   reference = DEFAULT_REFERENCE,
   title = NULL,
   subtitle = NULL,
+  add_ihs = NULL,
+  ihs_args = list(),
   colors = NULL
 )
 }
@@ -75,6 +77,28 @@ result -- with \code{gene_track = TRUE} the result is a patchwork, and \code{+ l
 gene track at the bottom, putting the title in the middle of the figure.}
 
 \item{subtitle}{Line under the title; \code{NULL} (default) draws none.}
+
+\item{add_ihs}{Add the focal SNP's iHS to that corner note. A \code{\link[=run_ihs]{run_ihs()}} result is read
+for the focal SNP -- the cheap path, and the one to prefer, since it reuses a scan you
+already have and so the number in the corner is the same one the genome-wide figures
+were drawn from. \code{TRUE} runs \code{\link[=run_ihs]{run_ihs()}} here instead, on \code{x}, with this plot's \code{group}
+and \code{polarized} and anything in \code{ihs_args}; that is a whole-genome scan per call, so it
+is slow and worth doing once into a variable rather than once per plot. \code{NULL} (default)
+or \code{FALSE} adds nothing. iHS is standardised against the whole genome and cannot be
+recovered from the window drawn here, which is why there is no third option. Read
+against the same caution \code{\link[=run_ihs]{run_ihs()}} carries: unpolarized, only the magnitude is shown,
+because the sign is major-versus-minor and not ancestral-versus-derived.
+
+A \code{contrast} column in the table asks the same focal marker more than one question --
+the reference against each alternate of a multiallelic codon, say. Each named set gets
+its own line in the corner, prefixed by its name, and a panel with no value for one of
+them simply omits that line rather than printing a blank. Without the column the table
+is read as a single unnamed contrast, as before.}
+
+\item{ihs_args}{Extra arguments for the \code{\link[=run_ihs]{run_ihs()}} call made by \code{add_ihs = TRUE}, as a
+named list -- \code{maxgap}, \code{maf_bands}, \code{min_maf} and the rest. \code{group} and \code{polarized} come
+from this plot so the two halves cannot disagree, and naming either here is an error.
+Ignored, with a warning, when \code{add_ihs} is a scan you computed yourself.}
 }
 \value{
 A patchwork of the curves over the gene track, or a plain ggplot without one.

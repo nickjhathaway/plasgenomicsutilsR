@@ -186,6 +186,85 @@
 # rather than borrowing one that already means "threshold from the object's run".
 .TOP_QUANTILE_STYLE <- list(colour = "#762A83", linetype = "dotted")
 
+# A washed-out version of a bar colour, for the stretch of a track that is below its bar.
+# Mixing towards white rather than dropping chroma alone: the panel carries grey chromosome
+# bands behind the bars, and a colour that only loses saturation goes muddy against them
+# instead of receding. `amount` is how far towards white, so 0 is the colour itself.
+.wash <- function(col, amount = 0.55) {
+  # 0 hands back exactly what it was given, rather than a re-spelled equal colour: at that
+  # setting `shade` is meant to be a no-op, and it should be one in the data too
+  if (amount <= 0) return(col)
+  m <- grDevices::col2rgb(col) / 255
+  grDevices::rgb(t(m + (1 - m) * amount))
+}
+
+# Runs of a track that sit above its bar, as merged genomic intervals, one set per group.
+#
+# Merged, because the unit a reader judges is a peak and not a window: a 100 kb window
+# stepping 10 kb puts about twenty overlapping rows over one peak, and the two halves of the
+# mirror rarely summit on exactly the same row. Classifying row by row therefore paints a
+# fringe of "only this track" around the shoulders of every peak both tracks agree on, which
+# is the one thing this figure must not invent. Rows within `gap` of each other join.
+.peak_intervals <- function(df, value, bar, gap) {
+  hi <- is.finite(df[[value]]) & df[[value]] > bar[as.character(df$group)]
+  d <- df[hi, , drop = FALSE]
+  if (!nrow(d)) return(NULL)
+  # a windowed track carries its own extent; a per-SNP track is a point until `gap` joins it
+  lo <- if (all(c("start", "end") %in% names(d))) as.numeric(d$start) else as.numeric(d$pos)
+  hi2 <- if (all(c("start", "end") %in% names(d))) as.numeric(d$end) else as.numeric(d$pos)
+  key <- paste(as.character(d$group), as.character(d$chr), sep = "\r")
+  out <- lapply(split(data.frame(lo = lo, hi = hi2), key), function(b) {
+    b <- b[order(b$lo), , drop = FALSE]
+    # a new interval starts where this row begins beyond everything seen so far, plus gap
+    brk <- c(TRUE, b$lo[-1] > cummax(b$hi)[-nrow(b)] + gap)
+    g <- cumsum(brk)
+    data.frame(start = tapply(b$lo, g, min), end = tapply(b$hi, g, max))
+  })
+  res <- do.call(rbind, lapply(names(out), function(k) {
+    p <- strsplit(k, "\r", fixed = TRUE)[[1]]
+    data.frame(group = p[1], chr = p[2], start = out[[k]]$start, end = out[[k]]$end,
+               stringsAsFactors = FALSE)
+  }))
+  rownames(res) <- NULL
+  res
+}
+
+# The peaks either half calls, and which halves called each one.
+.tug_peaks <- function(top_iv, bot_iv, gap) {
+  all_iv <- rbind(
+    if (!is.null(top_iv)) cbind(top_iv, .side = "top") else NULL,
+    if (!is.null(bot_iv)) cbind(bot_iv, .side = "bottom") else NULL)
+  if (is.null(all_iv) || !nrow(all_iv)) return(NULL)
+  key <- paste(all_iv$group, all_iv$chr, sep = "\r")
+  res <- lapply(split(all_iv, key), function(b) {
+    b <- b[order(b$start), , drop = FALSE]
+    g <- cumsum(c(TRUE, b$start[-1] > cummax(b$end)[-nrow(b)] + gap))
+    do.call(rbind, lapply(split(b, g), function(k) data.frame(
+      group = k$group[1], chr = k$chr[1], start = min(k$start), end = max(k$end),
+      top = any(k$.side == "top"), bottom = any(k$.side == "bottom"),
+      stringsAsFactors = FALSE)))
+  })
+  out <- do.call(rbind, res)
+  rownames(out) <- NULL
+  out$cell <- ifelse(out$top & out$bottom, "both", ifelse(out$top, "top", "bottom"))
+  out
+}
+
+# One half's bar, as a value per group name, for the shading and the ribbon.
+#
+# Taken on the table before any crop, for the same reason the drawn quantile line is: a
+# figure that drops the quiet chromosomes must not thereby raise the bar the surviving peaks
+# are judged against. A track with no `group` column gets one bar repeated across the panels.
+.tug_bar <- function(df, value, p, groups) {
+  v <- abs(df[[value]])
+  ok <- is.finite(v)
+  if (!any(ok)) return(stats::setNames(rep(NA_real_, length(groups)), groups))
+  if (!"group" %in% names(df))
+    return(stats::setNames(rep(unname(stats::quantile(v[ok], p)), length(groups)), groups))
+  q <- tapply(v[ok], as.character(df$group)[ok], stats::quantile, probs = p)
+  stats::setNames(as.numeric(q)[match(groups, names(q))], groups)
+}
+
 # The `p`-quantile of a top track's plotted magnitude, per group when it has one.
 #
 # Computed on the table as passed in, BEFORE any `chroms` / `skip_chr` / `zoom` crop, so
@@ -790,6 +869,47 @@ plot_ibd_pairwise_group_heatmap <- function(x, anchor = NULL, chroms = NULL, ski
 #'   its own peaks are then judged against; and per group when the track has a group
 #'   column, so each panel's line is that region's genome-wide quantile whether or not the
 #'   other regions are drawn. Stacks with `draw_threshold`, in its own colour.
+#' @param shade Draw the stretch of each track that sits below its bar in a washed-out
+#'   version of its own colour, so the peaks that clear the bar carry the full one
+#'   (default `FALSE`). It is one hue at two strengths per track, not a second hue, so it
+#'   survives every dichromacy and reproduces in grey. The bar is `peak_quantile`.
+#' @param shade_wash How far towards white `shade` takes the below-bar stretch, from 0 (no
+#'   change) to 1 (invisible); default 0.55. Worth turning down for print, where a wash that
+#'   reads on a screen can drop out altogether.
+#' @param ribbon Draw a strip along the centre line saying, for each peak, whether both
+#'   halves called it or only one (default `FALSE`). This is the comparison the mirror is
+#'   for, and reading it off two bars either side of a gap is exactly what the eye is bad
+#'   at. Both halves are cut at `peak_quantile`.
+#'
+#'   The unit is a peak, not a window, and that is the whole reason this is worth a function
+#'   rather than a colour mapped per row. A sliding window puts many overlapping rows over
+#'   one peak and the two halves seldom summit on the same row, so a row-by-row rule paints
+#'   a fringe of "only this half" around the shoulders of every peak they agree on. Runs
+#'   above the bar are merged into peaks first (joining across gaps up to `peak_gap`), the
+#'   two halves' peaks are then unioned, and each resulting peak is labelled by which halves
+#'   reach into it.
+#'
+#'   Read it knowing what the halves can and cannot see. A peak only the IBD half calls is
+#'   as likely to be a sweep near fixation, where a statistic contrasting two alleles has
+#'   nothing left to contrast, as it is to be nothing. A peak only the top half calls is
+#'   consistent with several origins of the same allele, and equally with low recombination
+#'   or unmodelled structure -- it is a screen, not a test, and counting haplotype
+#'   backgrounds among the carriers is what settles it.
+#' @param peak_quantile Quantile of each half's own genome-wide distribution that `shade`
+#'   and `ribbon` treat as the bar (default `0.99`). Taken per group and before `chroms`,
+#'   `skip_chr` and `zoom` crop anything, as [plot_ibd_tugofwar()]'s `top_quantile` is.
+#'   Matched quantiles are the defensible choice here because neither half then borrows the
+#'   other's stringency; giving one half a nominal cutoff and the other an empirical one can
+#'   reverse which half looks the more sensitive, and the ribbon would report that as
+#'   biology. It cuts both halves at the same place by construction, so the count of
+#'   top-only and bottom-only peaks is close to matched -- it is *which* loci fall in each
+#'   that carries the information, not how many.
+#' @param peak_gap Distance in base pairs within which two runs above the bar are treated as
+#'   one peak (default 50 kb). Also the distance at which the two halves' peaks are taken to
+#'   be the same peak.
+#' @param ribbon_colours,ribbon_colors Fills for the ribbon, named `both`, `top` and
+#'   `bottom`. The default gives each single-half cell its own track's colour, so two of the
+#'   three need no legend lookup, and `both` the darkest of the three.
 #' @param metric_label Name for the top metric on the shared axis. `NULL` (default) uses
 #'   the column name, except for a column the plot knows how to write -- `frac_extreme`
 #'   from [ihs_windows()] reads `Extreme Fraction`, matching `IBD Fraction` below it.
@@ -831,9 +951,13 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
                               genes_for_track = NULL, gene_label_angle = 0,
                               highlight_genes = NULL, label_genes = NULL,
                               draw_threshold = TRUE, top_quantile = NULL,
+                              shade = FALSE, shade_wash = 0.55,
+                              ribbon = FALSE, peak_quantile = 0.99,
+                              peak_gap = 50000, ribbon_colours = NULL,
                               metric_label = NULL,
                               top_percent = NULL, centre_gap = 0.08,
-                              selection_colour = "#fd8d3c", ibd_colour = "#2166ac") {
+                              selection_colour = "#fd8d3c", ibd_colour = "#2166ac",
+                              ribbon_colors = NULL) {
   .need_package("ggplot2", "plot_ibd_tugofwar()")
   .need_package("scales", "plot_ibd_tugofwar()")
   scale <- match.arg(scale)
@@ -843,10 +967,30 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
   if (!is.numeric(centre_gap) || length(centre_gap) != 1L || centre_gap < 0 ||
       centre_gap >= 1)
     stop("`centre_gap` must be a single fraction of the half-axis, in [0, 1)", call. = FALSE)
+  ribbon_colours <- .alias_arg("ribbon_colours", "ribbon_colors")
   if (!is.null(top_quantile) &&
       (!is.numeric(top_quantile) || length(top_quantile) != 1L ||
        !is.finite(top_quantile) || top_quantile <= 0 || top_quantile >= 1))
     stop("`top_quantile` must be a single probability in (0, 1), e.g. 0.99", call. = FALSE)
+  want_peaks <- isTRUE(shade) || isTRUE(ribbon)
+  if (want_peaks) {
+    if (!is.numeric(peak_quantile) || length(peak_quantile) != 1L ||
+        !is.finite(peak_quantile) || peak_quantile <= 0 || peak_quantile >= 1)
+      stop("`peak_quantile` must be a single probability in (0, 1), e.g. 0.99",
+           call. = FALSE)
+    if (!is.numeric(peak_gap) || length(peak_gap) != 1L || !is.finite(peak_gap) ||
+        peak_gap < 0)
+      stop("`peak_gap` must be one distance in base pairs", call. = FALSE)
+    if (!is.numeric(shade_wash) || length(shade_wash) != 1L || !is.finite(shade_wash) ||
+        shade_wash < 0 || shade_wash > 1)
+      stop("`shade_wash` must be a single fraction in [0, 1]", call. = FALSE)
+    # the drawn line and the shading would otherwise be two different bars in one figure,
+    # and the reader has no way to tell which the colours answered to
+    if (!is.null(top_quantile) && !isTRUE(all.equal(top_quantile, peak_quantile)))
+      message("`top_quantile` (", top_quantile, ") draws the line and `peak_quantile` (",
+              peak_quantile, ") cuts the shading and ribbon, so the line will not sit ",
+              "where the colour changes; set them equal unless that is deliberate")
+  }
   tt <- .top_track(x, top, metric, top_label)
   # kept before any crop: the quantile line is a genome-wide reference, so it must not be
   # recomputed on whatever subset of the genome the figure ends up showing
@@ -856,6 +1000,7 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
   if (is.null(ibd)) {
     stop("plot_ibd_tugofwar() needs a per_snp_group table", call. = FALSE)
   }
+  full_ibd <- ibd     # the bottom half's bar is genome-wide too, so keep it before the crop
   if (!metric %in% names(sel))
     stop(sprintf("the top track has no '%s' column", metric), call. = FALSE)
   if (!tt$own && all(c("group") %in% names(sel)) && "group" %in% names(ibd) &&
@@ -944,6 +1089,69 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
   }
   sel_y <- function(v) 1 - span * .safe_scale(v, sel_max)
   ibd_y <- function(v) -1 + span * .safe_scale(v, ibd_max)
+
+  # ---- peaks: the bar each half is judged against, the shading, and the centre ribbon ----
+  sel$.col <- selection_colour
+  ibd$.col <- ibd_colour
+  ribbon_df <- NULL
+  if (want_peaks) {
+    panels <- if (length(present)) present else "all"
+    withg <- function(d) {
+      if (!"group" %in% names(d)) d$group <- panels[1]
+      d$group <- as.character(d$group)
+      d
+    }
+    top_bar <- .tug_bar(full_top, metric, peak_quantile, panels)
+    bot_bar <- .tug_bar(full_ibd, "frac_pairs_ibd", peak_quantile, panels)
+    st <- withg(sel); sb <- withg(ibd)
+    if (isTRUE(shade)) {
+      # the bar is on the raw statistic, so the shading says the same thing under
+      # `scale = "free"` as under "common" even though the bar heights differ per panel
+      above_t <- is.finite(st[[metric]]) & st[[metric]] > top_bar[st$group]
+      above_b <- is.finite(sb$frac_pairs_ibd) & sb$frac_pairs_ibd > bot_bar[sb$group]
+      above_t[is.na(above_t)] <- FALSE
+      above_b[is.na(above_b)] <- FALSE
+      sel$.col <- ifelse(above_t, selection_colour, .wash(selection_colour, shade_wash))
+      ibd$.col <- ifelse(above_b, ibd_colour, .wash(ibd_colour, shade_wash))
+    }
+    if (isTRUE(ribbon)) {
+      pk <- .tug_peaks(.peak_intervals(st, metric, top_bar, peak_gap),
+                       .peak_intervals(sb, "frac_pairs_ibd", bot_bar, peak_gap),
+                       peak_gap)
+      if (is.null(pk)) {
+        message("neither half of the mirror has a run above its ", peak_quantile,
+                " bar inside the region drawn, so no ribbon is shown")
+      } else {
+        off <- layout$offset[match(pk$chr, layout$chr)]
+        pk$xmin <- pk$start + off
+        pk$xmax <- pk$end + off
+        # a peak found on a single marker has no width, and a zero-width rectangle draws
+        # nothing at all -- widen those about their midpoint until they are visible, at a
+        # size taken from the span actually on screen so a zoomed panel does not lose them
+        min_w <- diff(range(c(sel$cum_pos, ibd$cum_pos))) * 0.0015
+        narrow <- (pk$xmax - pk$xmin) < min_w
+        if (any(narrow)) {
+          mid <- (pk$xmin[narrow] + pk$xmax[narrow]) / 2
+          pk$xmin[narrow] <- mid - min_w / 2
+          pk$xmax[narrow] <- mid + min_w / 2
+        }
+        cols <- c(both = "#333333", top = selection_colour, bottom = ibd_colour)
+        if (!is.null(ribbon_colours)) {
+          bad <- setdiff(names(ribbon_colours), names(cols))
+          if (length(bad))
+            stop("`ribbon_colours` takes the names both/top/bottom, not ",
+                 paste(bad, collapse = ", "), call. = FALSE)
+          cols[names(ribbon_colours)] <- unname(ribbon_colours)
+        }
+        lbl <- c(both = "both", top = paste0(tt$label, " only"), bottom = "IBD only")
+        pk$cell <- factor(lbl[pk$cell], levels = unname(lbl))
+        if (faceted) pk$group <- factor(as.character(pk$group), levels = present)
+        else pk$group <- NULL
+        names(cols) <- unname(lbl[names(cols)])
+        ribbon_df <- list(d = pk, cols = cols)
+      }
+    }
+  }
 
   # single left axis: selection breaks in the top half, IBD in the bottom half,
   # each tick label tinted to its track.
@@ -1057,6 +1265,21 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
     }
   }
 
+  # The ribbon sits in the empty band `centre_gap` leaves between the two tracks, so it
+  # costs the figure no height and lands exactly where the halves are already compared.
+  ribbon_layer <- NULL
+  if (!is.null(ribbon_df)) {
+    h <- max(0.012, min(0.03, centre_gap * 0.4))
+    ribbon_layer <- list(
+      ggplot2::geom_rect(
+        data = ribbon_df$d,
+        ggplot2::aes(xmin = .data$xmin, xmax = .data$xmax, ymin = -h, ymax = h,
+                     fill = .data$cell),
+        inherit.aes = FALSE),
+      ggplot2::scale_fill_manual(values = ribbon_df$cols, name = "peak called by",
+                                 drop = FALSE))
+  }
+
   p <- ggplot2::ggplot() +
     .chr_band_layer(layout) +
     .gene_line_layer(genes) +
@@ -1065,13 +1288,17 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
                                        .fp_frac(z, genome_frac)))) +
     ggplot2::geom_hline(yintercept = 0, colour = "grey55", linewidth = 0.3) +
     ggplot2::geom_segment(data = sel,
-      ggplot2::aes(x = .data$cum_pos, xend = .data$cum_pos, y = 1, yend = .data$.tip),
-      colour = selection_colour, linewidth = 0.15) +
+      ggplot2::aes(x = .data$cum_pos, xend = .data$cum_pos, y = 1, yend = .data$.tip,
+                   colour = .data$.col), linewidth = 0.15) +
     ggplot2::geom_segment(data = ibd,
-      ggplot2::aes(x = .data$cum_pos, xend = .data$cum_pos, y = -1, yend = .data$.tip),
-      colour = ibd_colour, linewidth = 0.15) +
+      ggplot2::aes(x = .data$cum_pos, xend = .data$cum_pos, y = -1, yend = .data$.tip,
+                   colour = .data$.col), linewidth = 0.15) +
+    # the bar colours are literal, so no legend is drawn for them: two strengths of one hue
+    # explain themselves, and a four-key legend beside a two-track figure would not
+    ggplot2::scale_colour_identity() +
     thr_layer +
     q_layer +
+    ribbon_layer +
     .chr_axis(layout) +
     ggplot2::scale_y_continuous(name = ytitle, limits = c(-1, 1),
       breaks = yax$y, labels = yax$lab,
@@ -1082,6 +1309,11 @@ plot_ibd_tugofwar <- function(x, group = NULL, top = NULL, top_label = NULL,
       panel.grid.major.y = ggplot2::element_blank(),
       axis.text.y = ytext_elem,
       axis.title.y = ytitle_elem) +
+    # the Manhattan theme draws no legend, which is right for the bars but not for the
+    # ribbon: three fills nobody can decode from the figure alone. Underneath rather than
+    # beside, so a genome-wide panel keeps its width.
+    (if (!is.null(ribbon_layer))
+       ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal")) +
     .gene_label_space(label_genes)
   if (faceted) {
     p <- p + ggplot2::facet_wrap(~ group, ncol = 1, strip.position = "right")
@@ -1341,7 +1573,11 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
 # one group x group triangle for a single feature's aggregated data
 .triangle_gg <- function(df, groups, fill_scale, label, digits, title = NULL,
                          legend_inside = FALSE, colours = .IBD_FILL_DEFAULT,
-                         limits = NULL, trans = "identity") {
+                         limits = NULL, trans = "identity",
+                         value = "frac_pairs_ibd", sublabel = NULL, na_label = NULL) {
+  # the value column is named so a second statistic can reuse this geometry rather than
+  # copy it; everything below works off `value` alone
+  df$frac_pairs_ibd <- df[[value]]
   # place every pair on one side of the diagonal by the axis (`groups`) order, regardless
   # of how the input canonicalised its pairs -- so cells never straddle the diagonal when
   # the group order is not alphabetical
@@ -1371,10 +1607,18 @@ plot_pairwise_ibd_for_genes <- function(x, genes = NULL, snps = NULL, group = NU
       plot.title = ggplot2::element_text(face = "bold", hjust = 0.5))
   if (legend_inside) p <- p + .legend_upper_triangle()
   if (label) {
+    txt <- formatC(df$frac_pairs_ibd, format = "f", digits = digits)
+    # a second line carries the count the value rests on, so a striking cell built from a
+    # handful of pairs cannot be read as if it were built from hundreds
+    if (!is.null(sublabel) && sublabel %in% names(df))
+      txt <- paste0(txt, "\n(", df[[sublabel]], ")")
+    # an untested cell gets the whole label replaced, count included -- printing "(NA)" in
+    # an empty tile is worse than printing nothing
+    if (!is.null(na_label)) txt[is.na(df$frac_pairs_ibd)] <- na_label
+    df$.lab <- txt
     p <- p + ggplot2::geom_text(
-      ggplot2::aes(label = formatC(.data$frac_pairs_ibd, format = "f", digits = digits),
-                   colour = .data[[".txt"]]),
-      size = 2.8, show.legend = FALSE) +
+      data = df, ggplot2::aes(label = .data$.lab, colour = .data[[".txt"]]),
+      size = 2.5, lineheight = 0.9, show.legend = FALSE) +
       ggplot2::scale_colour_identity()
   }
   p

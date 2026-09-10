@@ -255,6 +255,45 @@ print.parasite_haplotypes <- function(x, ...) {
   out
 }
 
+# Markers carrying more than two alleles in this group, and how much of the group they cost.
+#
+# rehh's scan_hh reports one major and one minor allele whatever it is handed: at a marker
+# with three, it keeps the two commonest and drops the rest, so the score is a two-allele
+# contrast computed on a subset of the haplotypes and the reported FREQ_MIN is the second
+# commonest allele's frequency rather than a minor-allele frequency. Nothing in the returned
+# table says this happened, which is why it is worth counting here.
+.multiallelic_drop <- function(hap, rows) {
+  h <- hap$hap[rows, , drop = FALSE]
+  k <- apply(h, 2, function(v) length(unique(v[!is.na(v)])))
+  hit <- which(k > 2)
+  if (!length(hit)) return(NULL)
+  drop <- vapply(hit, function(i) {
+    u <- h[, i]
+    tb <- sort(table(u[!is.na(u)]), decreasing = TRUE)
+    sum(tb[-(1:2)]) / sum(tb)
+  }, numeric(1))
+  ids <- if (!is.null(hap$map$snp_id)) hap$map$snp_id[hit] else names(k)[hit]
+  data.frame(snp_id = as.character(ids), n_alleles = as.integer(k[hit]),
+             frac_dropped = drop, stringsAsFactors = FALSE)
+}
+
+# One warning for the whole scan rather than one per group per marker.
+.warn_multiallelic <- function(ma) {
+  ma <- do.call(rbind, Filter(Negate(is.null), ma))
+  if (is.null(ma) || !nrow(ma)) return(invisible(NULL))
+  worst <- ma[order(-ma$frac_dropped), , drop = FALSE]
+  ids <- unique(worst$snp_id)
+  warning(sprintf(
+    paste0("%d marker(s) carry more than two alleles; rehh scores each on its two ",
+           "commonest and drops the rest, so their iHS is a two-allele contrast on a ",
+           "subset of the haplotypes and their `freq_minor` is not a minor-allele ",
+           "frequency. Worst: %s (%.0f%% of haplotypes excluded). Recode such a marker ",
+           "to the pairwise contrast you mean -- keep the haplotypes carrying either of ",
+           "two alleles and code them 0/1 -- rather than reading the score as it stands."),
+    length(ids), worst$snp_id[1], 100 * worst$frac_dropped[1]), call. = FALSE)
+  invisible(ma)
+}
+
 .scan_group <- function(hap, rows, polarized, threads, maxgap = NA, scalegap = NA,
                         discard_at_border = NULL) {
   objs <- .haplohh_list(hap, rows)
@@ -350,15 +389,23 @@ print.parasite_haplotypes <- function(x, ...) {
   # a p-value that underflows to zero would plot as Inf; rehh puts those one above the
   # largest finite value, and the two paths should agree on what the axis means
   if (any(is.finite(lp))) lp[is.infinite(lp)] <- max(lp[is.finite(lp)]) + 1
-  data.frame(CHR = raw$CHR, POSITION = raw$POSITION, IHS = as.numeric(z),
-             LOGPVALUE = as.numeric(lp), stringsAsFactors = FALSE)
+  data.frame(CHR = raw$CHR, POSITION = raw$POSITION, UNIHS = as.numeric(u),
+             IHS = as.numeric(z), LOGPVALUE = as.numeric(lp), stringsAsFactors = FALSE)
 }
 
 # One group's scan -> its standardised iHS, by rehh's own binning or by our frequency bands.
 .standardise_ihs <- function(scan, freqbin, min_maf, maf_bands) {
-  if (is.null(maf_bands))
-    return(rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf,
-                         verbose = FALSE)$ihs)
+  if (is.null(maf_bands)) {
+    std <- rehh::ihh2ihs(scan, freqbin = freqbin, min_maf = min_maf, verbose = FALSE)$ihs
+    if (is.null(std) || !nrow(std)) return(std)
+    # rehh drops the unstandardised ratio when it standardises, so ask for it separately and
+    # match on position: same scan, same min_maf, so the two agree row for row
+    raw <- rehh::ihh2ihs(scan, freqbin = 1, min_maf = min_maf, standardize = FALSE,
+                         verbose = FALSE)$ihs
+    std$UNIHS <- if (is.null(raw)) NA_real_ else
+      raw$UNIHS[match(paste(std$CHR, std$POSITION), paste(raw$CHR, raw$POSITION))]
+    return(std)
+  }
   # standardize = FALSE returns the raw log ratio, and skips the binning entirely
   raw <- rehh::ihh2ihs(scan, freqbin = 1, min_maf = min_maf, standardize = FALSE,
                        include_freq = TRUE, verbose = FALSE)$ihs
@@ -441,8 +488,19 @@ print.parasite_haplotypes <- function(x, ...) {
 #'   -- if EHH never decays before the data runs out, every marker is at a border -- so a
 #'   scan that comes back mostly `NA` says so.
 #' @param threads Threads for \pkg{rehh}.
-#' @return A tibble with `group`, `chr`, `pos`, `snp_id`, `freq_minor`, `ihs` and
+#' @return A tibble with `group`, `chr`, `pos`, `snp_id`, `freq_minor`, `unihs`, `ihs` and
 #'   `neg_log10_p`.
+#'
+#'   `unihs` is the **un**standardised statistic, `log(iHH_major / iHH_minor)` (ancestral
+#'   over derived when `polarized = TRUE`), so `exp(unihs)` is the integrated-EHH ratio
+#'   itself. `ihs` is that value z-scored within its frequency band, which is what makes
+#'   scores comparable along the genome but also throws the scale away -- the band's mean and
+#'   sd are not recoverable from `ihs` alone, so keep `unihs` if you ever want the ratio back.
+#'   Note that `ihs = 0` does **not** mean a ratio of 1: it means average for that group, and
+#'   the average is below 1 wherever minor-allele haplotypes are systematically longer.
+#'
+#'   `ihs` and `neg_log10_p` are `NA` wherever the integral could not be formed for one of
+#'   the two alleles -- see the note on missing scores below.
 #' @references
 #' Voight, B. F., Kudaravalli, S., Wen, X. & Pritchard, J. K. (2006) A map of recent
 #' positive selection in the human genome. \emph{PLoS Biology} 4, e72.
@@ -451,6 +509,19 @@ print.parasite_haplotypes <- function(x, ...) {
 #' Gautier, M., Klassmann, A. & Vitalis, R. (2017) rehh 2.0: a reimplementation of the R
 #' package rehh to detect positive selection from haplotype structure.
 #' \emph{Molecular Ecology Resources} 17, 78-90. \doi{10.1111/1755-0998.12634}
+#' @section Why a SNP can appear for one group only, or score `NA`:
+#' The scan is per group, so a SNP is tested in a group only where it is polymorphic there
+#' and clears `min_maf` there. A variant private to one region therefore has one row, not
+#' one per region, and that is a statement about the cohort rather than a fault.
+#'
+#' A row can be present with `ihs` and `neg_log10_p` both `NA`. That means the SNP passed the
+#' frequency filter but \pkg{rehh} could not integrate EHH for at least one of its two
+#' alleles, so the log ratio is undefined. The usual causes are too few haplotypes carrying
+#' the minor allele for the decay to be estimated, and EHH that never falls below the cutoff
+#' before the data runs out -- a chromosome end, or a gap wider than `maxgap`. Both get more
+#' common in small groups and at low minor-allele counts, which is the same corner where a
+#' score that *is* returned deserves the least trust. Treat `NA` as "not measurable here",
+#' not as "no selection".
 #' @seealso [ihs_windows()], [ihs_genes()], [plot_ihs()], [run_rsb()], [beta_score()]
 #' @examples
 #' ps <- example_pop_structure(umap = FALSE)
@@ -468,7 +539,10 @@ run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin =
 
   out <- list()
   na_frac <- numeric(0)
+  multi <- list()
   for (l in names(rows)) {
+    # per group, because a marker can be biallelic inside one and not inside another
+    multi[[l]] <- .multiallelic_drop(hap, rows[[l]])
     scan <- .scan_group(hap, rows[[l]], polarized, threads, maxgap, scalegap,
                         discard_at_border)
     if (is.null(scan)) next
@@ -481,10 +555,11 @@ run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin =
     out[[length(out) + 1L]] <- data.frame(
       group = l, chr = as.character(res$CHR), pos = as.numeric(res$POSITION),
       snp_id = paste0(res$CHR, ":", format(res$POSITION, scientific = FALSE, trim = TRUE)),
-      freq_minor = freq, ihs = res$IHS, neg_log10_p = res$LOGPVALUE,
+      freq_minor = freq, unihs = res$UNIHS, ihs = res$IHS, neg_log10_p = res$LOGPVALUE,
       stringsAsFactors = FALSE)
   }
   .warn_border_na(na_frac, maxgap, discard_at_border)
+  .warn_multiallelic(multi)
   if (!length(out)) {
     warning("no group produced an iHS scan", call. = FALSE)
     return(tibble::tibble())
