@@ -5,7 +5,7 @@
 [![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-> **Version 0.4.1** — early development; APIs, defaults, and outputs may change
+> **Version 0.4.2.9000** — early development; APIs, defaults, and outputs may change
 > between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** — the
@@ -40,6 +40,22 @@ Bioconductor deps together:
 
 ```r
 # install.packages("pak")
+pak::pak("nickjhathaway/plasgenomicsutilsR", dependencies = TRUE)
+```
+
+A release is pinned with its tag: `pak::pak("nickjhathaway/plasgenomicsutilsR@v0.4.1", ...)`.
+Leave `dependencies` out to install the hard dependencies only (dplyr, tibble, rlang, R6 --
+nothing from Bioconductor); `dependencies = FALSE` installs *no* dependencies at all and the
+build fails.
+pak chooses the Bioconductor version from your R version using a table inside pak itself,
+so an out-of-date pak -- typical on a shared server running an older R -- can fail with
+`source packages are missing from Bioconductor: Not Found (HTTP 404)` and
+`Can't find package called SNPRelate, gdsfmt, LEA`. Update pak first (`install.packages("pak")`)
+and retry. If it still fails, tell it which release to use -- `BiocManager::version()`
+reports the right one for your R -- and retry:
+
+```r
+Sys.setenv(R_BIOC_VERSION = "3.18")   # whatever BiocManager::version() says
 pak::pak("nickjhathaway/plasgenomicsutilsR", dependencies = TRUE)
 ```
 
@@ -107,6 +123,41 @@ install.packages(c("ggplot2", "scales", "patchwork", "ggnewscale", "ggtext", "uw
     `"partial"`ly, the covered span, and `percent_covered`. Pairs with no IBD over a gene
     are simply absent. Mirrors `plasgenomicsutils ibd_gene_pairs`, which writes the same
     table as a TSV.
+  - `ibd_block_extension_test()` — whether IBD segments spanning a locus are **longer**
+    than the pairs sharing it carry elsewhere. Raw segment length is not comparable between
+    groups (a group with less outcrossing carries longer segments everywhere), so each pair
+    is measured against its own median segment on every **other** chromosome and the pair,
+    not the segment, is the unit of the signed-rank test. Reports both `naive_ratio`
+    (locus median over the group's genome-wide median, descriptive only) and
+    `paired_ratio` (the statistic); a `ref_median` well above `gw_median` means the sharing
+    pairs are unusually related and the naive figure was counting that. Takes many loci at
+    once — pass the full `PF3D7_GENES` track to scan every gene, with
+    `adjust = "per_group"` — so a locus can be read against the genome-wide distribution
+    rather than a hand-picked control. `sharing` picks what a pair's segment must do at the
+    locus, as in `plot_ibd_network()`: `"overlap"` (default) to touch it anywhere, or
+    `"complete"` to span the whole thing. The choice is not cosmetic — under `"complete"` a
+    segment cannot be shorter than the locus is wide, so locus width becomes a floor under
+    the numerator and wider loci score higher for no biological reason. Compare like widths
+    there, or stay with `"overlap"` when ranking genes against each other. This is the
+    length statistic; the count statistic (XiR,s) is usually better powered and should lead.
+  - `ibd_block_extension_scan()` — the genome-wide background for that statistic, and the
+    thing to reach for first. A `paired_ratio` of 1 is **not** the null: a locus is a fixed
+    target and a segment covers it with probability rising in the segment's own length, so
+    every locus is inflated whether or not anything happened there. The scan tiles fixed-width
+    windows over the core regions (500 bp stepped 2 kb by default) and reports where each
+    window, and each locus you name, falls in its group's distribution as a `percentile`.
+    Windows beat genes as the background because they are all the same width and owe nothing
+    to annotation. Do **not** read a window as localising selection to its own width — the
+    value at a point is set by segments running tens of kb either side, so neighbouring
+    windows repeat each other and there is no q-value across them. Use `run_ihs()` for
+    SNP-resolution questions.
+  - `ibd_block_extension_by_allele()` — the allele-level form, and the IBD analogue of iHS.
+    Splits the pairs by their state at a core variant into carrier, reference and discordant,
+    runs the same statistic in each stratum, and contrasts them. Reports both the **length**
+    comparison and the **fraction** of all possible pairs that share at all — the fraction is
+    usually better powered, since it uses every pair rather than only the sharing ones. A
+    large discordant count is a QC signal, not a result: a pair sharing an interval by descent
+    shares the allele in it.
   - `pos_selection_genes()` — the genes hit by an above-threshold selection signal:
     intersects the significant SNPs with the `genes` track, counting a SNP for a gene
     when it lands within `within` bp of it (default 2 kb, since filtering can push the
