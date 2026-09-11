@@ -7,7 +7,7 @@
 load_genotypes(
   vcf,
   gds = NULL,
-  prune = TRUE,
+  prune = NULL,
   ld_threshold = 0.2,
   slide_max_bp = 20000,
   slide_max_n = 200,
@@ -18,17 +18,20 @@ load_genotypes(
   vcf_dir = NULL,
   allele = c("alt", "ref"),
   variants = c("biallelic_snvs", "all"),
+  encoding = c("dosage", "allele_index"),
+  star = c("missing", "allele"),
   refresh = c("stale", "never", "always")
 )
 }
 \arguments{
-\item{vcf}{Path to a (bgzipped) VCF, or a \strong{BCF} -- SNPRelate reads VCF text only, so
-a BCF is converted first with \code{bcftools}, reusing any VCF already sitting next to it
-rather than making another copy.}
+\item{vcf}{Path to a (bgzipped) VCF, or a \strong{BCF} -- converted to VCF text first with
+\code{bcftools}, reusing any VCF already sitting next to it rather than making another copy.}
 
 \item{gds}{Optional GDS path; derived from \code{vcf} if \code{NULL}.}
 
-\item{prune}{LD-prune (default \code{TRUE}). \code{FALSE} returns every record \code{variants} admits
+\item{prune}{LD-prune. Defaults to \code{TRUE} for \code{encoding = "dosage"} and \code{FALSE} otherwise,
+because pruning measures correlation between dosages and an allele index is not a count
+of anything. \code{FALSE} returns every record \code{variants} admits
 (see \emph{Which records reach the panel}), unpruned -- use this for the genotype matrix fed
 to \code{\link[=pop_diff]{pop_diff()}} / \code{\link[=pop_diff_table]{pop_diff_table()}}, since LD-pruning removes the very SNPs that carry
 the differentiation signal.}
@@ -44,101 +47,130 @@ when \code{prune = FALSE}.}
 \item{vcf_dir}{Where to put the VCF converted from a BCF (default: alongside the BCF).
 Point it somewhere scratch to keep converted copies out of the data directory.}
 
-\item{allele}{Which allele the returned dosage counts. \pkg{SNPRelate} counts the
-\strong{reference} allele; the default \code{"alt"} flips that so the matrix means what the
-rest of the package says it means. Only reported allele frequencies (and the
-arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
-and selection statistic here is symmetric in \code{p} and \code{1 - p}.}
+\item{allele}{Which allele the returned dosage counts, \code{"alt"} (default) or \code{"ref"}. Only
+reported allele frequencies (and the arbitrary sign of a PCA axis) depend on this --
+every diversity, differentiation, LD and selection statistic here is symmetric in \code{p}
+and \code{1 - p}. Meaningless for \code{encoding = "allele_index"}, which names an allele rather
+than counting copies of one, and refused there.}
 
 \item{variants}{Which records to read. \code{"biallelic_snvs"} (default) keeps biallelic SNVs
-only; \code{"all"} keeps every record, multiallelic sites and indels included, at the cost of a
-dosage that cannot say which ALT it counts. See the two sections below -- nothing in this
-package handles \code{"all"}, and it warns.}
+only; \code{"all"} keeps every record, multiallelic sites and indels included.}
+
+\item{encoding}{How \code{genotype} is coded. \code{"dosage"} (default) counts alternate copies,
+0/1/2 -- the classical matrix, and what PCA, admixture, diversity and differentiation
+read. \code{"allele_index"} names \strong{which} allele each sample carries, 0 for the reference
+and 1..k for the alternates, which is the only one of the two that can carry a
+multiallelic site. See \emph{Which encoding to ask for}.}
 
 \item{refresh}{What to do with a derived file older than what it was built from -- the
 text VCF beside a BCF, and the GDS beside either. \code{"stale"} (default) rebuilds it,
 \code{"always"} rebuilds regardless, \code{"never"} reuses it and warns. The default is a
 rebuild because the alternative is silent: update the BCF and every result below comes
 from the old records, with the GDS looking current because it is newer than the stale
-VCF it was built from. A GDS built with a different \code{variants} is rebuilt whatever
-\code{refresh} says -- that is a different set of records, not an older one.}
+VCF it was built from. A GDS left over from the older \pkg{SNPRelate} backend is a
+different format entirely and is rebuilt whatever \code{refresh} says.}
 }
 \value{
 A list with \code{genotype} (matrix; sample row names and \code{chr:pos0} column names --
 0-based, like every other position in the package),
 \code{sample.id}, \code{snp.id}, and the facts the matrix itself cannot carry: \code{allele} (which
-allele the dosages count), \code{pruned}, \code{positions} and \code{variants}. \link{PopStructure} keeps
-them, so anything that names a call or warns about pruning can ask instead of assuming.
+allele a dosage counts), \code{encoding}, \code{pruned}, \code{positions} and \code{variants}.
+\link{PopStructure} keeps them, so anything that names a call, refuses a non-dosage panel or
+warns about pruning can ask instead of assuming.
+
+Also \code{sites}: one row per genotype column, in the same order, with \code{site_key}, \code{chr},
+\code{pos} (0-based), \code{ref}, \code{alt}, \code{n_alt}, \code{n_alt_real} and \code{has_spanning_del}.
+
+\code{alt} is a list column holding the record's \strong{own} ALT list, in its own order and \code{*}
+included, because that is what an allele index names -- \code{alt[[i]][k]} is the allele a
+genotype of \code{k} refers to, and dropping anything from it would point the index at the
+wrong base. \code{n_alt} counts that list for the same reason.
+
+Whether a record is \emph{multiallelic} is a different question, since \code{*} is a missingness
+annotation rather than an allele: \code{n_alt_real} excludes it and is the one that answers,
+with \code{has_spanning_del} recording the \code{*} separately. So \verb{A > *,T} is an ordinary
+biallelic SNV with \code{n_alt = 2} and \code{n_alt_real = 1}.
+
+\strong{Ask this table before reading a per-allele number off a dosage matrix}: a column with
+\code{n_alt_real > 1} has had its alternates collapsed onto one number and cannot answer one.
 }
 \description{
-Converts a VCF to GDS (only when needed) and returns the genotype matrix
-(samples x SNPs, coded 0/1/2, \code{NA} for missing) via \pkg{SNPRelate}, LD-pruned by
-default.
+Converts a VCF to GDS (only when needed) and returns the genotype matrix, LD-pruned by
+default. The backend is \pkg{SeqArray}, whose SeqVarGDS stores allele \strong{indices} and so
+can hold a record with any number of alleles.
 }
 \details{
-Which you want depends on the question. Pruning is right for PCA, UMAP and admixture,
-where correlated SNPs would let one locus dominate the structure. It is wrong wherever
-the correlation between neighbouring SNPs \emph{is} the signal -- differentiation
-(\code{\link[=pop_diff]{pop_diff()}}) and haplotypes (\code{\link[=plot_region_haplotypes]{plot_region_haplotypes()}}) -- because it keeps one SNP out
-of each correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a
-second call with \code{prune = FALSE} only re-reads it.
+Pruned or not depends on the question. Pruning is right for PCA, UMAP and admixture, where
+correlated SNPs would let one locus dominate the structure. It is wrong wherever the
+correlation between neighbouring SNPs \emph{is} the signal -- differentiation (\code{\link[=pop_diff]{pop_diff()}})
+and haplotypes (\code{\link[=plot_region_haplotypes]{plot_region_haplotypes()}}) -- because it keeps one SNP out of each
+correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a second
+call with \code{prune = FALSE} only re-reads it.
 }
 \section{Which records reach the panel}{
 
-\code{prune = FALSE} means unpruned, not every record: the panel is usually smaller than the
-VCF's record count whatever \code{prune} is, because the default \code{variants = "biallelic_snvs"}
-has \pkg{SNPRelate} read the file with \code{method = "biallelic.only"}. Three kinds of record
-are skipped, silently:
+\code{prune = FALSE} means unpruned, not every record: the default \code{variants = "biallelic_snvs"}
+keeps only records whose single ALT is a substitution, so the panel is usually smaller than
+the VCF's record count. Three kinds are skipped, and the message says \strong{how many of each}:
 \itemize{
 \item sites with \strong{no ALT allele} (\code{ALT="."}) -- the reference positions an all-sites caller
-emits. Usually the biggest share by far, and the easiest to miss, since nothing about them
-says "variant": \verb{bcftools view --exclude-types indels} leaves every one of them in place,
+emits. Usually the biggest share by far, and the easiest to miss, since nothing about
+them says "variant": \verb{bcftools view --exclude-types indels} leaves every one in place,
 because they are not indels.
 \item \strong{indels} and other non-SNV records.
-\item sites with \strong{more than one ALT}.
+\item sites with \strong{more than one ALT} -- which \code{variants = "all"} keeps.
 }
 
-So a VCF of 28,927 records carrying 9,158 \code{ALT="."} positions and 48 multiallelic sites
-loads as 19,721 SNPs. When a panel comes out short, count what is actually there rather than
-the total, and drop the no-ALT records upstream if you would rather the two numbers agree:
+The tally is exact and costs nothing: SeqArray has already read every record by the time
+the selection happens, so the classification that chose the panel is the one reported. A
+record carrying a \code{*} is its own class and is skipped: part of the cohort has no base
+there to compare, so \verb{A > *,T} is not a clean SNP site however well T behaves. The
+companion Python package's \code{spanning_del_filter} is the way to keep such a site -- it
+recodes the deleted calls as missing and drops the allele, after which the record really
+is an ordinary SNP.
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{bcftools view -H -m2 -M2 -v snps file.vcf.gz | wc -l   # what will load
-bcftools view -e 'ALT="."' -Ob -o out.bcf in.bcf       # or --min-ac 1
-}\if{html}{\out{</div>}}
-
-Sites that are \strong{invariant across the loaded samples are kept}, as long as the VCF lists an
-ALT allele there: \code{"biallelic.only"} asks how many alleles the record declares, not whether
-these samples differ. A site every sample calls \code{1/1}, or every sample calls \code{0/0}, comes
-through -- which is why the functions needing variable sites (\code{\link[=parasite_haplotypes]{parasite_haplotypes()}},
-\code{\link[=run_ihs]{run_ihs()}}) apply their own \code{maf} cutoff instead of trusting the panel. SNPRelate's own help
-calls this "excluding monomorphic variants", which is easy to read as the stronger promise.
+Sites that are \strong{invariant across the loaded samples are kept}, as long as the record
+lists an ALT. A site every sample calls \code{1/1}, or every sample calls \code{0/0}, comes through
+-- which is why the functions needing variable sites (\code{\link[=parasite_haplotypes]{parasite_haplotypes()}},
+\code{\link[=run_ihs]{run_ihs()}}) apply their own \code{maf} cutoff instead of trusting the panel.
 }
 
 \section{Keeping every variant}{
 
-\code{variants = "all"} reads the VCF with \code{method = "copy.num.of.ref"} instead, which keeps
-every record -- multiallelic sites, indels and \code{ALT="."} positions included -- and stores
-the \strong{copy number of the reference allele}. Nothing in this package reads that correctly,
-so it warns; the switch is here to hand the matrix to something that does.
+\code{variants = "all"} keeps every record -- multiallelic sites, indels and \code{ALT="."} positions
+included. Pair it with \code{encoding = "allele_index"} to keep the alternates apart; with the
+default \code{encoding = "dosage"} it warns, because a dosage cannot say which alternate a
+non-reference call carries:
 
-What breaks is the coding, not the reading. A dosage says how many reference copies a sample
-has and nothing about \emph{which} alternate allele makes up the rest, so at \verb{C -> T,G} a sample
-called \code{1/1} and a sample called \code{2/2} are both 0 reference copies and land on the same
-number despite carrying different alleles:
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{variants = "biallelic_snvs"        variants = "all"
-  pos  allele  s1 s2 s3              pos  allele  s1 s2 s3
-  100  A/G      2  0  1              100  A/G      2  0  1
-  500  G/A      0  0  0              200  T/.      2  2  2   <- no ALT
-                                     300  AT/A     2  0  2   <- indel
-                                     400  C/T,G    2  0  0   <- 1/1 and 2/2 both 0
-                                     500  G/A      0  0  0
+\if{html}{\out{<div class="sourceCode">}}\preformatted{encoding = "dosage"                  encoding = "allele_index"
+  pos  alleles  s1 s2 s3               pos  alleles  s1 s2 s3
+  400  C/T,G     0  2  2               400  C/T,G     0  1  2
+                    ^  ^                                  ^  ^
+                    1/1 and 2/2                           T and G, told apart
+                    land on one number
 }\if{html}{\out{</div>}}
 
-The allele strings themselves survive in the GDS (\code{SNPRelate::snpgdsSNPList()$allele} gives
-\code{"C/T,G"}), so which alleles exist is recoverable even though the dosage cannot express
-them. The returned list records the choice as \code{variants}, and the GDS is tagged with it, so
-the two panels never get confused for one another through a reused \code{.gds}.
+One GDS serves every combination: SeqArray reads the whole callset and the selection
+happens in R, so asking for a different \code{variants} or \code{encoding} re-reads the same file
+rather than rebuilding it.
+}
+
+\section{Which encoding to ask for}{
+
+A \strong{dosage} says how many copies of one allele a sample has. That is two numbers, and a
+site with three alleles needs three, so a dosage cannot say \emph{which} alternate a
+non-reference call carries -- at a codon where D384A, D384G and D384Y arose separately,
+every carrier lands on the same number. Ask for it when the panel is biallelic and the
+consumer is PCA, UMAP, admixture, diversity or differentiation.
+
+An \strong{allele index} names the allele: 0 for the reference, 1..k for the alternates in the
+record's own ALT order (\verb{$sites$alt} says which is which). It carries a multiallelic site
+faithfully, and the dosage statistics refuse it rather than mangling it -- there is no
+faithful conversion, so contrast one allele at a time instead.
+
+The parasite is haploid, so a heterozygous call is a \strong{mixed infection} rather than a
+diploid genotype, and one index cannot name two clones. Those calls are missing under
+\code{allele_index}, which is the same reading \code{pop_diversity(het = "missing")} takes.
 }
 
 \examples{

@@ -170,10 +170,11 @@
 # the choice would be no use for overriding it.
 .focal_candidates <- function(x, focal, genes, reference) {
   idx <- .focal_marker(focal, x$map, genes, reference)
-  maf <- vapply(idx, function(i) {
-    p <- mean(x$hap[, i], na.rm = TRUE)
-    min(p, 1 - p)
-  }, numeric(1))
+  # `.minor_af()` rather than `min(mean(v), 1 - mean(v))`: the latter is a dosage formula
+  # and returns a negative number on an allele-index column, which `which.max()` below can
+  # never choose -- so a multiallelic focal was silently passed over for a biallelic
+  # neighbour. The two agree exactly on 0/1 data.
+  maf <- vapply(idx, function(i) .minor_af(x$hap[, i]), numeric(1))
   list(idx = idx, maf = maf, best = idx[which.max(maf)])
 }
 
@@ -229,8 +230,7 @@ ehh_candidates <- function(x, focal, group = NULL, genes = NULL, min_haplotypes 
     rows <- .ihs_rows(x, group, x$meta, min_haplotypes)
     for (g in names(rows)) {
       out[[paste0("maf_", g)]] <- round(vapply(idx, function(i) {
-        p <- mean(x$hap[rows[[g]], i], na.rm = TRUE)
-        if (is.nan(p)) NA_real_ else min(p, 1 - p)
+        .minor_af(x$hap[rows[[g]], i])
       }, numeric(1)), 4)
     }
     gcols <- paste0("maf_", names(rows))

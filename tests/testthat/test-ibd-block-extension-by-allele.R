@@ -147,3 +147,71 @@ test_that("the object method matches the function", {
                ibd_block_extension_by_allele(ibd, LOCUS, allele = "pin", carrier = "Present",
                                              reference = "Absent"))
 })
+
+# --- three states: the pfpx1 codon-384 shape -----------------------------------------
+
+# Twelve D384A carriers, twelve reference, twelve carrying a *second* alternate. The three
+# groups share over the locus at different lengths, so which state is used as the reference
+# changes the contrast by a visible amount rather than a rounding one.
+OTHER <- sprintf("o%02d", 1:12)
+
+mk_three_state <- function(a_len = 80000, ref_len = 20000, other_len = 40000) {
+  bl <- rbind(share(CARRIERS, a_len), share(REFS, ref_len), share(OTHER, other_len))
+  meta <- data.frame(sample = c(CARRIERS, REFS, OTHER),
+                     region = "north",
+                     px1_384 = rep(c("D384A", "REF", "D384G"), each = 12),
+                     stringsAsFactors = FALSE)
+  ibd_results(blocks = bl, meta = meta, group_col_in_meta = "region")
+}
+
+test_that("naming only `carrier` at a three-state locus is refused, not guessed", {
+  # `setdiff(lv, carrier)[1]` took the first remaining level in natural-sort order, so
+  # carrier = "D384A" silently contrasted against "D384G" -- one independent origin measured
+  # against another. The no-argument path was already guarded; this is the path a user who
+  # knows which allele they care about actually takes.
+  expect_error(
+    ibd_block_extension_by_allele(mk_three_state(), LOCUS, allele = "px1_384",
+                                  carrier = "D384A"),
+    "3 states")
+  # and the mirror image, for the same reason
+  expect_error(
+    ibd_block_extension_by_allele(mk_three_state(), LOCUS, allele = "px1_384",
+                                  reference = "REF"),
+    "3 states")
+  # naming both is unambiguous and must still work
+  expect_no_error(
+    ibd_block_extension_by_allele(mk_three_state(), LOCUS, allele = "px1_384",
+                                  carrier = "D384A", reference = "REF"))
+})
+
+test_that("a two-state locus still defaults the other side without complaint", {
+  r <- ibd_block_extension_by_allele(mk_allele_ibd(), LOCUS, allele = "pin",
+                                     carrier = "Present")
+  expect_equal(r$n_reference, 6L)
+  expect_equal(r$n_carrier, 6L)
+})
+
+test_that("which state is the reference changes the contrast, so guessing was not harmless", {
+  vs_ref <- ibd_block_extension_by_allele(mk_three_state(), LOCUS, allele = "px1_384",
+                                          carrier = "D384A", reference = "REF")
+  vs_other <- ibd_block_extension_by_allele(mk_three_state(), LOCUS, allele = "px1_384",
+                                            carrier = "D384A", reference = "D384G")
+  expect_false(isTRUE(all.equal(vs_ref$ratio_contrast, vs_other$ratio_contrast)))
+  # the reference stratum really is the named state, not "everything that is not carrier"
+  expect_equal(vs_ref$n_reference_possible, choose(12, 2))
+  expect_equal(vs_other$n_reference_possible, choose(12, 2))
+})
+
+test_that("pairs excluded for carrying a third state are counted, not silently dropped", {
+  # they are not in n_discordant -- that column is carrier-vs-reference pairs -- so without
+  # a count of their own the loss is invisible in the diagnostic the docs point at.
+  r <- ibd_block_extension_by_allele(mk_three_state(), LOCUS, allele = "px1_384",
+                                     carrier = "D384A", reference = "REF")
+  expect_true("n_excluded_other_allele" %in% names(r))
+  expect_equal(r$n_excluded_other_allele, 6L)   # the six D384G-D384G sharing pairs
+
+  # a two-state locus has none to exclude
+  b <- ibd_block_extension_by_allele(mk_allele_ibd(), LOCUS, allele = "pin",
+                                     carrier = "Present", reference = "Absent")
+  expect_equal(b$n_excluded_other_allele, 0L)
+})

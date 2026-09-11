@@ -53,11 +53,9 @@ annotate_snps <- function(scan, intervals, within = 0, keep = c("all", "hits"),
     chr <- normalise_chr(df$chr)
     pos <- as.numeric(df$pos)
   } else if ("snp_id" %in% names(df)) {
-    id <- as.character(df$snp_id)
-    chr <- normalise_chr(sub(":[^:]*$", "", id))
-    pos <- suppressWarnings(as.numeric(sub("^.*:", "", id)))
-    if (anyNA(pos))
-      stop("could not read a position out of `snp_id`; expected \"chr:pos\"", call. = FALSE)
+    cp <- .snp_id_chr_pos(df$snp_id)
+    chr <- cp$chr
+    pos <- cp$pos
   } else {
     stop("`scan` needs a `snp_id` column, or `chr` and `pos` columns", call. = FALSE)
   }

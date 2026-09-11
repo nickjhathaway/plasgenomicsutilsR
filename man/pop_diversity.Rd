@@ -17,7 +17,8 @@ pop_diversity(
   max_missing = 0.1,
   min_samples = 4,
   genotype = NULL,
-  meta = NULL
+  meta = NULL,
+  alleles = c("dosage", "index")
 )
 }
 \arguments{

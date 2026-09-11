@@ -781,3 +781,92 @@ test_that("additional_genotypes refuses what it cannot place", {
                   samps = samps[1:3])
   expect_error(plot_region_haplotypes(ps, ids[1], additional_genotypes = few), "are not in")
 })
+
+test_that(".geno_calls never lets dosage arithmetic touch a nominal state column", {
+  # `idx <- 3L - v` is a *dosage* transform. An additional_genotypes column's `v` is a
+  # nominal index into that marker's own states, so under `allele = "ref"` a 4-state column
+  # produced a 0 subscript (R drops it silently: 3 labels for 4 inputs) and a 5-state one
+  # produced a negative subscript, which errors outright. Five states is ordinary -- the
+  # test above this one already asserts one occurs.
+  lv4 <- c("reference", "alternate 1", "alternate 2", "alternate 1 + alternate 2")
+  lv5 <- c(lv4, "reference + alternate 1")
+  for (lv in list(lv4, lv5)) {
+    v <- seq_along(lv) - 1L
+    id <- rep("c1:100", length(v))
+    sl <- stats::setNames(list(lv), "c1:100")
+    for (al in c("alt", "ref")) {
+      got <- plasgenomicsutilsR:::.geno_calls(v, al, id, sl)
+      expect_length(got, length(v))
+      expect_equal(as.character(got), lv)
+    }
+  }
+})
+
+test_that(".geno_calls still reads a plain dosage column both ways round", {
+  # the state-level branch must not change what a normal column does
+  v <- c(0L, 1L, 2L, NA_integer_)
+  expect_equal(as.character(plasgenomicsutilsR:::.geno_calls(v, "alt")),
+               c("reference", "mixed", "alternate", NA))
+  expect_equal(as.character(plasgenomicsutilsR:::.geno_calls(v, "ref")),
+               c("alternate", "mixed", "reference", NA))
+})
+
+test_that(".geno_calls handles a state column sitting beside dosage columns", {
+  # the failure mode that made this silent: the shortened vector only misaligns the calls
+  # that come *after* the state column, so a marker at the end of the window looked fine
+  v  <- c(0L, 2L, 3L, 0L, 2L)
+  id <- c("c1:100", "c1:100", "c1:100", "c1:200", "c1:200")
+  sl <- stats::setNames(list(c("reference", "alternate 1", "alternate 2")), "c1:100")
+  got <- plasgenomicsutilsR:::.geno_calls(v, "ref", id, sl)
+  expect_length(got, 5L)
+  # v = 3 is beyond that marker's three states, so it is missing, not a silent drop
+  expect_equal(as.character(got),
+               c("reference", "alternate 2", NA, "alternate", "reference"))
+})
+
+test_that("the fill palette is short rather than recycled when it runs out", {
+  # `.distinct_fills`' own comment says "a palette that ran out is better short than
+  # recycled into a duplicate", and the caller then recycled with `rep(length.out=)`. Two
+  # distinct allele states sharing a fill is exactly the confusion the greedy CIEDE2000 pick
+  # exists to avoid, and it fails silently: the plot looks fine.
+  got <- plasgenomicsutilsR:::.distinct_fills(plasgenomicsutilsR:::.GENO_FILL, 20L)
+  expect_lt(length(got), 20L)                    # the palette really does run out
+  expect_equal(length(unique(got)), length(got))
+})
+
+test_that("a marker with more states than colours warns instead of duplicating a fill", {
+  skip_if_not_installed("ggplot2")
+  fills <- plasgenomicsutilsR:::.GENO_FILL
+  extra <- paste("state", 1:20)
+  expect_warning(
+    out <- plasgenomicsutilsR:::.assign_extra_fills(fills, extra),
+    "colours")
+  used <- out[extra]
+  used <- used[!is.na(used)]
+  expect_equal(length(unique(used)), length(used), info = "no fill is used twice")
+})
+
+test_that("nominal state codes are not treated as an ordered scale when clustering", {
+  # `alternate 2` is not "twice as far from reference as alternate 1" -- the codes are an
+  # arbitrary sorted index. Euclidean distance on them also lets one triallelic marker carry
+  # up to 4 units of distance where a biallelic SNP carries 2, so it outweighs several SNPs
+  # in the Ward ordering that decides row order.
+  G <- matrix(c(0L, 0L, 2L,
+                0L, 0L, 2L,
+                0L, 0L, 2L), nrow = 3, byrow = TRUE,
+              dimnames = list(c("a", "b", "c"), c("c1:1", "c1:2", "c1:3")))
+  G["a", "c1:3"] <- 0L; G["b", "c1:3"] <- 1L; G["c", "c1:3"] <- 4L
+  nominal <- "c1:3"
+  d_plain <- as.matrix(stats::dist(G))
+  d_nom <- as.matrix(plasgenomicsutilsR:::.geno_dist(G, nominal))
+  # on the raw scale c looks 4x further from a than b does; on state identity they are equal
+  expect_gt(d_plain["a", "c"], d_plain["a", "b"])
+  expect_equal(unname(d_nom["a", "c"]), unname(d_nom["a", "b"]))
+})
+
+test_that("with no nominal columns the distance is the ordinary one", {
+  G <- matrix(c(0L, 2L, 0L, 2L, 2L, 0L), nrow = 3,
+              dimnames = list(c("a", "b", "c"), c("c1:1", "c1:2")))
+  expect_equal(as.matrix(plasgenomicsutilsR:::.geno_dist(G, character(0))),
+               as.matrix(stats::dist(G)))
+})

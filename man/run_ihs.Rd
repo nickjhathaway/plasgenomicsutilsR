@@ -16,7 +16,8 @@ run_ihs(
   maxgap = NA,
   scalegap = NA,
   discard_at_border = NULL,
-  threads = 1
+  threads = 1,
+  contrast = c("ref", "pairwise", "none")
 )
 }
 \arguments{
@@ -106,6 +107,32 @@ versus derived. That is the standard treatment for \emph{P. falciparum} and it m
 \emph{sign} of \code{ihs} should not be read as "selection on the derived allele" -- use
 \code{abs(ihs)} and \code{neg_log10_p}.
 }
+\section{Contrasts}{
+
+\code{log(iHH_A / iHH_B)} is a ratio, so it needs exactly two terms and there is no k-allele
+iHS. At a marker carrying three alleles the honest answer is \strong{k-1 contrasts}, each saying
+which two it compared, and the \code{contrast} column names them as \code{"0>1"}, \code{"0>2"} and so on
+in allele-index order (\verb{$sites$alt} on the panel says which base each index is).
+
+\code{"ref"} compares each alternate against the reference only. That is what keeps independent
+origins apart: at a codon where three changes arose separately, pooling them into one
+"not reference" class merges exactly the distinction the scan exists to draw.
+
+What makes this cheap is that \strong{per-allele iHH does not depend on which other alleles are
+at the marker} -- EHH for an allele class only ever involves that class's haplotypes. So
+every contrast at a marker comes out of one \code{\link[rehh:calc_ehh]{rehh::calc_ehh()}} call, and the numbers are
+identical to what an explicitly subset and recoded panel would give (verified to nine
+decimal places). Only multiallelic markers cost anything extra.
+
+A biallelic marker has one contrast, so \code{"ref"} reproduces \code{"none"} exactly, value for
+value. The standardisation is over every row at once, so a marker contributing two rows has
+both judged against the same genome-wide distribution.
+
+Downstream, \code{contrast} is a grouping key: \code{\link[=ihs_windows]{ihs_windows()}}, \code{\link[=ihs_genes]{ihs_genes()}},
+\code{\link[=selection_peaks]{selection_peaks()}} and \code{\link[=plot_ihs]{plot_ihs()}} all split on it, because two contrasts at one position
+are two measurements rather than two SNPs at one site.
+}
+
 \section{Why a SNP can appear for one group only, or score \code{NA}}{
 
 The scan is per group, so a SNP is tested in a group only where it is polymorphic there

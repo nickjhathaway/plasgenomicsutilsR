@@ -159,6 +159,12 @@ selection_peaks <- function(x,
 
   by <- intersect(c("group", "pair"), names(df))[1]
   df$.grp <- if (is.na(by)) factor("all") else .as_group_factor(df[[by]])
+  # Merging hits into a peak has to keep contrasts apart: two alternates at one codon are two
+  # measurements, and running them together would report one peak of `n_snps = 2` where there
+  # are two independent origins each seen once.
+  if ("contrast" %in% names(df))
+    df$.grp <- .as_group_factor(paste(as.character(df$.grp), as.character(df$contrast),
+                                      sep = " | "))
   metric <- .peak_value_col(df, metric)
   df$.v <- df[[metric]]
 

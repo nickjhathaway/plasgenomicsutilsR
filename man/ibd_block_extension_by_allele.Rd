@@ -27,9 +27,12 @@ ibd_block_extension_by_allele(
 \item{allele}{The variant to split on: the name of a metadata column, or a named vector
 of \code{sample -> state}. Samples with \code{NA} are left out of every stratum.}
 
-\item{carrier, reference}{Which states count as carrying and as reference. Default: the
+\item{carrier, reference}{Which states count as carrying and as reference. With exactly
+two states either may be left out and the other is implied; leaving both out reads the
 column's first two levels, \code{reference} first, with a message saying which way round it
-was read. Name them explicitly when the labels are not self-evident.}
+was read. With \strong{three or more states both must be named} -- there is nothing to imply
+the second one from, and guessing would contrast one alternate against another. Name
+them explicitly when the labels are not self-evident.}
 
 \item{group, within, sharing, min_ref_blocks, meta}{Passed to \code{\link[=ibd_block_extension_test]{ibd_block_extension_test()}}.}
 
@@ -47,6 +50,11 @@ A tibble, one row per locus x group, ordered by locus then by \code{p_fraction}:
 \code{\link[=ibd_block_extension_test]{ibd_block_extension_test()}}.}
 \item{\code{n_carrier}, \code{n_reference}, \code{n_discordant}}{pairs IBD across the locus in each
 stratum. Report all three; see the note on the discordant one.}
+\item{\code{n_excluded_other_allele}}{pairs IBD across the locus that were left out
+because an end carries a state that is neither \code{carrier} nor \code{reference}. Zero at a
+two-state locus. These are not discordant and not unknown, so they would otherwise
+be invisible -- and at a multiallelic locus they can be the pairs that would show
+the interval is wider than the haplotype.}
 \item{\code{ratio_carrier}, \code{ratio_reference}}{\code{paired_ratio} within each stratum.}
 \item{\code{ratio_contrast}}{\code{ratio_carrier / ratio_reference} on the per-pair scale, so
 \code{1} means carriage makes no difference to segment length.}
@@ -79,6 +87,17 @@ the pairs that \emph{could} share, how many do? This is usually the better power
 two, because it uses every pair rather than only the sharing ones, so read it first.
 }
 }
+\section{Which states are contrasted}{
+
+The non-carrier class is the \strong{named reference state only}: a sample carrying some third
+state is excluded from both strata, not pooled into the reference. That is deliberate and
+is the whole point at a multiallelic site. At \emph{pfpx1} codon 384, D384A, D384G and D384Y
+arose independently, so pooling the alternates into one "not reference" class would merge
+origins the analysis exists to separate. To contrast two alternates directly, name them as
+\code{carrier} and \code{reference}; that is a different question and it should look different in
+the call. The pairs left out either way are counted in \code{n_excluded_other_allele}.
+}
+
 \section{The discordant stratum is a check, not a result}{
 
 A pair sharing an interval by descent shares whatever allele sits in it, so pairs that are

@@ -10,7 +10,8 @@ pop_diff(
   statistic = c("jost_d", "gst_hedrick", "fst"),
   meta = NULL,
   clamp = TRUE,
-  genotype = NULL
+  genotype = NULL,
+  alleles = c("dosage", "index")
 )
 }
 \arguments{

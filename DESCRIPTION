@@ -41,6 +41,7 @@ Suggests:
     ggtext,
     igraph,
     ggraph,
+    SeqArray,
     SNPRelate,
     gdsfmt,
     uwot,

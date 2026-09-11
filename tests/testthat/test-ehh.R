@@ -560,3 +560,35 @@ test_that("a contrast column gives one corner line per contrast", {
                       group = "country", add_ihs = base))
   expect_match(one$label[as.character(one$group) == "Cambodia"], "^n = .*\nabs\\(iHS\\) 3\\.10$")
 })
+
+test_that("the focal MAF of an allele-index marker is not a dosage mean", {
+  # `min(mean(v), 1 - mean(v))` is a dosage formula. On allele *indices* it is not a
+  # frequency at all: with counts 10/10/40 it returns -0.5, and a negative number can never
+  # win `which.max()`, so plot_ehh() would silently measure from a biallelic neighbour
+  # instead of the codon that was asked for.
+  for (case in list(list(c(30, 10, 20), 0.5),
+                    list(c(28, 29, 13), 1 - 29 / 70),
+                    list(c(10, 10, 40), 1 - 40 / 60))) {
+    hap <- .multi_hap(case[[1]])
+    cand <- plasgenomicsutilsR:::.focal_candidates(hap, "c1:11000", NULL, NULL)
+    expect_equal(unname(cand$maf), case[[2]], tolerance = 1e-9)
+    expect_true(all(cand$maf >= 0))
+  }
+})
+
+test_that("ehh_candidates reports the same non-negative MAF, and picks the right focal", {
+  skip_if_not_installed("rehh")
+  hap <- .multi_hap(c(10, 10, 40))
+  cand <- ehh_candidates(hap, "c1:11000")
+  expect_true(all(cand$maf >= 0))
+  expect_equal(cand$maf[cand$snp_id == "c1:11000"], round(1 - 40 / 60, 4))
+  # the triallelic marker is the most balanced one in the window, so it must be chosen
+  expect_true(cand$chosen[cand$snp_id == "c1:11000"])
+})
+
+test_that("a biallelic marker's MAF is unchanged by the k-allele form", {
+  # the two formulas must agree exactly on 0/1 data, or every existing number moves
+  hap <- .multi_hap(c(35, 25))
+  cand <- plasgenomicsutilsR:::.focal_candidates(hap, "c1:11000", NULL, NULL)
+  expect_equal(unname(cand$maf), 25 / 60, tolerance = 1e-9)
+})

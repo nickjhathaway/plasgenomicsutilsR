@@ -16,7 +16,8 @@
 DIVERSITY_MIN_SNPS <- 3L
 
 # Alt-allele dosages (0/1/2, NA) -> haploid 0/1/NA calls.
-.haploid_calls <- function(G, het = "missing") {
+.haploid_calls <- function(G, het = "missing", what = "this statistic") {
+  .require_dosage(G, what)
   H <- matrix(NA_real_, nrow(G), ncol(G), dimnames = dimnames(G))
   H[G == 0] <- 0
   H[G == 2] <- 1
@@ -31,7 +32,44 @@ DIVERSITY_MIN_SNPS <- 3L
   list(p = p, n = n)
 }
 
-# Unbiased per-site heterozygosity == per-site pi: 2p(1-p) * n/(n-1).
+# Unbiased per-site heterozygosity for any number of alleles.
+#
+# `H = 1 - sum(p_i^2)` is the Gini-Simpson index: the chance two randomly drawn gene copies
+# carry different alleles. At two alleles it is exactly `2p(1-p)`, so `.site_het()` below is
+# this function's special case rather than a different formula, and a biallelic panel gives
+# the same number to the last bit.
+#
+# `P` is sites x alleles, one row per site, each row summing to 1 over the alleles observed
+# there. Rows may be padded with zeros where a site carries fewer alleles than the widest.
+.site_het_k <- function(P, n) {
+  P <- as.matrix(P)
+  h <- (1 - rowSums(P^2, na.rm = TRUE)) * n / (n - 1)
+  h[!is.finite(h) | n < 2] <- NA_real_
+  h
+}
+
+# Per-allele frequencies from an allele-index matrix: sites x alleles, padded with zeros to
+# the widest site. This is the `p_i` vector the k-allele formulas need and that a dosage
+# matrix cannot supply -- which was the real blocker, not the formulas.
+.index_allele_freqs <- function(G) {
+  G <- as.matrix(G)
+  mx <- suppressWarnings(max(G, na.rm = TRUE))
+  kmax <- if (is.finite(mx)) as.integer(mx) + 1L else 1L
+  P <- matrix(NA_real_, ncol(G), kmax)
+  n <- integer(ncol(G))
+  nall <- integer(ncol(G))
+  for (j in seq_len(ncol(G))) {
+    v <- G[, j]; v <- v[!is.na(v)]
+    n[j] <- length(v)
+    if (!length(v)) next
+    tb <- tabulate(as.integer(v) + 1L, nbins = kmax)
+    P[j, ] <- tb / length(v)
+    nall[j] <- sum(tb > 0L)
+  }
+  list(P = P, n = n, n_alleles = nall)
+}
+
+# The two-allele form, kept because most callers still hand it a single frequency.
 .site_het <- function(p, n) {
   h <- 2 * p * (1 - p) * n / (n - 1)
   h[!is.finite(h) | n < 2] <- NA_real_
@@ -177,7 +215,7 @@ tajima_d_pvalue <- function(D, n, S, method = c("beta", "normal")) {
 }
 
 # One row of statistics for a set of SNP columns and a set of samples.
-.diversity_row <- function(H, cols, L, min_snps, max_missing) {
+.diversity_row <- function(H, cols, L, min_snps, max_missing, alleles = "dosage") {
   Hs <- H[, cols, drop = FALSE]
   n_samples <- nrow(Hs)
   out <- list(n_samples = n_samples, n_snps = length(cols), n_sites = L,
@@ -187,10 +225,21 @@ tajima_d_pvalue <- function(D, n, S, method = c("beta", "normal")) {
   out <- c(out, .haplotype_stats(Hs, max_missing))
   if (!length(cols) || n_samples < 2) return(out)
 
-  f <- .snp_freqs(Hs)
-  h <- .site_het(f$p, f$n)
+  if (identical(alleles, "index")) {
+    fr <- .index_allele_freqs(Hs)
+    f <- list(p = NULL, n = fr$n)
+    h <- .site_het_k(fr$P, fr$n)
+    # a site is segregating when more than one allele is *carried*. The biallelic test
+    # `0 < p < 1` asks the same question of the collapsed frequency, and gets it wrong where
+    # the reference is absent: 4 C and 4 G is polymorphic and collapses to p = 1.
+    seg <- fr$n_alleles > 1L
+  } else {
+    f <- .snp_freqs(Hs)
+    h <- .site_het(f$p, f$n)
+    seg <- f$p > 0 & f$p < 1
+  }
   usable <- f$n >= 2 & is.finite(h)
-  out$seg_sites <- as.integer(sum(f$p > 0 & f$p < 1, na.rm = TRUE))
+  out$seg_sites <- as.integer(sum(seg, na.rm = TRUE))
   out$he <- if (any(usable)) mean(h[usable]) else NA_real_
   out$pi <- if (L > 0 && any(usable)) sum(h[usable]) / L else NA_real_
 
@@ -201,7 +250,7 @@ tajima_d_pvalue <- function(D, n, S, method = c("beta", "normal")) {
   if (sum(usable) >= min_snps) {
     nt <- mean(f$n[usable])
     if (nt >= 4) {
-      St <- sum(f$p[usable] > 0 & f$p[usable] < 1)
+      St <- sum(seg[usable], na.rm = TRUE)
       a1 <- sum(1 / seq_len(floor(nt) - 1))
       out$theta_w <- if (L > 0) (St / a1) / L else NA_real_
       out$tajima_d <- tajima_d(h[usable], nt)
@@ -287,18 +336,22 @@ pop_diversity <- function(x, group = NULL, by = c("genome", "gene", "window"),
                           genes = NULL, window = 10000, step = NULL,
                           accessible = NULL, het = c("missing", "dosage"),
                           min_snps = DIVERSITY_MIN_SNPS, max_missing = 0.1,
-                          min_samples = 4, genotype = NULL, meta = NULL) {
+                          min_samples = 4, genotype = NULL, meta = NULL,
+                          alleles = c("dosage", "index")) {
   meta <- .normalise_meta(meta)
   by <- match.arg(by)
   het <- match.arg(het)
+  alleles <- match.arg(alleles)
   accessible <- .as_regions(accessible)
 
   if (inherits(x, "PopStructure")) {
-    G <- .geno_for(x, genotype)
+    G <- .geno_for(x, genotype, what = "pop_diversity()",
+                   needs = if (identical(alleles, "index")) "allele_index" else "dosage")
     if (is.null(meta)) meta <- x$get_meta()
     G <- G[rownames(G) %in% x$get_samples(), , drop = FALSE]
   } else {
-    G <- .coerce_geno(x)
+    G <- .coerce_geno(x, "pop_diversity()",
+                      if (identical(alleles, "index")) "allele_index" else "dosage")
   }
   if (is.null(colnames(G)))
     stop("genotypes need `chr:pos` column names", call. = FALSE)
@@ -307,7 +360,10 @@ pop_diversity <- function(x, group = NULL, by = c("genome", "gene", "window"),
   levs <- .group_order(grp)
 
   loci <- .parse_snp_ids(colnames(G))
-  H <- .haploid_calls(G, het)
+  # An allele index already says which allele a haplotype carries, so there is nothing to
+  # make haploid: `.haploid_calls()` would map allele 2 onto allele 1 and allele 1 onto
+  # missing. The guard inside it refuses that anyway; this is the route past it.
+  H <- if (identical(alleles, "index")) G else .haploid_calls(G, het)
 
   units <- switch(
     by,
@@ -322,7 +378,8 @@ pop_diversity <- function(x, group = NULL, by = c("genome", "gene", "window"),
     Hg <- H[idx, , drop = FALSE]
     for (u in seq_len(nrow(units))) {
       cols <- units$cols[[u]]
-      stats <- .diversity_row(Hg, cols, units$n_sites[u], min_snps, max_missing)
+      stats <- .diversity_row(Hg, cols, units$n_sites[u], min_snps, max_missing,
+                              alleles = alleles)
       rows[[length(rows) + 1L]] <- c(
         list(group = l, chr = units$chr[u], start = units$start[u], end = units$end[u],
              unit = units$unit[u]), stats)

@@ -75,15 +75,31 @@ parasite_haplotypes <- function(x, samples = NULL, fws = NULL, min_fws = IHS_MIN
                                 het = c("sample", "missing"), maf = IHS_MIN_MAF,
                                 max_snp_missing = 0.1, max_sample_missing = 0.2,
                                 impute = TRUE, seed = 42, meta = NULL, genotype = NULL,
-                                alleles = c("dosage", "index")) {
+                                alleles = c("auto", "dosage", "index")) {
   meta <- .normalise_meta(meta)
   het <- match.arg(het)
   alleles <- match.arg(alleles)
   if (inherits(x, "PopStructure")) {
-    G <- .geno_for(x, genotype)
+    # "auto" takes whatever the object holds. Haplotype work is the case that *can* use a
+    # multiallelic panel, so an object built from allele indices should reach it without
+    # being asked twice -- and `alleles = "dosage"` is the one-argument way back to the
+    # biallelic reading, which the object derives on demand.
+    if (identical(alleles, "auto")) alleles <- if (identical(x$encoding(), "allele_index"))
+      "index" else "dosage"
+    G <- .geno_for(x, genotype, what = "parasite_haplotypes()",
+                   needs = if (identical(alleles, "index")) "allele_index" else "dosage")
     if (is.null(meta)) meta <- x$get_meta()
   } else {
-    G <- .coerce_geno(x)
+    # A raw `load_genotypes()` list still carries its `encoding`, so honour it: "auto" reads
+    # the list rather than assuming dosage, and an index list reaches the haplotype path
+    # without being routed through a PopStructure first. Otherwise a list built with
+    # `encoding = "allele_index"` -- the whole point of which is to keep the alternates
+    # apart -- was refused here as "not dosages".
+    if (identical(alleles, "auto"))
+      alleles <- if (is.list(x) && identical(x$encoding %||% "dosage", "allele_index"))
+        "index" else "dosage"
+    G <- .coerce_geno(x, "parasite_haplotypes()",
+                      needs = if (identical(alleles, "index")) "allele_index" else "dosage")
   }
   if (is.null(colnames(G)))
     stop("genotypes need `chr:pos` column names", call. = FALSE)
@@ -188,13 +204,23 @@ parasite_haplotypes <- function(x, samples = NULL, fws = NULL, min_fws = IHS_MIN
             class = "parasite_haplotypes")
 }
 
-# Minor-allele frequency of an allele-index column: everything not the commonest allele.
+# Minor-allele frequency of one allele-index column: everything not the commonest allele.
+#
+# This is the k-allele form, and it is a strict generalisation rather than an alternative:
+# on a 0/1 column `1 - max(n_0, n_1)/n` is `min(n_0, n_1)/n`, which is exactly
+# `min(p, 1 - p)`. So it can be used wherever the dosage formula was without moving a
+# biallelic number. On allele *indices* the dosage formula is not a frequency at all --
+# `mean()` of indices 0/1/2 is a mean index, and `min(p, 1 - p)` on it goes negative as
+# soon as the mean exceeds one.
+.minor_af <- function(v) {
+  v <- v[!is.na(v)]
+  if (!length(v)) return(NA_real_)
+  1 - max(tabulate(as.integer(v) + 1L)) / length(v)
+}
+
+# The same, column by column over a haplotype matrix.
 .index_minor_af <- function(H) {
-  vapply(seq_len(ncol(H)), function(j) {
-    v <- H[!is.na(H[, j]), j]
-    if (!length(v)) return(NA_real_)
-    1 - max(tabulate(as.integer(v) + 1L)) / length(v)
-  }, numeric(1))
+  vapply(seq_len(ncol(H)), function(j) .minor_af(H[, j]), numeric(1))
 }
 
 
@@ -278,20 +304,111 @@ print.parasite_haplotypes <- function(x, ...) {
 }
 
 # One warning for the whole scan rather than one per group per marker.
-.warn_multiallelic <- function(ma) {
+#
+# `what` names the statistic that was actually run. The reduction is rehh's and is the same
+# for all of them -- it scores each marker on its two commonest alleles -- but the message
+# should not tell someone running Rsb that their iHS is affected, and `freq_minor` is a
+# column only the iHS scan has.
+.warn_multiallelic <- function(ma, what = "iHS") {
   ma <- do.call(rbind, Filter(Negate(is.null), ma))
   if (is.null(ma) || !nrow(ma)) return(invisible(NULL))
   worst <- ma[order(-ma$frac_dropped), , drop = FALSE]
   ids <- unique(worst$snp_id)
+  freq_clause <- if (identical(what, "iHS"))
+    " and their `freq_minor` is not a minor-allele frequency" else ""
   warning(sprintf(
     paste0("%d marker(s) carry more than two alleles; rehh scores each on its two ",
-           "commonest and drops the rest, so their iHS is a two-allele contrast on a ",
-           "subset of the haplotypes and their `freq_minor` is not a minor-allele ",
-           "frequency. Worst: %s (%.0f%% of haplotypes excluded). Recode such a marker ",
-           "to the pairwise contrast you mean -- keep the haplotypes carrying either of ",
-           "two alleles and code them 0/1 -- rather than reading the score as it stands."),
-    length(ids), worst$snp_id[1], 100 * worst$frac_dropped[1]), call. = FALSE)
+           "commonest and drops the rest, so their %s is a two-allele contrast on a ",
+           "subset of the haplotypes%s. Worst: %s (%.0f%% of haplotypes excluded). ",
+           "Recode such a marker to the pairwise contrast you mean -- keep the ",
+           "haplotypes carrying either of two alleles and code them 0/1 -- rather than ",
+           "reading the score as it stands."),
+    length(ids), what, freq_clause, worst$snp_id[1],
+    100 * worst$frac_dropped[1]), call. = FALSE)
   invisible(ma)
+}
+
+# ---- contrasts -------------------------------------------------------------
+
+# Per-allele iHH at one marker, from rehh's own single-marker integrator.
+#
+# `calc_ehh()` returns IHH_A, IHH_D1, IHH_D2, ... -- one integral per allele -- where
+# `scan_hh()` reports only two. That is the whole difference, and it is a reporting
+# difference rather than a limit of the method.
+#
+# These integrals are **invariant** to which other alleles are present, because EHH for an
+# allele class only ever involves that class's haplotypes. Verified against explicit subsets
+# to nine decimal places. So every contrast at a marker comes out of one call, and a
+# contrast is a choice of which two integrals to divide rather than a separate scan.
+.marker_allele_ihh <- function(hap, rows, snp_id, polarized = FALSE, maxgap = NA,
+                               scalegap = NA, discard_at_border = NULL) {
+  .need_package("rehh", "the haplotype scans")
+  j <- match(snp_id, hap$map$snp_id)
+  if (is.na(j)) return(NULL)
+  objs <- .haplohh_list(hap, rows)
+  chr <- as.character(hap$map$chr[j])
+  o <- objs[[chr]]
+  if (is.null(o)) return(NULL)
+  mrk <- match(as.numeric(hap$map$pos[j]), o@positions)
+  if (is.na(mrk)) return(NULL)
+  e <- try(rehh::calc_ehh(o, mrk = mrk, polarized = polarized, maxgap = maxgap,
+                          scalegap = scalegap,
+                          discard_integration_at_border =
+                            .resolve_border(discard_at_border, maxgap)),
+           silent = TRUE)
+  if (inherits(e, "try-error") || is.null(e$ihh)) return(NULL)
+  # rehh names them A / D1 / D2 ...; the package speaks in allele indices, and the order is
+  # positional, so index i is `hap`'s allele i
+  list(ihh = stats::setNames(as.numeric(e$ihh), seq_along(e$ihh) - 1L),
+       freq = stats::setNames(as.numeric(e$freq), seq_along(e$freq) - 1L))
+}
+
+# Which allele pairs a marker is scored on.
+#
+# `ref` is the default and the one that keeps independent origins apart: each alternate is
+# compared against the **reference only**, so a marker carrying three changes gives three
+# separate answers rather than one that has quietly pooled or dropped some of them.
+# `pairwise` adds alternate-against-alternate, which asks a different question -- how two
+# origins compare to each other -- and should look different in the call.
+.allele_pairs <- function(alleles, contrast) {
+  if (length(alleles) < 2L) return(list())
+  if (identical(contrast, "pairwise")) {
+    cb <- utils::combn(sort(alleles), 2L, simplify = FALSE)
+    return(cb)
+  }
+  ref <- min(alleles)
+  lapply(setdiff(sort(alleles), ref), function(a) c(ref, a))
+}
+
+# rehh's own frequency binning, reimplemented so it can be applied to rows that share a
+# position -- which contrast rows do, and which every position-keyed lookup in `ihh2ihs`
+# assumes cannot happen. `cut()` on `seq(min_maf, 1 - min_maf, freqbin)` then a z-score
+# within bin is exactly what `ihh2ihs` does; `freqbin >= 1` means one bin, as there.
+.standardise_unihs <- function(unihs, freq, freqbin, min_maf, maf_bands) {
+  keep <- is.finite(unihs) & !is.na(freq) & freq >= min_maf & freq <= 1 - min_maf
+  z <- rep(NA_real_, length(unihs))
+  if (!any(keep)) return(list(ihs = z, logp = z))
+  if (!is.null(maf_bands)) {
+    raw <- data.frame(CHR = NA, POSITION = seq_along(unihs), UNIHS = unihs)
+    out <- .band_standardise(raw[keep, , drop = FALSE], freq[keep], maf_bands)
+    z[keep] <- out$IHS
+    lp <- rep(NA_real_, length(unihs)); lp[keep] <- out$LOGPVALUE
+    return(list(ihs = z, logp = lp))
+  }
+  fb <- if (freqbin >= 1) (1 - 2 * min_maf) / round(freqbin) else freqbin
+  br <- seq(min_maf, 1 - min_maf, fb)
+  bins <- if (length(br) < 2L) factor(rep("all", sum(keep)))
+          else cut(freq[keep], breaks = br, include.lowest = TRUE)
+  u <- unihs[keep]
+  m <- tapply(u, bins, mean, na.rm = TRUE)
+  sdv <- tapply(u, bins, stats::sd, na.rm = TRUE)
+  zz <- (u - m[bins]) / sdv[bins]
+  z[keep] <- as.numeric(zz)
+  lp <- rep(NA_real_, length(unihs))
+  lpk <- -log10(2 * stats::pnorm(-abs(as.numeric(zz))))
+  if (any(is.finite(lpk))) lpk[is.infinite(lpk)] <- max(lpk[is.finite(lpk)]) + 1
+  lp[keep] <- lpk
+  list(ihs = z, logp = lp)
 }
 
 .scan_group <- function(hap, rows, polarized, threads, maxgap = NA, scalegap = NA,
@@ -428,6 +545,109 @@ print.parasite_haplotypes <- function(x, ...) {
   }
   freqbin
 }
+# The contrast path: one row per (marker, allele pair), standardised together.
+#
+# The scan is run once per group as before, for the markers that have one contrast anyway.
+# Only the markers carrying more than two alleles cost anything extra, and each costs a
+# single `calc_ehh()` -- not a re-scan, because the per-allele integrals do not depend on
+# which other alleles are present.
+#
+# The standardisation is over **all** rows at once. A multiallelic marker contributing two
+# rows must have both judged against the same genome-wide distribution, which is why the
+# binning is done here rather than by `ihh2ihs()`: its output is keyed by position, and two
+# contrasts at one position are two rows with the same key.
+# `scan_hh()` reports a two-allele marker as MAJ/MIN -- ordered by *frequency*, with nothing
+# in the output saying which allele is which. The contrast rows are labelled by allele
+# **index** ("0>1"), so at every marker where allele 0 happens to be the minor one the label
+# and the arithmetic disagree and the ratio comes out inverted -- an exact sign flip on
+# log(iHH_0 / iHH_1), not an approximation. Measured on a 60-haplotype panel simulated at
+# p(alt) = 0.62: 59 of the 60 markers with allele 0 in the minority, |diff| up to 0.66.
+#
+# The haplotypes do carry the identity, so decide from them: whichever FREQ_ column equals
+# allele 0's frequency names allele 0's IHH_ column. At an exact 50/50 tie both columns match
+# and there is no way to tell, so return NA and let the caller pay for one `calc_ehh()`, which
+# is indexed by allele and cannot be ambiguous. Same for the case where rehh scored a
+# different set of haplotypes than we counted -- then neither column matches.
+.biallelic_unihs <- function(scan, ihh_cols, frq_cols, i, f0) {
+  hit <- abs(c(as.numeric(scan[[frq_cols[1]]][i]),
+               as.numeric(scan[[frq_cols[2]]][i])) - f0) < 1e-9
+  if (sum(hit, na.rm = TRUE) != 1L) return(NA_real_)
+  num <- which(hit); den <- 3L - num
+  log(as.numeric(scan[[ihh_cols[num]]][i]) / as.numeric(scan[[ihh_cols[den]]][i]))
+}
+
+.run_ihs_contrasts <- function(hap, rows, contrast, polarized, freqbin, min_maf, maf_bands,
+                               maxgap, scalegap, discard_at_border, threads, named_group) {
+  out <- list()
+  na_frac <- numeric(0)
+  for (l in names(rows)) {
+    r <- rows[[l]]
+    scan <- .scan_group(hap, r, polarized, threads, maxgap, scalegap, discard_at_border)
+    if (is.null(scan) || !nrow(scan)) next
+    na_frac <- c(na_frac, .border_na_frac(scan))
+
+    ihh_cols <- grep("^IHH_", names(scan))
+    frq_cols <- grep("^FREQ_", names(scan))
+    ids <- paste0(scan$CHR, ":", format(scan$POSITION, scientific = FALSE, trim = TRUE))
+    h <- hap$hap[r, , drop = FALSE]
+    jj <- match(ids, hap$map$snp_id)
+    n_alleles <- vapply(jj, function(j)
+      if (is.na(j)) 2L else length(unique(h[!is.na(h[, j]), j])), integer(1))
+    # allele 0's frequency among the haplotypes rehh scored, which is what says whether the
+    # scan's MAJ column is allele 0 or allele 1
+    freq0 <- vapply(jj, function(j)
+      if (is.na(j)) NA_real_ else mean(h[!is.na(h[, j]), j] == 0L), numeric(1))
+
+    rec <- list()
+    for (i in seq_len(nrow(scan))) {
+      if (n_alleles[i] <= 2L) {
+        # two alleles, one contrast -- the scan's own numbers, oriented onto the label
+        u <- .biallelic_unihs(scan, ihh_cols, frq_cols, i, freq0[i])
+        if (!is.na(u)) {
+          rec[[length(rec) + 1L]] <- data.frame(
+            chr = as.character(scan$CHR[i]), pos = as.numeric(scan$POSITION[i]),
+            snp_id = ids[i], contrast = "0>1",
+            freq = as.numeric(scan[[frq_cols[2]]][i]),
+            unihs = u, stringsAsFactors = FALSE)
+          next
+        }
+        # a 50/50 tie: which allele the scan called MAJ is unknowable from its output, so
+        # fall through to the per-allele integrals, which are indexed by allele
+      }
+      a <- .marker_allele_ihh(hap, r, ids[i], polarized, maxgap, scalegap,
+                              discard_at_border)
+      if (is.null(a)) next
+      for (pr in .allele_pairs(as.integer(names(a$ihh)), contrast)) {
+        i1 <- as.character(pr[1]); i2 <- as.character(pr[2])
+        rec[[length(rec) + 1L]] <- data.frame(
+          chr = as.character(scan$CHR[i]), pos = as.numeric(scan$POSITION[i]),
+          snp_id = ids[i], contrast = paste0(pr[1], ">", pr[2]),
+          freq = unname(a$freq[i2]),
+          unihs = log(unname(a$ihh[i1]) / unname(a$ihh[i2])),
+          stringsAsFactors = FALSE)
+      }
+    }
+    if (!length(rec)) next
+    df <- do.call(rbind, rec)
+    st <- .standardise_unihs(df$unihs, df$freq, freqbin, min_maf, maf_bands)
+    df$group <- l
+    df$freq_minor <- df$freq
+    df$ihs <- st$ihs
+    df$neg_log10_p <- st$logp
+    out[[length(out) + 1L]] <- df[!is.na(df$ihs),
+                                  c("group", "chr", "pos", "snp_id", "contrast",
+                                    "freq_minor", "unihs", "ihs", "neg_log10_p")]
+  }
+  .warn_border_na(na_frac, maxgap, discard_at_border)
+  if (!length(out)) {
+    warning("no group produced an iHS scan", call. = FALSE)
+    return(tibble::tibble())
+  }
+  df <- do.call(rbind, out)
+  df$group <- factor(df$group, levels = names(rows))
+  tibble::as_tibble(df)
+}
+
 
 #' Integrated haplotype score (iHS)
 #'
@@ -441,6 +661,30 @@ print.parasite_haplotypes <- function(x, ...) {
 #' versus derived. That is the standard treatment for *P. falciparum* and it means the
 #' *sign* of `ihs` should not be read as "selection on the derived allele" -- use
 #' `abs(ihs)` and `neg_log10_p`.
+#'
+#' @section Contrasts:
+#' `log(iHH_A / iHH_B)` is a ratio, so it needs exactly two terms and there is no k-allele
+#' iHS. At a marker carrying three alleles the honest answer is **k-1 contrasts**, each saying
+#' which two it compared, and the `contrast` column names them as `"0>1"`, `"0>2"` and so on
+#' in allele-index order (`$sites$alt` on the panel says which base each index is).
+#'
+#' `"ref"` compares each alternate against the reference only. That is what keeps independent
+#' origins apart: at a codon where three changes arose separately, pooling them into one
+#' "not reference" class merges exactly the distinction the scan exists to draw.
+#'
+#' What makes this cheap is that **per-allele iHH does not depend on which other alleles are
+#' at the marker** -- EHH for an allele class only ever involves that class's haplotypes. So
+#' every contrast at a marker comes out of one [rehh::calc_ehh()] call, and the numbers are
+#' identical to what an explicitly subset and recoded panel would give (verified to nine
+#' decimal places). Only multiallelic markers cost anything extra.
+#'
+#' A biallelic marker has one contrast, so `"ref"` reproduces `"none"` exactly, value for
+#' value. The standardisation is over every row at once, so a marker contributing two rows has
+#' both judged against the same genome-wide distribution.
+#'
+#' Downstream, `contrast` is a grouping key: [ihs_windows()], [ihs_genes()],
+#' [selection_peaks()] and [plot_ihs()] all split on it, because two contrasts at one position
+#' are two measurements rather than two SNPs at one site.
 #'
 #' @param hap A [parasite_haplotypes()] object.
 #' @param group Metadata column naming the grouping, a vector aligned to the haplotype
@@ -530,12 +774,23 @@ print.parasite_haplotypes <- function(x, ...) {
 #' @export
 run_ihs <- function(hap, group = NULL, meta = NULL, polarized = FALSE, freqbin = NULL,
                     min_maf = 0.05, maf_bands = NULL, min_samples = 4, maxgap = NA,
-                    scalegap = NA, discard_at_border = NULL, threads = 1) {
+                    scalegap = NA, discard_at_border = NULL, threads = 1,
+                    contrast = c("ref", "pairwise", "none")) {
   meta <- .normalise_meta(meta)
   .need_package("rehh", "run_ihs()")
   stopifnot(inherits(hap, "parasite_haplotypes"))
+  contrast <- match.arg(contrast)
   freqbin <- .resolve_freqbin(freqbin, polarized)
   rows <- .ihs_rows(hap, group, meta, min_samples)
+  if (!identical(contrast, "none") && !identical(hap$alleles, "index")) {
+    # A dosage panel has one alternate by construction, so there is only ever one contrast to
+    # draw and the two paths agree row for row. Fall back rather than making the caller ask.
+    contrast <- "none"
+  }
+  if (!identical(contrast, "none"))
+    return(.run_ihs_contrasts(hap, rows, contrast, polarized, freqbin, min_maf, maf_bands,
+                              maxgap, scalegap, discard_at_border, threads,
+                              named_group = !is.null(group)))
 
   out <- list()
   na_frac <- numeric(0)
@@ -653,10 +908,17 @@ ihs_windows <- function(scan, window = 50000, step = NULL, threshold = 2,
   if (!nrow(df)) stop(sprintf("no finite `%s` values to summarise", metric), call. = FALSE)
   df$chr <- as.character(df$chr)
   grp <- if ("group" %in% names(df)) as.character(df$group) else NULL
+  # A contrast is a separate measurement that happens to sit at the same position as another,
+  # so two of them must not be summarised as two SNPs at one site. Splitting on it keeps each
+  # allele's scan its own scan.
+  ctr <- if ("contrast" %in% names(df)) as.character(df$contrast) else NULL
 
-  blocks <- split(df, if (is.null(grp)) list(df$chr) else list(grp, df$chr), drop = TRUE)
+  key <- c(if (!is.null(grp)) list(grp), if (!is.null(ctr)) list(ctr), list(df$chr))
+  blocks <- split(df, key, drop = TRUE)
   rows <- lapply(blocks, function(d) {
     w <- .window_rows(d, window, step, threshold, metric)
+    if (!is.null(ctr)) w <- cbind(contrast = as.character(d$contrast[1]), w,
+                                  stringsAsFactors = FALSE)
     if (!is.null(grp)) w <- cbind(group = as.character(d$group[1]), w,
                                   stringsAsFactors = FALSE)
     w
@@ -671,9 +933,24 @@ ihs_windows <- function(scan, window = 50000, step = NULL, threshold = 2,
   # keep the scan's own group order rather than the alphabetical one split() left behind
   if (!is.null(grp) && is.factor(scan$group))
     out$group <- factor(out$group, levels = levels(scan$group))
-  out <- out[, c(if (!is.null(grp)) "group", "chr", "start", "end", "pos", "n_snps",
+  out <- out[, c(if (!is.null(grp)) "group", if (!is.null(ctr)) "contrast",
+                 "chr", "start", "end", "pos", "n_snps",
                  "n_extreme", "frac_extreme", "max_abs")]
   tibble::as_tibble(out[order(out$chr, out$start), , drop = FALSE])
+}
+
+# How many alleles each marker carries within one group, aligned to `ids`. Reported rather
+# than warned about, so a caller can drop the markers where the two populations disagree.
+.alleles_at <- function(hap, rows, ids) {
+  j <- match(ids, hap$map$snp_id)
+  h <- hap$hap[rows, , drop = FALSE]
+  vapply(j, function(k) if (is.na(k)) NA_integer_
+         else length(unique(h[!is.na(h[, k]), k])), integer(1))
+}
+
+# "run_rsb()" -> "Rsb". Kept beside .cross_pop so the two cannot drift.
+.stat_name <- function(label) {
+  switch(label, "run_rsb()" = "Rsb", "run_xpehh()" = "XP-EHH", sub("\\(\\)$", "", label))
 }
 
 .cross_pop <- function(hap, group, meta, pairs, polarized, min_samples, threads, fn,
@@ -699,11 +976,38 @@ ihs_windows <- function(scan, window = 50000, step = NULL, threshold = 2,
     if (is.null(res) || !nrow(res)) next
     val <- res[[grep(value_col, names(res))[1]]]
     lp <- res[[grep("LOGPVALUE", names(res))[1]]]
+    ids <- paste0(res$CHR, ":", format(res$POSITION, scientific = FALSE, trim = TRUE))
     out[[length(out) + 1L]] <- data.frame(
       pair = paste(a, "vs", b), pop1 = a, pop2 = b,
       chr = as.character(res$CHR), pos = as.numeric(res$POSITION),
-      snp_id = paste0(res$CHR, ":", format(res$POSITION, scientific = FALSE, trim = TRUE)),
+      snp_id = ids,
+      n_alleles_pop1 = .alleles_at(hap, rows[[a]], ids),
+      n_alleles_pop2 = .alleles_at(hap, rows[[b]], ids),
       value = val, neg_log10_p = lp, stringsAsFactors = FALSE)
+  }
+  # iES is a site-level homozygosity pooled across allele classes, so it falls as the focal is
+  # split into more of them -- measured at 36% for three alleles and 44% for four, on
+  # identical haplotypes. XP-EHH divides two of those, so a marker carrying different numbers
+  # of alleles in the two populations is compared on different footings. iNES normalises by
+  # the focal homozygosity and moves by 1% or less, so Rsb is not affected and does not warn.
+  if (identical(label, "run_xpehh()") && length(out)) {
+    all_out <- do.call(rbind, out)
+    hit <- which(all_out$n_alleles_pop1 != all_out$n_alleles_pop2 &
+                   pmax(all_out$n_alleles_pop1, all_out$n_alleles_pop2) > 2L)
+    if (length(hit)) {
+      worst <- hit[which.max(abs(all_out$n_alleles_pop1[hit] - all_out$n_alleles_pop2[hit]))]
+      warning(sprintf(paste0("%d marker(s) carry a different allele count in the two ",
+                             "populations (worst: %s, %d vs %d). XP-EHH divides their iES, ",
+                             "and iES falls with the number of allele classes at the focal ",
+                             "-- about 36%% for three and 44%% for four on identical ",
+                             "haplotypes -- so those scores partly measure the diversity ",
+                             "difference rather than the haplotype-length difference. ",
+                             "`n_alleles_pop1`/`n_alleles_pop2` are reported so they can be ",
+                             "dropped; Rsb reads iNES instead and is not affected."),
+                      length(hit), all_out$snp_id[worst],
+                      all_out$n_alleles_pop1[worst], all_out$n_alleles_pop2[worst]),
+              call. = FALSE)
+    }
   }
   if (!length(out)) {
     warning("no group pair produced a scan", call. = FALSE)
@@ -816,7 +1120,12 @@ run_xpehh <- function(hap, group, meta = NULL, pairs = NULL, polarized = FALSE,
 #' @export
 ihs_genes <- function(scan, genes = NULL, within = 0, min_snps = 1) {
   if (!nrow(scan)) return(tibble::tibble())
-  by <- if ("group" %in% names(scan)) "group" else "pair"
+  # A gene is summarised once per group *and once per contrast*: two contrasts at one
+  # position are two measurements, and taking the max over both would report whichever
+  # allele happened to score higher as though it were the gene's answer.
+  by <- if ("group" %in% names(scan)) "group" else if ("pair" %in% names(scan)) "pair" else
+    NULL
+  has_contrast <- "contrast" %in% names(scan)
   value <- if ("ihs" %in% names(scan)) "ihs" else "value"
   g <- as.data.frame(if (is.null(genes)) PF3D7_GENES else genes)
   if (!"chr" %in% names(g)) {
@@ -833,13 +1142,17 @@ ihs_genes <- function(scan, genes = NULL, within = 0, min_snps = 1) {
       scan$pos >= g$start[i] - within & scan$pos < g$end[i] + within
     if (!any(hit)) next
     sub <- scan[hit, , drop = FALSE]
-    for (l in unique(sub[[by]])) {
-      s <- sub[sub[[by]] == l, , drop = FALSE]
+    keys <- if (is.null(by)) rep("all", nrow(sub)) else as.character(sub[[by]])
+    if (has_contrast) keys <- paste(keys, as.character(sub$contrast), sep = "\r")
+    for (l in unique(keys)) {
+      s <- sub[keys == l, , drop = FALSE]
       s <- s[is.finite(s$neg_log10_p), , drop = FALSE]
       if (nrow(s) < min_snps) next
       k <- which.max(s$neg_log10_p)
+      parts <- strsplit(l, "\r", fixed = TRUE)[[1]]
       rows[[length(rows) + 1L]] <- data.frame(
-        by = as.character(l), gene = as.character(g$name[i]),
+        by = parts[1], contrast = if (has_contrast) parts[2] else NA_character_,
+        gene = as.character(g$name[i]),
         chr = as.character(g$chr[i]), start = as.numeric(g$start[i]),
         end = as.numeric(g$end[i]), n_snps = nrow(s),
         max_neg_log10_p = s$neg_log10_p[k],
@@ -851,9 +1164,16 @@ ihs_genes <- function(scan, genes = NULL, within = 0, min_snps = 1) {
   }
   if (!length(rows)) return(tibble::tibble())
   out <- do.call(rbind, rows)
-  names(out)[1] <- by
-  out[[by]] <- factor(out[[by]], levels = levels(scan[[by]]) %||% unique(out[[by]]))
-  out <- out[order(out[[by]], -out$max_neg_log10_p), , drop = FALSE]
+  if (!has_contrast) out$contrast <- NULL
+  if (is.null(by)) {
+    out$by <- NULL
+    ord <- order(-out$max_neg_log10_p)
+  } else {
+    names(out)[1] <- by
+    out[[by]] <- factor(out[[by]], levels = levels(scan[[by]]) %||% unique(out[[by]]))
+    ord <- order(out[[by]], -out$max_neg_log10_p)
+  }
+  out <- out[ord, , drop = FALSE]
   rownames(out) <- NULL
   tibble::as_tibble(out)
 }
@@ -1013,6 +1333,35 @@ subset_haplotypes <- function(x, samples = NULL, meta = NULL, ...) {
 #' Samples are matched by name, not position. The marker is inserted in coordinate order, so
 #' the haplotypes still read along the genome, and a position already present is an error
 #' rather than a silent replacement.
+#'
+#' @section Allele count: not a reduction, and not a problem here:
+#' `scan_hh()` reports only two allele frequencies whatever a marker carries, which looks like
+#' a reduction and is not one for this statistic. Rsb's input is `iNES`, a **site-level**
+#' homozygosity computed over every haplotype: at a four-allele marker `scan_hh()`'s `iNES` is
+#' identical to [rehh::calc_ehhs()]'s over the full data. No haplotype is dropped and no allele
+#' is ignored; only the reported `FREQ_` columns reduce, and this function does not return them.
+#'
+#' `iNES` normalises by the focal site's own homozygosity, so splitting the same haplotypes
+#' into more allele classes moves it by 1% or less. That is why Rsb carries no multiallelic
+#' warning while [run_xpehh()] does -- see there.
+#'
+#' @section Allele count: iES falls as the focal splits, and XP-EHH divides two of them:
+#' No haplotype is dropped and no allele ignored -- `scan_hh()`'s `iES` at a four-allele marker
+#' is identical to [rehh::calc_ehhs()]'s over the full data, and only the reported `FREQ_`
+#' columns reduce. But `iES` is a site-level homozygosity **pooled across allele classes**, so
+#' it falls as the focal is split into more of them. Measured on identical haplotypes:
+#'
+#' | alleles at the focal | `iES` | `iNES` |
+#' |---|---|---|
+#' | 2 | 991.8 | 2406.7 |
+#' | 3 | 631.5 (-36%) | 2388.6 (-1%) |
+#' | 4 | 558.5 (-44%) | 2395.8 (0%) |
+#'
+#' XP-EHH divides one population's `iES` by the other's, so a marker carrying **different**
+#' numbers of alleles in the two populations puts them on different footings, and the score
+#' partly measures the diversity difference rather than the haplotype-length difference. It
+#' warns when that happens, and reports `n_alleles_pop1` / `n_alleles_pop2` so those markers
+#' can be dropped. [run_rsb()] reads `iNES` instead and is not affected.
 #'
 #' @param hap A [parasite_haplotypes()] object.
 #' @param vcf A VCF/BCF holding the marker(s) to add. Needs `bcftools` on `PATH`.

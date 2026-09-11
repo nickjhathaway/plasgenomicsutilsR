@@ -16,14 +16,22 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
 # the structure) and wrong wherever that correlation IS the signal: differentiation, diversity,
 # LD, haplotype scans, haplotype plots. Those ask for the "full" panel and get it when the
 # object holds one, falling back to whatever it has -- with one note from the object saying so.
-.geno_for <- function(x, genotype = NULL, prefer = "full") {
-  if (!is.null(genotype)) return(.coerce_geno(genotype))
-  if (inherits(x, "PopStructure")) return(x$genotype(prefer = prefer))
-  .coerce_geno(x)
+# `needs` is what the analysis can read, not what the object happens to hold. A PopStructure
+# built from allele indices derives its own biallelic dosage view for a dosage analysis, so
+# nobody has to keep two objects and remember which one each statistic takes.
+.geno_for <- function(x, genotype = NULL, prefer = "full", needs = "dosage",
+                      what = "this statistic") {
+  if (!is.null(genotype)) return(.coerce_geno(genotype, what, needs))
+  if (inherits(x, "PopStructure")) return(x$genotype(prefer = prefer, needs = needs))
+  .coerce_geno(x, what, needs)
 }
 
-.coerce_geno <- function(g) {
+.coerce_geno <- function(g, what = "this statistic", needs = "dosage") {
+  # The one place a `load_genotypes()` list becomes a bare matrix, and so the last place its
+  # `encoding` can be read. A dosage and an allele index are both integer matrices and are
+  # indistinguishable once the list is gone, so anything that needs dosages has to ask here.
   if (is.list(g) && !is.null(g$genotype)) {
+    if (identical(needs, "dosage")) .require_dosage(g, what)
     m <- as.matrix(g$genotype)
     if (is.null(rownames(m)) && !is.null(g$sample.id)) rownames(m) <- g$sample.id
     return(m)
@@ -42,6 +50,64 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
     N[l, ] <- 2 * called                        # gene copies (0 where nothing called)
   }
   list(P = P, N = N)
+}
+
+# Per-group per-allele frequencies from an allele-index matrix: one sites x alleles matrix
+# per group. This is what `.group_freqs()` could not supply -- it collapses a record to one
+# ALT frequency, so there was no `p_i` vector for the k-allele formulas to sum over.
+.group_allele_freqs <- function(G, grp, levs) {
+  N <- matrix(NA_real_, length(levs), ncol(G), dimnames = list(levs, colnames(G)))
+  P <- list()
+  for (l in levs) {
+    Gi <- G[which(grp == l), , drop = FALSE]
+    fr <- .index_allele_freqs(Gi)
+    P[[l]] <- fr$P
+    N[l, ] <- fr$n
+  }
+  # pad every group to the widest allele count so the pairwise sums line up
+  kmax <- max(vapply(P, ncol, integer(1)))
+  P <- lapply(P, function(m) {
+    if (ncol(m) == kmax) return(m)
+    cbind(m, matrix(0, nrow(m), kmax - ncol(m)))
+  })
+  list(P = P, N = N)
+}
+
+# One differentiation statistic for a pair of groups, for any number of alleles.
+#
+# Jost's D, Hedrick's G'st and Hudson's Fst are all defined for k alleles; the code wrote the
+# two-allele shortcuts and said so in its own comments. The only thing that changes is the
+# diversity term: `1 - (p^2 + (1-p)^2)` becomes `1 - sum(p_i^2)`, and Hudson's numerator and
+# denominator are summed over alleles. The `2` in the D formula is `n/(n-1)` for two
+# populations and was always right.
+#
+# `Pa` and `Pb` are sites x alleles. On a two-column input every number here is identical to
+# `.pair_diff()`'s, which a test pins.
+.pair_diff_k <- function(Pa, Pb, Na, Nb, statistic, clamp) {
+  Pa <- as.matrix(Pa); Pb <- as.matrix(Pb)
+  ok <- Na > 1 & Nb > 1 & is.finite(rowSums(Pa)) & is.finite(rowSums(Pb))
+  if (statistic == "fst") {
+    # Hudson's estimator, summed over alleles: the biallelic form counts each allele's
+    # contribution once, and with k alleles there are k of them
+    num <- rowSums((Pa - Pb)^2) / 2 -
+      rowSums(Pa * (1 - Pa)) / (Na - 1) / 2 - rowSums(Pb * (1 - Pb)) / (Nb - 1) / 2
+    den <- rowSums(Pa * (1 - Pb)) / 2 + rowSums(Pb * (1 - Pa)) / 2
+    v <- num / den
+    v[!is.finite(den) | den == 0] <- 0
+  } else {
+    ha <- 1 - rowSums(Pa^2)
+    hb <- 1 - rowSums(Pb^2)
+    Nh <- 2 / (1 / Na + 1 / Nb)
+    Hs <- (Nh / (Nh - 1)) * (ha + hb) / 2
+    Pbar <- (Pa + Pb) / 2
+    Ht <- 1 - rowSums(Pbar^2) + Hs / (Nh * 2)
+    v <- switch(statistic,
+                jost_d      = (Ht - Hs) / (1 - Hs) * 2,
+                gst_hedrick = ((Ht - Hs) / Ht) * (1 + Hs) / (1 - Hs))
+  }
+  v[!ok] <- NA_real_
+  if (isTRUE(clamp)) v <- pmin(pmax(v, 0), 1)
+  v
 }
 
 # one differentiation statistic for a pair of groups, vectorised over SNPs
@@ -116,11 +182,14 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
 #' @export
 pop_diff <- function(x, group = NULL,
                      statistic = c("jost_d", "gst_hedrick", "fst"),
-                     meta = NULL, clamp = TRUE, genotype = NULL) {
+                     meta = NULL, clamp = TRUE, genotype = NULL,
+                     alleles = c("dosage", "index")) {
   meta <- .normalise_meta(meta)
   statistic <- match.arg(statistic)
+  alleles <- match.arg(alleles)
+  need <- if (identical(alleles, "index")) "allele_index" else "dosage"
   if (inherits(x, "PopStructure")) {
-    G <- .geno_for(x, genotype)
+    G <- .geno_for(x, genotype, what = "pop_diff()", needs = need)
     meta <- x$get_meta()
     if (is.null(group)) group <- setdiff(names(meta), "sample")[1]
     grp <- as.character(meta[[group]])[match(rownames(G), meta$sample)]
@@ -138,13 +207,16 @@ pop_diff <- function(x, group = NULL,
   }
   if (length(levs) < 2) stop("need at least two groups", call. = FALSE)
 
-  gf <- .group_freqs(G, grp, levs)
+  gf <- if (identical(alleles, "index")) .group_allele_freqs(G, grp, levs)
+        else .group_freqs(G, grp, levs)
   pairs <- utils::combn(levs, 2)
   D <- matrix(NA_real_, ncol(G), ncol(pairs),
               dimnames = list(colnames(G), apply(pairs, 2, paste, collapse = " vs ")))
   for (k in seq_len(ncol(pairs))) {
     a <- pairs[1, k]; b <- pairs[2, k]
-    D[, k] <- .pair_diff(gf$P[a, ], gf$P[b, ], gf$N[a, ], gf$N[b, ], statistic, clamp)
+    D[, k] <- if (identical(alleles, "index"))
+      .pair_diff_k(gf$P[[a]], gf$P[[b]], gf$N[a, ], gf$N[b, ], statistic, clamp)
+    else .pair_diff(gf$P[a, ], gf$P[b, ], gf$N[a, ], gf$N[b, ], statistic, clamp)
   }
   structure(list(D = D, snp = colnames(G), groups = levs,
                  pairs = data.frame(a = pairs[1, ], b = pairs[2, ], stringsAsFactors = FALSE),

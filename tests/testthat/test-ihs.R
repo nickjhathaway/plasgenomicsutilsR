@@ -501,3 +501,33 @@ test_that("run_ihs says when a marker had more than two alleles", {
   expect_null(plasgenomicsutilsR:::.multiallelic_drop(
     mk(0:1, c(.6, .4)), seq_len(70)))
 })
+
+test_that("run_rsb and run_xpehh do NOT reduce to two alleles, despite scan_hh's reporting", {
+  skip_if_not_installed("rehh")
+  # Phase 0 gave these two the iHS warning, which said their score was "a two-allele contrast
+  # on a subset of the haplotypes". **That was wrong** and this pins the correction: their
+  # input is `iES`/`iNES`, site-level homozygosities computed over every haplotype whatever
+  # the allele count. Only `scan_hh`'s reported FREQ_ columns reduce, and `.cross_pop()` never
+  # returns those. See test-cross-pop-multiallelic.R for the measurement and for the real
+  # confound, which is XP-EHH's sensitivity to a differing allele count between populations.
+  mk <- function(codes, probs, seed = 3) {
+    set.seed(seed); n <- 80; m <- 30
+    H <- matrix(stats::rbinom(n * m, 1, 0.4), n, m)
+    H[, 15] <- sample(codes, n, TRUE, prob = probs)
+    map <- data.frame(chr = "Pf3D7_01_v3", pos = seq(1000, by = 500, length.out = m),
+                      snp_id = paste0("Pf3D7_01_v3:",
+                                      seq(1000, by = 500, length.out = m)),
+                      stringsAsFactors = FALSE)
+    colnames(H) <- map$snp_id; rownames(H) <- paste0("s", seq_len(n))
+    structure(list(hap = H, map = map,
+                   meta = data.frame(sample = rownames(H),
+                                     grp = rep(c("a", "b"), each = n / 2),
+                                     stringsAsFactors = FALSE),
+                   filtering = list()), class = "parasite_haplotypes")
+  }
+  # both groups span the same alleles here, so there is nothing to warn about either way
+  h <- mk(0:2, c(.5, .35, .15))
+  expect_no_warning(run_rsb(h, group = "grp"))
+  expect_no_warning(run_xpehh(h, group = "grp"))
+  expect_no_warning(run_rsb(mk(0:1, c(.6, .4)), group = "grp"))
+})

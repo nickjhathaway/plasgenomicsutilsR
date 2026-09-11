@@ -40,6 +40,7 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-restrict}{\code{PopStructure$restrict()}}
     \item \href{#method-PopStructure-subset}{\code{PopStructure$subset()}}
     \item \href{#method-PopStructure-genotype}{\code{PopStructure$genotype()}}
+    \item \href{#method-PopStructure-encoding}{\code{PopStructure$encoding()}}
     \item \href{#method-PopStructure-pca_scores}{\code{PopStructure$pca_scores()}}
     \item \href{#method-PopStructure-pca_variance}{\code{PopStructure$pca_variance()}}
     \item \href{#method-PopStructure-prcomp}{\code{PopStructure$prcomp()}}
@@ -48,6 +49,7 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-get_colors}{\code{PopStructure$get_colors()}}
     \item \href{#method-PopStructure-get_colours}{\code{PopStructure$get_colours()}}
     \item \href{#method-PopStructure-allele}{\code{PopStructure$allele()}}
+    \item \href{#method-PopStructure-sites}{\code{PopStructure$sites()}}
     \item \href{#method-PopStructure-positions}{\code{PopStructure$positions()}}
     \item \href{#method-PopStructure-pruned}{\code{PopStructure$pruned()}}
     \item \href{#method-PopStructure-get_samples}{\code{PopStructure$get_samples()}}
@@ -91,7 +93,8 @@ west <- ps$subset(population = c("PopA", "PopB"))
   pruned = NULL,
   full = NULL,
   one_based = FALSE,
-  colours = NULL
+  colours = NULL,
+  pca_panel = c("auto", "onehot", "dosage")
 )}
     \if{html}{\out{</div>}}
   }
@@ -112,6 +115,12 @@ haplotypes, since it drops SNPs precisely for being correlated with a neighbour.
       \item{\code{one_based}}{The genotype column names carry 1-based VCF positions (a matrix built
 by an older \code{load_genotypes()}, or read straight off a VCF); shift them to the 0-based
 convention on the way in.}
+      \item{\code{pca_panel}}{Which derived view PCA and UMAP run on when the panel holds allele
+indices. \code{"onehot"} gives every ALT its own indicator column, so a multiallelic site
+still reaches the ordination; \code{"dosage"} drops those sites, which is what the object
+did before. \code{"auto"} (default) takes one-hot when the panel holds a multiallelic site
+and dosage otherwise -- so a wholly biallelic panel's PCA is unchanged, because on a
+biallelic site the indicator column \emph{is} the alt-dosage column.}
     }
     \if{html}{\out{</div>}}
   }
@@ -126,7 +135,14 @@ pruned SNPs for PCA / admixture and the full set for the analyses where the
 correlation between neighbouring SNPs is the signal.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$add_panel(name, geno, allele = NULL, pruned = NULL)}
+    \preformatted{PopStructure$add_panel(
+  name,
+  geno,
+  allele = NULL,
+  pruned = NULL,
+  sites = NULL,
+  encoding = NULL
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -436,7 +452,7 @@ otherwise look exactly like a sample that was already gone.}
   The genotype matrix for the active samples (samples x SNPs).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{PopStructure$genotype(panel = NULL, prefer = NULL)}
+    \preformatted{PopStructure$genotype(panel = NULL, prefer = NULL, needs = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -445,6 +461,31 @@ otherwise look exactly like a sample that was already gone.}
       \item{\code{panel}}{Panel to return by name; the primary one when \code{NULL}.}
       \item{\code{prefer}}{Panel to use \emph{if the object has it}, falling back to the primary one --
 how an analysis asks for the panel it wants without requiring it.}
+      \item{\code{needs}}{What the caller can read: \code{"dosage"}, \code{"allele_index"}, or \code{"onehot"}
+(one indicator column per ALT, which is how a multiallelic site reaches PCA). The
+object serves or derives the panel that answers it, so one object covers every
+analysis. \code{NULL} takes the panel as it is.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-encoding"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-encoding}{}}}
+\subsection{\code{PopStructure$encoding()}}{
+  How a panel's \verb{$genotype()} is coded: \code{"dosage"} (alternate copies) or
+\code{"allele_index"} (which allele each sample carries). An object built from a bare
+matrix reports \code{"dosage"}, since that is what one has always been.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$encoding(panel = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{panel}}{Which panel to report on; the primary one when \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -549,6 +590,29 @@ object does not record it (built from a bare matrix, or saved by an older versio
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{panel}}{Which panel to report on; the primary one when \code{NULL}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-sites"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-sites}{}}}
+\subsection{\code{PopStructure$sites()}}{
+  The per-record allele table for a panel, or \code{NULL} when the panel was
+built from a bare matrix that never carried one. One row per genotype column, in the
+same order; see \code{\link[=load_genotypes]{load_genotypes()}} for the columns. Ask it before reading a
+per-allele number off a dosage matrix -- a column with \code{n_alt_real > 1} has had its
+alternates collapsed onto one number and cannot answer one.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$sites(panel = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{panel}}{Which panel to describe; the primary one when \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }

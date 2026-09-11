@@ -10,6 +10,15 @@
 
 # Per-sample allele state, from a metadata column or a vector, as character with NA for
 # unknown. Two states is the usual case but nothing here requires exactly two.
+# Rows of a (locus, group) frame counted against the result's own key order.
+.count_by_key <- function(df, kk) {
+  if (!nrow(df)) return(rep(0L, length(kk)))
+  tb <- table(paste(df$locus, df$group, sep = "\r"))
+  out <- as.integer(tb[kk])
+  out[is.na(out)] <- 0L
+  out
+}
+
 .allele_states <- function(allele, meta, samples) {
   if (is.character(allele) && length(allele) == 1 && allele %in% names(meta)) {
     v <- stats::setNames(as.character(meta[[allele]]), as.character(meta$sample))
@@ -50,6 +59,15 @@
 #'   the pairs that *could* share, how many do? This is usually the better powered of the
 #'   two, because it uses every pair rather than only the sharing ones, so read it first.
 #'
+#' @section Which states are contrasted:
+#' The non-carrier class is the **named reference state only**: a sample carrying some third
+#' state is excluded from both strata, not pooled into the reference. That is deliberate and
+#' is the whole point at a multiallelic site. At *pfpx1* codon 384, D384A, D384G and D384Y
+#' arose independently, so pooling the alternates into one "not reference" class would merge
+#' origins the analysis exists to separate. To contrast two alternates directly, name them as
+#' `carrier` and `reference`; that is a different question and it should look different in
+#' the call. The pairs left out either way are counted in `n_excluded_other_allele`.
+#'
 #' @section The discordant stratum is a check, not a result:
 #' A pair sharing an interval by descent shares whatever allele sits in it, so pairs that are
 #' IBD across the locus and discordant at the variant should be rare. A large
@@ -60,9 +78,12 @@
 #' @param loci Loci to test, as [ibd_block_extension_test()] takes them.
 #' @param allele The variant to split on: the name of a metadata column, or a named vector
 #'   of `sample -> state`. Samples with `NA` are left out of every stratum.
-#' @param carrier,reference Which states count as carrying and as reference. Default: the
+#' @param carrier,reference Which states count as carrying and as reference. With exactly
+#'   two states either may be left out and the other is implied; leaving both out reads the
 #'   column's first two levels, `reference` first, with a message saying which way round it
-#'   was read. Name them explicitly when the labels are not self-evident.
+#'   was read. With **three or more states both must be named** -- there is nothing to imply
+#'   the second one from, and guessing would contrast one alternate against another. Name
+#'   them explicitly when the labels are not self-evident.
 #' @param min_pairs Pairs a stratum needs at a locus before its length statistic is computed
 #'   (default `5`). The fraction statistic is reported whatever the count, since it has a
 #'   denominator either way.
@@ -75,6 +96,11 @@
 #'       [ibd_block_extension_test()].}
 #'     \item{`n_carrier`, `n_reference`, `n_discordant`}{pairs IBD across the locus in each
 #'       stratum. Report all three; see the note on the discordant one.}
+#'     \item{`n_excluded_other_allele`}{pairs IBD across the locus that were left out
+#'       because an end carries a state that is neither `carrier` nor `reference`. Zero at a
+#'       two-state locus. These are not discordant and not unknown, so they would otherwise
+#'       be invisible -- and at a multiallelic locus they can be the pairs that would show
+#'       the interval is wider than the haplotype.}
 #'     \item{`ratio_carrier`, `ratio_reference`}{`paired_ratio` within each stratum.}
 #'     \item{`ratio_contrast`}{`ratio_carrier / ratio_reference` on the per-pair scale, so
 #'       `1` means carriage makes no difference to segment length.}
@@ -134,10 +160,24 @@ ibd_block_extension_by_allele <- function(x, loci, allele, carrier = NULL, refer
     reference <- lv[1]; carrier <- lv[2]
     message("reading `", reference, "` as reference and `", carrier, "` as carrier; ",
             "pass carrier=/reference= to swap them")
-  } else if (is.null(reference)) {
-    reference <- setdiff(lv, carrier)[1]
-  } else if (is.null(carrier)) {
-    carrier <- setdiff(lv, reference)[1]
+  } else if (is.null(reference) || is.null(carrier)) {
+    # Only one side was named. With two states the other is implied; with three or more
+    # there is nothing to imply it, and taking the first remaining level in sort order
+    # would silently contrast one alternate against another -- at a codon carrying D384A,
+    # D384G and D384Y, `carrier = "D384A"` would be measured against D384G, two independent
+    # origins, with no message. The no-argument path above already refuses this; so does
+    # this one.
+    if (length(lv) > 2) {
+      named <- if (is.null(reference)) "carrier" else "reference"
+      missing <- if (is.null(reference)) "reference" else "carrier"
+      stop("`allele` has ", length(lv), " states (", paste(lv, collapse = ", "),
+           "); with `", named, " =` given, `", missing,
+           " =` cannot be inferred -- name it too. Contrasting one alternate against ",
+           "another is a different question from contrasting it against the reference.",
+           call. = FALSE)
+    }
+    if (is.null(reference)) reference <- setdiff(lv, carrier)[1]
+    else carrier <- setdiff(lv, reference)[1]
   }
   if (is.na(carrier) || is.na(reference) || identical(carrier, reference))
     stop("`carrier` and `reference` must be two different states of `allele`", call. = FALSE)
@@ -151,6 +191,15 @@ ibd_block_extension_by_allele <- function(x, loci, allele, carrier = NULL, refer
   pr$a2 <- code(pr$sample2)
   pr$stratum <- ifelse(is.na(pr$a1) | is.na(pr$a2), NA_character_,
                        ifelse(pr$a1 == pr$a2, pr$a1, "discordant"))
+
+  # Pairs dropped because an end carries a *third* state -- both states known, neither the
+  # carrier nor the reference. They are not discordant (that column is carrier-vs-reference)
+  # and they are not unknown, so without a count of their own they vanish from a result the
+  # documentation tells the reader to judge by `n_discordant`. At a multiallelic locus these
+  # can be exactly the pairs that would show the interval is wider than the haplotype.
+  known <- !is.na(unname(st$state[pr$sample1])) & !is.na(unname(st$state[pr$sample2]))
+  excl <- pr[is.na(pr$stratum) & known, c("locus", "group"), drop = FALSE]
+
   pr <- pr[!is.na(pr$stratum), , drop = FALSE]
   if (!nrow(pr))
     stop("no sharing pair has a known `allele` state at both ends", call. = FALSE)
@@ -184,7 +233,8 @@ ibd_block_extension_by_allele <- function(x, loci, allele, carrier = NULL, refer
     locus = key$locus, group = key$group,
     n_carrier = as.integer(pick("carrier")),
     n_reference = as.integer(pick("reference")),
-    n_discordant = as.integer(pick("discordant")))
+    n_discordant = as.integer(pick("discordant")),
+    n_excluded_other_allele = as.integer(.count_by_key(excl, kk)))
 
   from_strata <- function(nm, col) {
     sub <- strata[strata$stratum == nm, , drop = FALSE]
@@ -235,7 +285,7 @@ ibd_block_extension_by_allele <- function(x, loci, allele, carrier = NULL, refer
   res$locus <- factor(res$locus, levels = levels(base$locus))
   res <- res[order(res$locus, res$p_fraction), , drop = FALSE]
   res <- res[, c("locus", "name", "gene_id", "chr", "start", "end", "span_bp", "group",
-                 "n_carrier", "n_reference", "n_discordant",
+                 "n_carrier", "n_reference", "n_discordant", "n_excluded_other_allele",
                  "ratio_carrier", "ratio_reference", "ratio_contrast", "p_length", "q_length",
                  "n_carrier_possible", "n_reference_possible", "frac_carrier",
                  "frac_reference", "odds_ratio", "p_fraction", "q_fraction")]

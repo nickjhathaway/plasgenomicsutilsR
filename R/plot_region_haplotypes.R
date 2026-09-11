@@ -20,12 +20,16 @@
 # alleles cannot say which of them it is; the set can. States are named from the alleles they
 # contain, and only the states that occur are returned -- the full enumeration of a
 # triallelic site is seven, and most of them are usually empty.
-.read_genotype_sets <- function(vcf) {
+.read_genotype_sets <- function(vcf, names = c("index", "base")) {
+  names <- match.arg(names)
   if (!nzchar(Sys.which("bcftools")))
-    stop("`additional_genotypes` needs bcftools on PATH", call. = FALSE)
+    stop("reading allele sets needs bcftools on PATH", call. = FALSE)
   if (!file.exists(vcf)) stop("no such file: ", vcf, call. = FALSE)
   samples <- system2("bcftools", c("query", "-l", shQuote(vcf)), stdout = TRUE, stderr = FALSE)
-  lines <- system2("bcftools", c("query", "-f", shQuote("%CHROM\t%POS\t%ALT[\t%GT]\n"),
+  # REF comes back in the same pass: fetching it per record with `-r` would need the callset
+  # to be indexed, which a hand-built VCF need not be.
+  lines <- system2("bcftools", c("query", "-f",
+                                 shQuote("%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n"),
                                  shQuote(vcf)), stdout = TRUE, stderr = FALSE)
   if (!length(lines)) stop("no records in ", basename(vcf), call. = FALSE)
   parts <- strsplit(lines, "\t", fixed = TRUE)
@@ -37,8 +41,10 @@
   for (j in seq_along(parts)) {
     chrom <- parts[[j]][1]
     pos <- as.integer(parts[[j]][2])
-    n_alleles <- 1L + length(strsplit(parts[[j]][3], ",", fixed = TRUE)[[1]])
-    gt <- parts[[j]][-(1:3)]
+    ref <- parts[[j]][3]
+    alts <- strsplit(parts[[j]][4], ",", fixed = TRUE)[[1]]
+    n_alleles <- 1L + length(alts)
+    gt <- parts[[j]][-(1:4)]
     sets <- lapply(strsplit(gt, "[/|]"), function(v) {
       v <- suppressWarnings(as.integer(v[v != "."]))
       if (!length(v)) NA_integer_ else sort(unique(v))
@@ -47,7 +53,8 @@
                   else paste(v, collapse = ","), character(1))
     seen <- sort(unique(key[!is.na(key)]))
     nm <- vapply(seen, function(k) .allele_set_name(
-      as.integer(strsplit(k, ",", fixed = TRUE)[[1]]), n_alleles), character(1))
+      as.integer(strsplit(k, ",", fixed = TRUE)[[1]]), n_alleles,
+      alleles = if (identical(names, "base")) c(ref, alts) else NULL), character(1))
     codes[, j] <- match(key, seen) - 1L
     levs[[j]] <- unname(nm)
     ids[j] <- paste0(chrom, ":", pos - 1L)      # 0-based, as every id in this package is
@@ -78,10 +85,68 @@
   picked
 }
 
+# Attach the extra fills, saying so when there are not enough. Two distinct allele states
+# sharing a colour is exactly the confusion the greedy pick above exists to avoid, and it
+# fails silently -- the plot looks perfectly fine. So the states past the end of the palette
+# get no fill (ggplot draws them grey and lists them in the legend) and the caller is told.
+.assign_extra_fills <- function(fills, extra) {
+  if (!length(extra)) return(fills)
+  got <- .distinct_fills(fills, length(extra))
+  if (length(got) < length(extra)) {
+    warning(sprintf(paste("%d call state(s) need a fill and the colour-blind-safe palette",
+                          "offers %d that stay clear of the ones already in use, so %s",
+                          "%s no colour of %s own. Narrow the window, or pass `colours =`",
+                          "with a scale you have checked."),
+                    length(extra), length(got),
+                    paste(utils::head(extra[-seq_along(got)], 3), collapse = ", "),
+                    if (length(extra) - length(got) == 1L) "has" else "have",
+                    if (length(extra) - length(got) == 1L) "its" else "their"),
+            call. = FALSE)
+  }
+  c(fills, stats::setNames(got, extra[seq_along(got)]))
+}
+
+# Row-clustering distance that does not put an ordered scale on a nominal column.
+#
+# An `additional_genotypes` marker's codes are an arbitrary sorted index into that marker's
+# own states: `alternate 2` is not twice as far from `reference` as `alternate 1` is, and for
+# alleles of independent origin no ordering exists at all. Euclidean distance on those codes
+# also lets one triallelic marker carry up to 4 units of distance where a biallelic SNP
+# carries 2, so it outweighs several SNPs in the Ward ordering that decides row order.
+#
+# Dosage columns keep the ordinary squared difference, which is meaningful there. Nominal
+# columns contribute a mismatch indicator scaled to the same range, so one disagreement at a
+# nominal marker weighs the same as one homozygous difference at a SNP.
+.geno_dist <- function(G, nominal_ids) {
+  nominal <- colnames(G) %in% nominal_ids
+  if (!any(nominal)) return(stats::dist(G))
+  num <- G[, !nominal, drop = FALSE]
+  nom <- G[, nominal, drop = FALSE]
+  d2 <- if (ncol(num)) as.matrix(stats::dist(num))^2 else
+    matrix(0, nrow(G), nrow(G), dimnames = list(rownames(G), rownames(G)))
+  for (j in seq_len(ncol(nom))) {
+    v <- nom[, j]
+    mism <- outer(v, v, function(a, b) as.numeric(a != b))
+    mism[is.na(mism)] <- NA_real_
+    # 2 to match a homozygous difference on the 0/1/2 dosage scale
+    d2 <- d2 + ifelse(is.na(mism), 0, mism) * 4
+  }
+  stats::as.dist(sqrt(d2))
+}
+
 # What to call the set of alleles a sample carries at one marker. A biallelic marker keeps
 # the wording the plot has always used, so adding a multiallelic marker beside biallelic ones
 # does not rename the calls they were already showing.
-.allele_set_name <- function(a, n_alleles) {
+.allele_set_name <- function(a, n_alleles, alleles = NULL) {
+  # With `alleles` the state is named by the bases themselves -- what a carrier contrast
+  # wants, since `carrier = "C"` names something the reader can check against the callset.
+  # Without them it is the positional wording a legend wants, and a biallelic marker keeps
+  # exactly the words the plot has always used.
+  if (!is.null(alleles)) {
+    idx <- a + 1L
+    idx[idx < 1L | idx > length(alleles)] <- NA_integer_
+    return(paste(alleles[idx], collapse = " + "))
+  }
   one <- function(i) if (i == 0L) "reference"
                      else if (n_alleles <= 2) "alternate" else paste("alternate", i)
   if (length(a) == 1L) return(one(a))
@@ -94,13 +159,32 @@
 # homozygous reference under ref dosage. Getting it backwards silently mislabels the whole
 # plot, so the object is asked rather than assumed.
 .geno_calls <- function(v, allele, snp_id = NULL, state_levels = NULL) {
-  idx <- if (identical(allele, "ref")) 3L - v else v + 1L
-  out <- .GENO_LEVELS[idx]
-  # a marker read as allele sets carries its own states, and its `value` indexes those
+  out <- rep(NA_character_, length(v))
+
+  # A marker read as allele sets carries its own states, and its `value` is a *nominal*
+  # index into them -- not a dosage. Resolve those rows first and mark them, so the dosage
+  # arithmetic below never sees them: `3L - v` on a 4-state column yields a 0 subscript,
+  # which R drops silently and shortens the result, and on a 5-state column it yields a
+  # negative one, which errors outright.
+  is_state <- rep(FALSE, length(v))
   for (id in names(state_levels)) {
     hit <- which(snp_id == id)
-    if (length(hit)) out[hit] <- state_levels[[id]][v[hit] + 1L]
+    if (length(hit)) {
+      lv <- state_levels[[id]]
+      k <- v[hit] + 1L
+      k[!is.na(k) & (k < 1L | k > length(lv))] <- NA_integer_   # unknown state, not a drop
+      out[hit] <- lv[k]
+      is_state[hit] <- TRUE
+    }
   }
+
+  d <- which(!is_state & !is.na(v))
+  if (length(d)) {
+    idx <- if (identical(allele, "ref")) 3L - v[d] else v[d] + 1L
+    idx[idx < 1L | idx > length(.GENO_LEVELS)] <- NA_integer_
+    out[d] <- .GENO_LEVELS[idx]
+  }
+
   extra <- setdiff(unlist(state_levels, use.names = FALSE), .GENO_LEVELS)
   factor(out, levels = c(.GENO_LEVELS, extra))
 }
@@ -118,13 +202,13 @@
 # everything is the point of splitting: the blocks are fixed by the annotation and the
 # ordering inside each one is still learned from the genotypes, which is what
 # ComplexHeatmap's row_split does.
-.cluster_within <- function(G, blocks, cluster = TRUE) {
+.cluster_within <- function(G, blocks, cluster = TRUE, nominal_ids = character(0)) {
   ord <- lapply(levels(blocks), function(b) {
     ids <- rownames(G)[blocks == b]
     if (!cluster || length(ids) < 3) return(list(ids = ids, hc = NULL))
     sub <- G[ids, , drop = FALSE]
     # a block whose samples are identical (or all-missing) has nothing to cluster on
-    d <- try(stats::dist(sub), silent = TRUE)
+    d <- try(.geno_dist(sub, nominal_ids), silent = TRUE)
     if (inherits(d, "try-error") || !any(is.finite(d)) || max(d, na.rm = TRUE) == 0)
       return(list(ids = ids, hc = NULL))
     d[!is.finite(d)] <- max(d, na.rm = TRUE)
@@ -433,7 +517,8 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
     message("dropped ", blocks$dropped, " sample(s) with no ",
             paste(split, collapse = " / "))
   G <- G[names(blocks$f), , drop = FALSE]
-  ord <- .cluster_within(G, blocks$f, cluster)
+  # the allele-set columns are nominal, so the distance must not scale them
+  ord <- .cluster_within(G, blocks$f, cluster, nominal_ids = base::names(state_levels))
   row_ids <- unlist(lapply(ord, `[[`, "ids"), use.names = FALSE)
   rows <- data.frame(
     sample = row_ids,
@@ -481,10 +566,7 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
   # ---- the heatmap ---------------------------------------------------------
   fills <- .GENO_FILL
   extra <- intersect(setdiff(levels(long$call), names(fills)), as.character(long$call))
-  if (length(extra)) {
-    got <- .distinct_fills(fills, length(extra))
-    fills <- c(fills, stats::setNames(rep(got, length.out = length(extra)), extra))
-  }
+  fills <- .assign_extra_fills(fills, extra)
   if (!is.null(colours)) fills[names(colours)] <- unname(colours)
   labels <- if (is.null(show_sample_names)) nrow(rows) <= 40 else isTRUE(show_sample_names)
 

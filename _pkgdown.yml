@@ -55,6 +55,7 @@ reference:
   contents:
   - PopStructure
   - load_genotypes
+  - allele_states
   - merge_genotypes
   - run_ld_prune
   - pop_structure
