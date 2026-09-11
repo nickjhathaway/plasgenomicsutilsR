@@ -143,7 +143,8 @@ collapses every non-reference call to the same number -- which is why such sites
 usually dropped from a callset in the first place. Markers given here are read as the
 \strong{set of alleles} each sample carries, so \code{reference}, \verb{alternate 1}, \verb{alternate 2} and
 the mixed states between them stay distinct. Needs \code{bcftools} on \code{PATH}; samples are
-matched by name, and a position already in the genotypes is an error. Only the states
+matched by name, and a position already in the genotypes is replaced with the richer
+allele-set form read here (a dosage column cannot keep two alternates apart). Only the states
 that actually occur are added to the legend: the full enumeration of a triallelic site
 is seven, and most of them are ordinarily empty.}
 }

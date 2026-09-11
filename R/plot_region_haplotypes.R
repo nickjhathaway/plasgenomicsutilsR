@@ -413,7 +413,8 @@
 #'   usually dropped from a callset in the first place. Markers given here are read as the
 #'   **set of alleles** each sample carries, so `reference`, `alternate 1`, `alternate 2` and
 #'   the mixed states between them stay distinct. Needs `bcftools` on `PATH`; samples are
-#'   matched by name, and a position already in the genotypes is an error. Only the states
+#'   matched by name, and a position already in the genotypes is replaced with the richer
+#'   allele-set form read here (a dosage column cannot keep two alternates apart). Only the states
 #'   that actually occur are added to the legend: the full enumeration of a triallelic site
 #'   is seven, and most of them are ordinarily empty.
 #' @param colours,colors Named fill colours for `reference` / `mixed` / `alternate`, and for
@@ -474,9 +475,15 @@ plot_region_haplotypes <- function(x, region, split = NULL, annotations = NULL,
       stop(sprintf("%d of the genotypes' samples are not in %s (e.g. %s)", length(miss),
                    basename(v), paste(utils::head(miss, 3), collapse = ", ")), call. = FALSE)
     clash <- intersect(colnames(G), ids)
-    if (length(clash))
-      stop(sprintf("%s is already in the genotypes; drop it there if this call replaces it",
-                   paste(clash, collapse = ", ")), call. = FALSE)
+    if (length(clash)) {
+      # The panel may already carry the biallelic position of a codon (a combined callset
+      # that keeps the codon sites inline does). The allele-set form read here is the richer
+      # one -- it keeps alternate 1 / alternate 2 distinct, which a dosage column cannot --
+      # so replace the existing column rather than refusing.
+      message(sprintf("%s: %d position(s) already in the panel replaced with their allele-set form (%s)",
+                      basename(v), length(clash), paste(utils::head(clash, 5), collapse = ", ")))
+      G <- G[, setdiff(colnames(G), clash), drop = FALSE]
+    }
     # A left join on the genotypes being plotted: the marker is usually called on the whole
     # cohort while the figure shows a subset, so extras are expected -- but say how many, or
     # a name mismatch that silently drops half the callset looks like a clean merge.

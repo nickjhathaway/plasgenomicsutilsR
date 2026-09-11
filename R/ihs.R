@@ -598,22 +598,27 @@ print.parasite_haplotypes <- function(x, ...) {
     freq0 <- vapply(jj, function(j)
       if (is.na(j)) NA_real_ else mean(h[!is.na(h[, j]), j] == 0L), numeric(1))
 
+    # Biallelic markers are the overwhelming majority and need no per-allele integral: their
+    # single 0>1 contrast is the scan's major/minor iHH, oriented onto the 0>1 label by which
+    # FREQ column is allele 0's. Doing all of them in one vectorised step -- rather than an R
+    # loop building a one-row data.frame per marker -- is what keeps contrast = "ref" nearly
+    # as fast as the "none" scan. Only the multiallelic markers (and the rare exact 50/50 tie,
+    # where the scan's MAJ/MIN order is unknowable) fall through to the per-marker calc_ehh
+    # loop. Identical results to the per-marker version; see .biallelic_unihs for the orient.
+    f1 <- as.numeric(scan[[frq_cols[1]]]); f2 <- as.numeric(scan[[frq_cols[2]]])
+    h1 <- as.numeric(scan[[ihh_cols[1]]]); h2 <- as.numeric(scan[[ihh_cols[2]]])
+    hit1 <- !is.na(freq0) & abs(f1 - freq0) < 1e-9
+    hit2 <- !is.na(freq0) & abs(f2 - freq0) < 1e-9
+    one  <- xor(hit1, hit2)                       # exactly one FREQ column is allele 0's
+    bi   <- n_alleles <= 2L & one
+    u    <- ifelse(hit1, log(h1 / h2), log(h2 / h1))   # num = the column matching allele 0
     rec <- list()
-    for (i in seq_len(nrow(scan))) {
-      if (n_alleles[i] <= 2L) {
-        # two alleles, one contrast -- the scan's own numbers, oriented onto the label
-        u <- .biallelic_unihs(scan, ihh_cols, frq_cols, i, freq0[i])
-        if (!is.na(u)) {
-          rec[[length(rec) + 1L]] <- data.frame(
-            chr = as.character(scan$CHR[i]), pos = as.numeric(scan$POSITION[i]),
-            snp_id = ids[i], contrast = "0>1",
-            freq = as.numeric(scan[[frq_cols[2]]][i]),
-            unihs = u, stringsAsFactors = FALSE)
-          next
-        }
-        # a 50/50 tie: which allele the scan called MAJ is unknowable from its output, so
-        # fall through to the per-allele integrals, which are indexed by allele
-      }
+    if (any(bi))
+      rec[[1L]] <- data.frame(
+        chr = as.character(scan$CHR[bi]), pos = as.numeric(scan$POSITION[bi]),
+        snp_id = ids[bi], contrast = "0>1", freq = f2[bi], unihs = u[bi],
+        stringsAsFactors = FALSE)
+    for (i in which(n_alleles > 2L | (n_alleles <= 2L & !one))) {
       a <- .marker_allele_ihh(hap, r, ids[i], polarized, maxgap, scalegap,
                               discard_at_border)
       if (is.null(a)) next

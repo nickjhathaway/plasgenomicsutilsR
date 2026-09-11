@@ -761,7 +761,7 @@ test_that("extra samples in the marker's callset are left out, and said so", {
   expect_setequal(unique(hm$data$sample), samps)      # and none of the extras got in
 })
 
-test_that("additional_genotypes refuses what it cannot place", {
+test_that("additional_genotypes replaces a clash and refuses what it cannot place", {
   skip_if_not(nzchar(Sys.which("bcftools")))
   skip_if_not_installed("SNPRelate")
   ps <- example_pop_structure(umap = FALSE)
@@ -770,12 +770,13 @@ test_that("additional_genotypes refuses what it cannot place", {
   samps <- rownames(ps$genotype(prefer = "full"))
   d <- tempfile(); dir.create(d)
 
-  # a position already genotyped is two answers for one column
+  # a position already in the panel is REPLACED with the allele-set form read here, not
+  # refused: a combined callset that keeps the codon sites inline legitimately feeds one back
   same <- .set_bcf(d, rep("0/0", length(samps)), chrom = loc$chr[1],
                    pos = loc$pos[1] + 1L, samps = samps)
-  expect_error(plot_region_haplotypes(ps, ids[1], additional_genotypes = same),
-               "already in the genotypes")
-  # and a callset missing samples cannot fill the column
+  expect_message(plot_region_haplotypes(ps, ids[1], additional_genotypes = same),
+                 "replaced")
+  # and a callset missing samples still cannot fill the column
   d2 <- tempfile(); dir.create(d2)
   few <- .set_bcf(d2, rep("0/0", 3), chrom = loc$chr[1], pos = loc$pos[1] + 5L,
                   samps = samps[1:3])
@@ -869,4 +870,41 @@ test_that("with no nominal columns the distance is the ordinary one", {
               dimnames = list(c("a", "b", "c"), c("c1:1", "c1:2")))
   expect_equal(as.matrix(plasgenomicsutilsR:::.geno_dist(G, character(0))),
                as.matrix(stats::dist(G)))
+})
+
+test_that("additional_genotypes replaces a position already in the panel with its allele-set form", {
+  skip_if_not_installed("ggplot2")
+  skip_if(!nzchar(Sys.which("bcftools")), "needs bcftools")
+  # A combined callset that keeps the codon sites inline means a position fed through
+  # additional_genotypes can already be in the panel (as a biallelic dosage column). The
+  # allele-set form read here is richer -- it keeps alternate 1 / alternate 2 apart -- so it
+  # must REPLACE the existing column rather than erroring (the old behaviour).
+  ps <- ps_for_hap()
+  samp <- rownames(ps$genotype(prefer = "full"))
+  clash_vcf_pos <- 429019L   # 0-based 429018 = Pf3D7_07_v3:429018, which is in the panel
+  new_vcf_pos   <- 430001L   # 0-based 430000, not in the panel
+  hdr <- c("##fileformat=VCFv4.2", "##contig=<ID=Pf3D7_07_v3,length=1445207>",
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste0("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t",
+                  paste(samp, collapse = "\t")))
+  row <- function(pos, alt, gts) paste(c("Pf3D7_07_v3", pos, ".", "A", alt, ".", "PASS", ".",
+                                         "GT", gts), collapse = "\t")
+  gts_multi <- rep(c("0/0", "1/1", "2/2"), length.out = length(samp))   # A > C,G (triallelic)
+  gts_new   <- rep(c("0/0", "1/1"), length.out = length(samp))
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(hdr, row(clash_vcf_pos, "C,G", gts_multi), row(new_vcf_pos, "T", gts_new)), vcf)
+
+  # clashing position is in the panel
+  expect_true("Pf3D7_07_v3:429018" %in% colnames(ps$genotype(prefer = "full")))
+
+  # it must NOT error, and it should say it replaced the clashing position
+  expect_message(
+    p <- plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES,
+                                additional_genotypes = vcf),
+    "replaced")
+  expect_s3_class(p, "patchwork")
+  # the triallelic column is drawn with three allele states (not collapsed to a dosage)
+  hm <- hap_panel(p)
+  states_at <- unique(as.character(hm$data$call[hm$data$snp_id == "Pf3D7_07_v3:429018"]))
+  expect_true(length(states_at) >= 3 || any(grepl("alternate 2|alternate1|alternate 2", states_at)))
 })
