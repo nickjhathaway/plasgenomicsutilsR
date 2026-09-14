@@ -31,6 +31,21 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
   # `encoding` can be read. A dosage and an allele index are both integer matrices and are
   # indistinguishable once the list is gone, so anything that needs dosages has to ask here.
   if (is.list(g) && !is.null(g$genotype)) {
+    # An allele_set list is the lossless superset: for an index consumer, derive the same
+    # allele-index matrix the encoding would give (a mixed cell -> NA), so a bare set list
+    # stands in wherever an allele_index one does. A dosage consumer falls through to the
+    # guard, which refuses it -- a bare list has no sites table to say which columns are
+    # biallelic, so route a dosage need through a PopStructure (or load `encoding = "dosage"`).
+    if (identical(g$encoding %||% "dosage", "allele_set") &&
+        identical(needs, "allele_index")) {
+      if (is.null(g$state_sets))
+        stop(what, ": this allele_set panel carries no state-set decomposition, so an allele ",
+             "index cannot be derived. Rebuild it with `load_genotypes(..., ",
+             "encoding = \"allele_set\")`.", call. = FALSE)
+      m <- .index_matrix_from_sets(as.matrix(g$genotype), g$state_sets)
+      if (is.null(rownames(m)) && !is.null(g$sample.id)) rownames(m) <- g$sample.id
+      return(m)
+    }
     if (identical(needs, "dosage")) .require_dosage(g, what)
     m <- as.matrix(g$genotype)
     if (is.null(rownames(m)) && !is.null(g$sample.id)) rownames(m) <- g$sample.id

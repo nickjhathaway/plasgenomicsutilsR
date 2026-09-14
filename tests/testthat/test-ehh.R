@@ -260,11 +260,12 @@ test_that("a focal marker with three alleles gets three curves, correctly labell
   b <- ggplot2::ggplot_build(p)
   lab <- unique(unlist(lapply(b$data, function(d)
     if ("label" %in% names(d)) as.character(d$label))))
-  # rehh names the columns EHH_MAJ / EHH_MIN1 / EHH_MIN2 positionally, not by frequency, so
-  # allele 0 stays "reference" even though it is not the rarest or the commonest by design
+  # allele 0 is always "reference", whatever its frequency; the alternates are numbered by
+  # frequency, so allele 2 (count 20) is "alternate 1" and allele 1 (count 10) "alternate 2".
+  # That makes the commonest alternate share a colour with a biallelic plot's lone "alternate".
   expect_match(lab[1], "reference 30 \\(50%\\)")
-  expect_match(lab[1], "alternate 1 10 \\(17%\\)")
-  expect_match(lab[1], "alternate 2 20 \\(33%\\)")
+  expect_match(lab[1], "alternate 1 20 \\(33%\\)")
+  expect_match(lab[1], "alternate 2 10 \\(17%\\)")
   k <- as.integer(regmatches(lab[1], gregexpr("[0-9]+(?= \\()", lab[1], perl = TRUE))[[1]])
   expect_equal(sum(k), 60)                      # every haplotype accounted for, none dropped
 
@@ -296,9 +297,40 @@ test_that("nothing about the curves is fixed at three alleles", {
     lab <- unique(unlist(lapply(b$data, function(d)
       if ("label" %in% names(d)) as.character(d$label))))
     k <- as.integer(regmatches(lab[1], gregexpr("[0-9]+(?= \\()", lab[1], perl = TRUE))[[1]])
-    expect_equal(k, counts)                     # in allele order, not frequency order
+    expect_equal(k, counts)                     # counts printed in allele order (labels aside)
     expect_equal(sum(k), sum(counts))           # no allele quietly left out
   }
+})
+
+test_that("alternates are numbered by frequency and share colours across arities", {
+  skip_if_not_installed("rehh")
+  skip_if_not_installed("ggplot2")
+  curve_colours <- function(pp) {
+    bb <- ggplot2::ggplot_build(pp)
+    d <- bb$data[[which(vapply(bb$data, function(z)
+      "colour" %in% names(z) && nrow(z) > 50, logical(1)))[1]]]
+    d$colour
+  }
+  # the alternates sort by frequency regardless of allele index: here the rarer allele 1 is
+  # "alternate 2" and the commoner allele 2 is "alternate 1"
+  hap <- .multi_hap(c(30, 10, 20))
+  cur <- plasgenomicsutilsR:::.ehh_curve(hap, seq_len(nrow(hap$hap)),
+                                         hap$map$pos[hap$map$pos == 11000],
+                                         hap$map$chr[hap$map$pos == 11000], FALSE, 0.05)
+  cnt <- attr(cur, "count")
+  expect_equal(cnt[["alternate 1"]], 20L)             # commonest alternate
+  expect_equal(cnt[["alternate 2"]], 10L)
+
+  # reference and the primary alternate hold their colours whether the focal is biallelic or
+  # not, so a row of plots reads together
+  ref_fill <- plasgenomicsutilsR:::.EHH_REF_FILL
+  alt1_fill <- plasgenomicsutilsR:::.EHH_ALT_FILL[1]
+  tri <- ggplot2::ggplot_build(plot_ehh(hap, "c1:11000", span = 12000))
+  fills_tri <- unique(curve_colours(plot_ehh(hap, "c1:11000", span = 12000)))
+  bi_fills <- unique(curve_colours(plot_ehh(.multi_hap(c(35, 25)), "c1:11000", span = 12000)))
+  expect_true(ref_fill %in% fills_tri && ref_fill %in% bi_fills)   # reference: same blue in both
+  expect_true(alt1_fill %in% fills_tri && alt1_fill %in% bi_fills)  # primary alt: same vermillion
+  expect_length(fills_tri, 3)                          # three distinct allele colours
 })
 
 test_that("the curve builder refuses a marker it cannot label rather than guessing", {

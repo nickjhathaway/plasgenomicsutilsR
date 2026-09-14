@@ -908,3 +908,32 @@ test_that("additional_genotypes replaces a position already in the panel with it
   states_at <- unique(as.character(hm$data$call[hm$data$snp_id == "Pf3D7_07_v3:429018"]))
   expect_true(length(states_at) >= 3 || any(grepl("alternate 2|alternate1|alternate 2", states_at)))
 })
+
+test_that("prefer = 'index' (the default) draws a multiallelic site with one state per allele", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("SeqArray")
+  # a panel that carries a triallelic site as allele indices; the plot should show its three
+  # alleles as distinct states (reference / alternate 1 / alternate 2), not collapse them to
+  # a dosage the way the biallelic panel would
+  vcf <- tempfile(fileext = ".vcf")
+  samp <- sprintf("s%02d", 1:12)
+  hdr <- c("##fileformat=VCFv4.2", "##contig=<ID=Pf3D7_07_v3,length=1445207>",
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste0("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t", paste(samp, collapse = "\t")))
+  rec <- function(pos, alt, gts) paste(c("Pf3D7_07_v3", pos, ".", "A", alt, ".", "PASS", ".", "GT", gts), collapse = "\t")
+  rows <- c(rec(429000, "G", rep(c("0/0","1/1"), length.out = 12)),
+            rec(429500, "C,G", rep(c("0/0","1/1","2/2"), length.out = 12)),  # triallelic focal
+            rec(430000, "T", rep(c("0/0","1/1"), length.out = 12)))
+  writeLines(c(hdr, rows), vcf)
+  g <- suppressMessages(load_genotypes(vcf, gds = tempfile(fileext = ".gds"), prune = FALSE,
+                                       variants = "all", encoding = "allele_index"))
+  ps <- suppressMessages(PopStructure$new(g, meta = data.frame(sample = g$sample.id, region = "X")))
+  expect_equal(plasgenomicsutilsR:::.index_panel_of(ps), ps$panels()[1])  # it is an index panel
+
+  p <- suppressMessages(plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES, pad = 5000))
+  expect_s3_class(p, "patchwork")
+  hm <- hap_panel(p)
+  states <- unique(as.character(hm$data$call[hm$data$snp_id == "Pf3D7_07_v3:429499"]))
+  # three alleles carried -> reference, alternate 1, alternate 2 all appear
+  expect_true(all(c("reference", "alternate 1", "alternate 2") %in% states))
+})

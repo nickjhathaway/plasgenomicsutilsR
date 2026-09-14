@@ -50,6 +50,7 @@ west <- ps$subset(population = c("PopA", "PopB"))
     \item \href{#method-PopStructure-get_colours}{\code{PopStructure$get_colours()}}
     \item \href{#method-PopStructure-allele}{\code{PopStructure$allele()}}
     \item \href{#method-PopStructure-sites}{\code{PopStructure$sites()}}
+    \item \href{#method-PopStructure-state_levels}{\code{PopStructure$state_levels()}}
     \item \href{#method-PopStructure-positions}{\code{PopStructure$positions()}}
     \item \href{#method-PopStructure-pruned}{\code{PopStructure$pruned()}}
     \item \href{#method-PopStructure-get_samples}{\code{PopStructure$get_samples()}}
@@ -613,6 +614,29 @@ alternates collapsed onto one number and cannot answer one.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{panel}}{Which panel to describe; the primary one when \code{NULL}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PopStructure-state_levels"></a>}}
+\if{latex}{\out{\hypertarget{method-PopStructure-state_levels}{}}}
+\subsection{\code{PopStructure$state_levels()}}{
+  The per-column state names of an \code{allele_set} panel: a named list, one entry
+per genotype column, giving the states a cell's code resolves to (e.g. \code{reference} /
+\verb{alternate 1} / \verb{alternate 1 + alternate 2}). \code{NULL} for a dosage or allele-index
+panel, which do not carry sets. \code{\link[=plot_region_haplotypes]{plot_region_haplotypes()}} reads it to draw each cell
+as the alleles it actually carries.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{PopStructure$state_levels(panel = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{panel}}{Which panel to report on; the primary one when \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }

@@ -11,6 +11,7 @@ plot_region_haplotypes(
   annotations = NULL,
   genotypes = NULL,
   samples = NULL,
+  prefer = c("index", "full"),
   spacing = c("even", "genomic", "gapped"),
   cluster = TRUE,
   dendrogram = TRUE,
@@ -67,6 +68,12 @@ from \code{x}, so one pruned object can supply the annotations while the full pa
 the calls -- which is the combination this plot wants.}
 
 \item{samples}{Optional sample ids to keep.}
+
+\item{prefer}{Which of \code{x}'s panels to draw when \code{genotypes} is \code{NULL}. \code{"index"} (default)
+prefers an \code{allele_set} panel, then an \code{allele_index} one, so a multiallelic site keeps one
+state per allele and a mixed call keeps its identity, falling back to the full biallelic
+dosage panel. \code{"full"} forces that dosage panel, which shows a mix only as a generic
+"mixed" and collapses multiallelic identity.}
 
 \item{spacing}{\code{"even"} (default) gives every SNP equal width; \code{"genomic"} places each at
 its real coordinate; \code{"gapped"} keeps the equal widths and inserts blank columns for

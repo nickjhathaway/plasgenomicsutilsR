@@ -45,6 +45,8 @@ reference:
   - ibd_block_extension_test
   - ibd_block_extension_scan
   - ibd_block_extension_by_allele
+  - carrier_genome_wide_relatedness
+  - locus_ibs_by_allele
   - plot_pairwise_block_extension
 - title: Selection genes
   desc: Genes hit by an above-threshold IBD selection signal.

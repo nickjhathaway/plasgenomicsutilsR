@@ -18,7 +18,7 @@ load_genotypes(
   vcf_dir = NULL,
   allele = c("alt", "ref"),
   variants = c("biallelic_snvs", "all"),
-  encoding = c("dosage", "allele_index"),
+  encoding = c("dosage", "allele_index", "allele_set"),
   star = c("missing", "allele"),
   refresh = c("stale", "never", "always")
 )
@@ -59,8 +59,13 @@ only; \code{"all"} keeps every record, multiallelic sites and indels included.}
 \item{encoding}{How \code{genotype} is coded. \code{"dosage"} (default) counts alternate copies,
 0/1/2 -- the classical matrix, and what PCA, admixture, diversity and differentiation
 read. \code{"allele_index"} names \strong{which} allele each sample carries, 0 for the reference
-and 1..k for the alternates, which is the only one of the two that can carry a
-multiallelic site. See \emph{Which encoding to ask for}.}
+and 1..k for the alternates, which can carry a multiallelic site but sets a mixed call to
+missing. \code{"allele_set"} names the \strong{set} of alleles a sample carries -- a singleton set
+for a pure call, a two-element set for a mix -- so it keeps both a mixed call and its
+multiallelic identity. It is a strict superset of the other two: a \link{PopStructure} derives
+an \code{allele_index} (or, through it, a \code{dosage}) view from it on demand
+(\verb{$genotype(needs = )}), so one stored panel serves both the haplotype plot and every
+analysis. See \emph{Which encoding to ask for}.}
 
 \item{refresh}{What to do with a derived file older than what it was built from -- the
 text VCF beside a BCF, and the GDS beside either. \code{"stale"} (default) rebuilds it,
@@ -75,6 +80,12 @@ A list with \code{genotype} (matrix; sample row names and \code{chr:pos0} column
 0-based, like every other position in the package),
 \code{sample.id}, \code{snp.id}, and the facts the matrix itself cannot carry: \code{allele} (which
 allele a dosage counts), \code{encoding}, \code{pruned}, \code{positions} and \code{variants}.
+
+For \code{encoding = "allele_set"} the codes in \code{genotype} are a 0-based index into per-column
+state lists, so two more fields come back: \code{state_levels} (named by column: the state
+names a code resolves to, e.g. \code{reference} / \verb{alternate 1} / \verb{alternate 1 + alternate 2})
+and \code{state_sets} (the same states as integer allele vectors, which is what lets an allele
+index be derived from the set). \link{PopStructure} stores both.
 \link{PopStructure} keeps them, so anything that names a call, refuses a non-dosage panel or
 warns about pruning can ask instead of assuming.
 

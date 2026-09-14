@@ -58,9 +58,14 @@ would crowd a hundred names under it, so this is opt-in.}
 
 \item{gene_label_angle}{Rotation for the gene names, in degrees.}
 
-\item{colours, colors}{Named colours for the focal alleles. A biallelic marker has
-\code{reference} and \code{alternate}; one with more alleles has \code{reference}, \verb{alternate 1},
-\verb{alternate 2}, ... and takes its default colours from the shared palette.}
+\item{colours, colors}{Named colours overriding the focal alleles' defaults. A biallelic
+marker's levels are \code{reference} and \code{alternate}; a multiallelic one's are \code{reference},
+\verb{alternate 1}, \verb{alternate 2}, ..., numbered by descending frequency so \verb{alternate 1} is
+the commonest alternate. The defaults are one shared colour-blind-safe palette across every
+EHH plot -- \code{reference} always the same blue, \code{alternate} and \verb{alternate 1} the same
+vermillion -- so separate biallelic and multiallelic panels read together and the reference
+curve is the same colour in each. Name any subset to override, e.g.
+\code{colours = c("alternate 2" = "grey50")}.}
 
 \item{show_freq}{Note each panel's haplotype count and allele frequencies inside it
 (default \code{TRUE}); \code{FALSE} leaves the panel clean.}

@@ -81,22 +81,24 @@ parasite_haplotypes <- function(x, samples = NULL, fws = NULL, min_fws = IHS_MIN
   alleles <- match.arg(alleles)
   if (inherits(x, "PopStructure")) {
     # "auto" takes whatever the object holds. Haplotype work is the case that *can* use a
-    # multiallelic panel, so an object built from allele indices should reach it without
-    # being asked twice -- and `alleles = "dosage"` is the one-argument way back to the
-    # biallelic reading, which the object derives on demand.
-    if (identical(alleles, "auto")) alleles <- if (identical(x$encoding(), "allele_index"))
-      "index" else "dosage"
+    # multiallelic panel, so an object built from allele indices -- or from allele sets, which
+    # derive the same index (a mixed cell -> missing) -- should reach it without being asked
+    # twice. `alleles = "dosage"` is the one-argument way back to the biallelic reading, which
+    # the object derives on demand.
+    if (identical(alleles, "auto"))
+      alleles <- if (x$encoding() %in% c("allele_index", "allele_set")) "index" else "dosage"
     G <- .geno_for(x, genotype, what = "parasite_haplotypes()",
                    needs = if (identical(alleles, "index")) "allele_index" else "dosage")
     if (is.null(meta)) meta <- x$get_meta()
   } else {
     # A raw `load_genotypes()` list still carries its `encoding`, so honour it: "auto" reads
-    # the list rather than assuming dosage, and an index list reaches the haplotype path
-    # without being routed through a PopStructure first. Otherwise a list built with
-    # `encoding = "allele_index"` -- the whole point of which is to keep the alternates
-    # apart -- was refused here as "not dosages".
+    # the list rather than assuming dosage, and an index list -- or an allele_set list, which
+    # `.coerce_geno()` derives the index from -- reaches the haplotype path without being
+    # routed through a PopStructure first. Otherwise a list built to keep the alternates apart
+    # (`encoding = "allele_index"` / `"allele_set"`) was refused here as "not dosages".
     if (identical(alleles, "auto"))
-      alleles <- if (is.list(x) && identical(x$encoding %||% "dosage", "allele_index"))
+      alleles <- if (is.list(x) &&
+                     (x$encoding %||% "dosage") %in% c("allele_index", "allele_set"))
         "index" else "dosage"
     G <- .coerce_geno(x, "parasite_haplotypes()",
                       needs = if (identical(alleles, "index")) "allele_index" else "dosage")

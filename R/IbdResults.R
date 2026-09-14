@@ -441,6 +441,11 @@ IbdResults <- R6::R6Class(
     #' @param ... Passed to [ibd_block_extension_by_allele()].
     ibd_block_extension_by_allele = function(...) ibd_block_extension_by_allele(self, ...),
 
+    #' @description Are a variant's carriers more related genome-wide to begin with -- the
+    #'   background control for the carrier split (see [carrier_genome_wide_relatedness()]).
+    #' @param ... Passed to [carrier_genome_wide_relatedness()].
+    carrier_genome_wide_relatedness = function(...) carrier_genome_wide_relatedness(self, ...),
+
     #' @description Block extension between every pair of groups, as a triangle per locus
     #'   (see [plot_pairwise_block_extension()]).
     #' @param ... Passed to [plot_pairwise_block_extension()].
@@ -470,6 +475,11 @@ IbdResults <- R6::R6Class(
     #'   [ibd_pair_links()]). Needs the pair table.
     #' @param ... Passed to [ibd_pair_links()].
     ibd_pair_links = function(...) ibd_pair_links(self, ...),
+
+    #' @description The largest set of mutually unrelated samples found, in which no pair
+    #'   shares more than a given fraction (see [ibd_unrelated_set()]). Needs the pair table.
+    #' @param ... Passed to [ibd_unrelated_set()].
+    ibd_unrelated_set = function(...) ibd_unrelated_set(self, ...),
 
     #' @description Genome-wide IBD sharing summarised over the sample pairs spanning each
     #'   pair of metadata groups (see [pair_fraction_summary()]). Needs the pair table.

@@ -169,6 +169,86 @@
   out
 }
 
+# ploidy x sample x variant allele indices -> per-cell allele *sets*, the one encoding that
+# keeps both a mixed call and a multiallelic identity that neither a dosage nor an allele index
+# can. A cell is coded as a 0-based index into that column's own list of states, mirroring
+# `.read_genotype_sets()`: the states are the sorted-unique allele sets that actually occur,
+# named by `.allele_set_name()`, and only the ones that occur are listed (a triallelic site has
+# seven possible states and is normally missing most of them).
+#
+# `sets` returns those same states as integer allele vectors, in the same order as `levels`, so
+# an allele index or a dosage can be *derived* from the panel later without re-reading the VCF:
+# a singleton set is the one allele the sample carries, and a larger set is a mixed infection.
+# That is the redundancy this encoding removes -- one lossless panel serves the plot (which
+# wants the sets) and every analysis (which reads a derived index/dosage).
+#
+# Vectorised over samples within each column, so ploidy <= 2 (Pf is 1 or 2) never pays the
+# variants x samples double loop the naive form would, and the build stays sane genome-wide.
+#
+# `star` mirrors load_genotypes(): with "missing" the `*` spanning-deletion allele is dropped
+# from every cell's set (a cell that was only `*` becomes missing), because `*` marks sequence
+# that is not there rather than a base -- the same reading the dosage/allele_index path takes.
+.encode_allele_sets <- function(gt, alt, star = c("missing", "allele")) {
+  star <- match.arg(star)
+  d <- dim(gt); ploidy <- d[1]; ns <- d[2]; nv <- d[3]
+  if (ploidy > 2L)
+    stop(".encode_allele_sets is vectorised for ploidy <= 2 (Pf is 1 or 2); got ", ploidy,
+         call. = FALSE)
+  drop_star <- identical(star, "missing")
+  codes <- matrix(NA_integer_, ns, nv)
+  levs <- vector("list", nv)
+  sets <- vector("list", nv)
+  n_star <- 0L
+  star_col <- 0L
+  for (j in seq_len(nv)) {
+    n_alleles <- 1L + length(alt[[j]])
+    # the `*` allele's index is its 1-based position in the record's ALT list
+    star_idx <- if (drop_star) match("*", alt[[j]]) else NA_integer_
+    h1 <- gt[1, , j]
+    h2 <- if (ploidy == 2L) gt[2, , j] else rep(NA_integer_, ns)
+    if (drop_star && !is.na(star_idx)) {
+      hit <- (!is.na(h1) & h1 == star_idx) | (!is.na(h2) & h2 == star_idx)
+      n_hit <- sum(hit)
+      if (n_hit > 0L) { n_star <- n_star + n_hit; star_col <- star_col + 1L }
+      h1[!is.na(h1) & h1 == star_idx] <- NA_integer_
+      h2[!is.na(h2) & h2 == star_idx] <- NA_integer_
+    }
+    # each cell's sorted-unique allele set as a "lo,hi" key; a single NA leaves the other allele
+    a <- ifelse(is.na(h1), h2, h1)
+    b <- ifelse(is.na(h2), h1, h2)
+    lo <- pmin(a, b); hi <- pmax(a, b)
+    key <- ifelse(lo == hi, as.character(lo), paste0(lo, ",", hi))
+    key[is.na(a) & is.na(b)] <- NA_character_
+    seen <- sort(unique(key[!is.na(key)]))
+    setints <- lapply(seen, function(k) as.integer(strsplit(k, ",", fixed = TRUE)[[1]]))
+    codes[, j] <- match(key, seen) - 1L
+    levs[[j]] <- vapply(setints, function(v) .allele_set_name(v, n_alleles), character(1))
+    sets[[j]] <- setints
+  }
+  list(codes = codes, levels = levs, sets = sets, n_star = n_star, star_col = star_col)
+}
+
+# An allele-index matrix from allele-set `codes` (0-based indices into each column's states)
+# and `state_sets` (the integer allele vectors those codes decode to, named by column): a
+# singleton set is the one allele the sample carries, a larger set is a mix that an index
+# cannot name and so becomes NA -- the reading a directly loaded allele_index panel takes of a
+# het. Shared by the PopStructure panel derivation and by `.coerce_geno()`, so a bare
+# `load_genotypes(encoding = "allele_set")` list can stand in wherever an allele_index one does.
+.index_matrix_from_sets <- function(codes, state_sets) {
+  idx <- matrix(NA_integer_, nrow(codes), ncol(codes), dimnames = dimnames(codes))
+  cols <- colnames(codes)
+  for (j in seq_len(ncol(codes))) {
+    s <- state_sets[[cols[j]]]
+    if (is.null(s) || !length(s)) next
+    val <- vapply(s, function(v) if (length(v) == 1L) as.integer(v[1]) else NA_integer_,
+                  integer(1))
+    code <- codes[, j]
+    ok <- !is.na(code)
+    idx[ok, j] <- val[code[ok] + 1L]
+  }
+  idx
+}
+
 # A sites table is only useful if it lines up with the matrix it describes, so a panel that
 # holds a different set of columns gets NULL rather than a table that quietly disagrees.
 .align_sites <- function(sites, cols) {
@@ -178,6 +258,18 @@
   out <- sites[k, , drop = FALSE]
   rownames(out) <- NULL
   out
+}
+
+# The per-column state lists of an allele_set panel (state names, and the integer allele sets
+# they decode to) are named by `site_key`, one entry per genotype column. Line them up with the
+# matrix's columns the way `.align_sites()` does: reorder by name when the names cover the
+# columns, fall back to positional when the count matches (a one-based shift renamed the
+# columns but kept their order), and give NULL when neither holds so nothing silently disagrees.
+.align_states <- function(states, cols) {
+  if (is.null(states)) return(NULL)
+  if (!is.null(names(states)) && all(cols %in% names(states))) return(states[cols])
+  if (length(states) == length(cols)) return(stats::setNames(states, cols))
+  NULL
 }
 
 # One row per record kept, in the matrix's column order. Built from what SNPRelate already
@@ -288,8 +380,13 @@
 #' @param encoding How `genotype` is coded. `"dosage"` (default) counts alternate copies,
 #'   0/1/2 -- the classical matrix, and what PCA, admixture, diversity and differentiation
 #'   read. `"allele_index"` names **which** allele each sample carries, 0 for the reference
-#'   and 1..k for the alternates, which is the only one of the two that can carry a
-#'   multiallelic site. See *Which encoding to ask for*.
+#'   and 1..k for the alternates, which can carry a multiallelic site but sets a mixed call to
+#'   missing. `"allele_set"` names the **set** of alleles a sample carries -- a singleton set
+#'   for a pure call, a two-element set for a mix -- so it keeps both a mixed call and its
+#'   multiallelic identity. It is a strict superset of the other two: a [PopStructure] derives
+#'   an `allele_index` (or, through it, a `dosage`) view from it on demand
+#'   (`$genotype(needs = )`), so one stored panel serves both the haplotype plot and every
+#'   analysis. See *Which encoding to ask for*.
 #' @section Which encoding to ask for:
 #' A **dosage** says how many copies of one allele a sample has. That is two numbers, and a
 #' site with three alleles needs three, so a dosage cannot say *which* alternate a
@@ -310,6 +407,12 @@
 #'   0-based, like every other position in the package),
 #'   `sample.id`, `snp.id`, and the facts the matrix itself cannot carry: `allele` (which
 #'   allele a dosage counts), `encoding`, `pruned`, `positions` and `variants`.
+#'
+#'   For `encoding = "allele_set"` the codes in `genotype` are a 0-based index into per-column
+#'   state lists, so two more fields come back: `state_levels` (named by column: the state
+#'   names a code resolves to, e.g. `reference` / `alternate 1` / `alternate 1 + alternate 2`)
+#'   and `state_sets` (the same states as integer allele vectors, which is what lets an allele
+#'   index be derived from the set). [PopStructure] stores both.
 #'   [PopStructure] keeps them, so anything that names a call, refuses a non-dosage panel or
 #'   warns about pruning can ask instead of assuming.
 #'
@@ -343,7 +446,7 @@ load_genotypes <- function(vcf, gds = NULL, prune = NULL, ld_threshold = 0.2,
                          maf = NaN, missing_rate = NaN, seed = 42, vcf_dir = NULL,
                          allele = c("alt", "ref"),
                          variants = c("biallelic_snvs", "all"),
-                         encoding = c("dosage", "allele_index"),
+                         encoding = c("dosage", "allele_index", "allele_set"),
                          star = c("missing", "allele"),
                          refresh = c("stale", "never", "always")) {
   .need_package("SeqArray", "load_genotypes()")
@@ -433,40 +536,55 @@ load_genotypes <- function(vcf, gds = NULL, prune = NULL, ld_threshold = 0.2,
   idx <- match(vid, seq_along(kind))
   samples <- as.character(SeqArray::seqGetData(f, "sample.id"))
   gt <- SeqArray::seqGetData(f, "genotype")
-  mat <- .encode_genotypes(gt, encoding)
   # SeqArray reports 1-based VCF POS. Every SNP id and interval in both packages is 0-based
   # (`?"plasgenomicsutilsR-coordinates"`), so shift here, at the one place positions enter R
   # -- otherwise a scan built from these genotypes sits one base off every IBD table and
   # interval, which breaks exact joins and mis-assigns SNPs on a gene boundary.
-  dimnames(mat) <- list(samples, paste0(chrom[idx], ":", pos1[idx] - 1L))
-  # `*` is not a base. It says the sequence at this position is deleted on that haplotype --
-  # a confident observation, but not one of the alleles being compared, and every k-allele
-  # estimator in the package (`he`, pi, Jost's D, the one-hot expansion, `allele_states()`)
-  # counts whatever distinct values it finds in this matrix. Left in, a site with 60% `*`
-  # reads as a highly diverse site rather than a mostly-deleted one.
-  #
-  # So blank those calls by default: the haplotype has no base here, which is what NA means
-  # everywhere else in the matrix. The allele *indices* are untouched -- `sites$alt` still
-  # lists `*` in its own slot -- so index 2 still names the same base it did.
-  #
-  # `star = "allele"` keeps them, for the deliberate case of treating presence/absence as the
-  # state (Pf dimorphic sequence, where the deletion IS the other haplotype).
+  col_names <- paste0(chrom[idx], ":", pos1[idx] - 1L)
+  state_levels <- NULL
+  state_sets <- NULL
   n_star <- 0L
   star_col <- 0L
-  if (identical(star, "missing")) {
-    for (j in seq_len(ncol(mat))) {
-      k <- match("*", alt[[idx[j]]])
-      if (is.na(k)) next
-      # allele_index: exactly the calls that ARE the `*` allele. dosage: every alternate
-      # call, because a dosage has already collapsed the alternates and cannot say whether
-      # a 2 is the deleted haplotype or the base beside it -- blanking what cannot be
-      # attributed is the same rule, applied to a coarser matrix.
-      hit <- if (identical(encoding, "allele_index")) !is.na(mat[, j]) & mat[, j] == k
-             else !is.na(mat[, j]) & mat[, j] > 0L
-      if (!any(hit)) next
-      n_star <- n_star + sum(hit)
-      star_col <- star_col + 1L
-      mat[hit, j] <- NA_integer_
+  if (identical(encoding, "allele_set")) {
+    # allele sets carry the mix and the `*` drop inside the encoder, cell by cell, so the
+    # index-matrix star loop below does not apply -- a set is not an integer to blank.
+    es <- .encode_allele_sets(gt, alt[idx], star)
+    mat <- es$codes
+    dimnames(mat) <- list(samples, col_names)
+    state_levels <- stats::setNames(es$levels, col_names)
+    state_sets <- stats::setNames(es$sets, col_names)
+    n_star <- es$n_star
+    star_col <- es$star_col
+  } else {
+    mat <- .encode_genotypes(gt, encoding)
+    dimnames(mat) <- list(samples, col_names)
+    # `*` is not a base. It says the sequence at this position is deleted on that haplotype --
+    # a confident observation, but not one of the alleles being compared, and every k-allele
+    # estimator in the package (`he`, pi, Jost's D, the one-hot expansion, `allele_states()`)
+    # counts whatever distinct values it finds in this matrix. Left in, a site with 60% `*`
+    # reads as a highly diverse site rather than a mostly-deleted one.
+    #
+    # So blank those calls by default: the haplotype has no base here, which is what NA means
+    # everywhere else in the matrix. The allele *indices* are untouched -- `sites$alt` still
+    # lists `*` in its own slot -- so index 2 still names the same base it did.
+    #
+    # `star = "allele"` keeps them, for the deliberate case of treating presence/absence as the
+    # state (Pf dimorphic sequence, where the deletion IS the other haplotype).
+    if (identical(star, "missing")) {
+      for (j in seq_len(ncol(mat))) {
+        k <- match("*", alt[[idx[j]]])
+        if (is.na(k)) next
+        # allele_index: exactly the calls that ARE the `*` allele. dosage: every alternate
+        # call, because a dosage has already collapsed the alternates and cannot say whether
+        # a 2 is the deleted haplotype or the base beside it -- blanking what cannot be
+        # attributed is the same rule, applied to a coarser matrix.
+        hit <- if (identical(encoding, "allele_index")) !is.na(mat[, j]) & mat[, j] == k
+               else !is.na(mat[, j]) & mat[, j] > 0L
+        if (!any(hit)) next
+        n_star <- n_star + sum(hit)
+        star_col <- star_col + 1L
+        mat[hit, j] <- NA_integer_
+      }
     }
   }
 
@@ -500,7 +618,8 @@ load_genotypes <- function(vcf, gds = NULL, prune = NULL, ld_threshold = 0.2,
     } else {
       message(n_multi, " of ", nrow(sites), " records carry more than one ALT allele (most: ",
               worst$site_key, ", ", worst$n_alt_real, " alternates); `$genotype` holds allele ",
-              "indices, so they stay distinct.")
+              if (identical(encoding, "allele_set")) "sets" else "indices",
+              ", so they stay distinct.")
     }
   }
   if (n_star > 0L)
@@ -511,7 +630,8 @@ load_genotypes <- function(vcf, gds = NULL, prune = NULL, ld_threshold = 0.2,
 
   list(genotype = mat, sample.id = samples, snp.id = vid,
        allele = allele, pruned = isTRUE(prune), positions = "0-based",
-       variants = variants, encoding = encoding, star = star, sites = sites)
+       variants = variants, encoding = encoding, star = star, sites = sites,
+       state_levels = state_levels, state_sets = state_sets)
 }
 
 #' Deprecated name for load_genotypes()
@@ -1387,6 +1507,8 @@ PopStructure <- R6::R6Class("PopStructure",
       positions <- NULL
       sites <- NULL
       enc <- NULL
+      state_levels <- NULL
+      state_sets <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(samples)) samples <- geno$sample.id
         if (is.null(allele)) allele <- geno$allele
@@ -1394,6 +1516,8 @@ PopStructure <- R6::R6Class("PopStructure",
         positions <- geno$positions
         sites <- geno$sites
         enc <- geno$encoding
+        state_levels <- geno$state_levels
+        state_sets <- geno$state_sets
         geno <- geno$genotype
       }
       # A matrix built before positions were shifted (or straight off a VCF) carries 1-based
@@ -1408,6 +1532,8 @@ PopStructure <- R6::R6Class("PopStructure",
       if (!is.null(sites) && isTRUE(one_based)) sites$site_key <- colnames(geno)
       private$snp_sites <- sites
       private$snp_encoding <- enc %||% "dosage"
+      private$snp_state_levels <- state_levels
+      private$snp_state_sets <- state_sets
       private$was_pruned <- if (is.null(pruned)) NULL else isTRUE(pruned)
       private$allele_counted <- if (is.null(allele)) NULL else
         match.arg(allele, c("alt", "ref"))
@@ -1425,7 +1551,9 @@ PopStructure <- R6::R6Class("PopStructure",
       private$panel_list <- stats::setNames(
         list(list(genotype = mat, allele = private$allele_counted,
                   pruned = private$was_pruned, encoding = private$snp_encoding,
-                  sites = .align_sites(private$snp_sites, colnames(mat)))),
+                  sites = .align_sites(private$snp_sites, colnames(mat)),
+                  state_levels = .align_states(private$snp_state_levels, colnames(mat)),
+                  state_sets = .align_states(private$snp_state_sets, colnames(mat)))),
         private$primary)
       private$n_pcs <- n_pcs
       private$pca_panel <- pca_panel
@@ -1449,11 +1577,15 @@ PopStructure <- R6::R6Class("PopStructure",
       private$ensure_panels()
       if (!is.character(name) || length(name) != 1 || !nzchar(name))
         stop("`name` must be a single non-empty string", call. = FALSE)
+      state_levels <- NULL
+      state_sets <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(allele)) allele <- geno$allele
         if (is.null(pruned)) pruned <- geno$pruned
         if (is.null(sites)) sites <- geno$sites
         if (is.null(encoding)) encoding <- geno$encoding
+        state_levels <- geno$state_levels
+        state_sets <- geno$state_sets
         if (is.null(rownames(geno$genotype)) && !is.null(geno$sample.id))
           rownames(geno$genotype) <- geno$sample.id
         geno <- geno$genotype
@@ -1470,7 +1602,9 @@ PopStructure <- R6::R6Class("PopStructure",
         allele = if (is.null(allele)) NULL else match.arg(allele, c("alt", "ref")),
         pruned = if (is.null(pruned)) NULL else isTRUE(pruned),
         encoding = encoding %||% "dosage",
-        sites = .align_sites(sites, colnames(mat)))
+        sites = .align_sites(sites, colnames(mat)),
+        state_levels = .align_states(state_levels, colnames(mat)),
+        state_sets = .align_states(state_sets, colnames(mat)))
       invisible(self)
     },
 
@@ -1692,6 +1826,13 @@ PopStructure <- R6::R6Class("PopStructure",
     #'   alternates collapsed onto one number and cannot answer one.
     #' @param panel Which panel to describe; the primary one when `NULL`.
     sites = function(panel = NULL) private$panel_field(panel, "sites"),
+    #' @description The per-column state names of an `allele_set` panel: a named list, one entry
+    #'   per genotype column, giving the states a cell's code resolves to (e.g. `reference` /
+    #'   `alternate 1` / `alternate 1 + alternate 2`). `NULL` for a dosage or allele-index
+    #'   panel, which do not carry sets. [plot_region_haplotypes()] reads it to draw each cell
+    #'   as the alleles it actually carries.
+    #' @param panel Which panel to report on; the primary one when `NULL`.
+    state_levels = function(panel = NULL) private$panel_field(panel, "state_levels"),
     #' @description Which convention the SNP positions follow, or `NULL` when the object does
     #'   not record it (built before this was tracked -- rebuild it, or pass `one_based`).
     positions = function() private$snp_positions,
@@ -1925,7 +2066,7 @@ PopStructure <- R6::R6Class("PopStructure",
 
     geno_mat = NULL, sample_ids = NULL, active_ids = NULL, meta_df = NULL,
     allele_counted = NULL, was_pruned = NULL, snp_positions = NULL, snp_sites = NULL,
-    snp_encoding = NULL,
+    snp_encoding = NULL, snp_state_levels = NULL, snp_state_sets = NULL,
     panel_list = NULL, primary = NULL,
     told = character(0),
 
@@ -1942,6 +2083,10 @@ PopStructure <- R6::R6Class("PopStructure",
           list(list(genotype = private$geno_mat, allele = private$allele_counted,
                     sites = .align_sites(private$snp_sites, colnames(private$geno_mat)),
                     encoding = private$snp_encoding %||% "dosage",
+                    state_levels = .align_states(private$snp_state_levels,
+                                                 colnames(private$geno_mat)),
+                    state_sets = .align_states(private$snp_state_sets,
+                                               colnames(private$geno_mat)),
                     pruned = private$was_pruned)), private$primary)
       }
       invisible(TRUE)
@@ -1961,6 +2106,23 @@ PopStructure <- R6::R6Class("PopStructure",
       needs <- match.arg(needs, c("dosage", "allele_index", "onehot"))
       have <- private$panel_list[[nm]]$encoding %||% "dosage"
       if (identical(have, needs)) return(nm)
+      # An allele-set panel is the lossless superset, and each derived view is meant to equal
+      # what loading the VCF directly with that encoding would give:
+      #   dosage        -> derived straight from the sets, so a biallelic mixed call keeps its
+      #                    intermediate 1 (deriving it via the index would force it to NA and
+      #                    silently disagree with a direct dosage load at every het);
+      #   allele_index  -> a mixed cell is NA, because one index cannot name two clones -- the
+      #                    same reading a direct allele_index load takes;
+      #   onehot        -> the index view, then expanded (a multiallelic mix has no single
+      #                    indicator value either, so it follows the index's missing).
+      # The set panel's extra information -- the identity of a mixed multiallelic cell -- lives
+      # in the plot, which reads the sets directly.
+      if (identical(have, "allele_set")) {
+        if (identical(needs, "dosage")) return(private$dosage_from_sets(nm))
+        idx_nm <- private$index_from_sets(nm)
+        if (identical(needs, "allele_index")) return(idx_nm)
+        return(private$panel_for(idx_nm, needs))
+      }
       # One-hot is how a multiallelic site still reaches PCA and UMAP. One indicator column
       # per ALT, reference column dropped -- which on a biallelic site *is* the alt-dosage
       # column, so it is a strict generalisation and a biallelic panel's PCA does not move.
@@ -2029,6 +2191,86 @@ PopStructure <- R6::R6Class("PopStructure",
       private$panel_list[[derived]] <- list(
         genotype = idx, allele = p$allele, pruned = p$pruned,
         encoding = "allele_index", sites = p$sites)
+      derived
+    },
+
+    # An allele-index view derived from an allele-set panel. A cell's code is an index into that
+    # column's states; a singleton state is the one allele the sample carries (its integer
+    # index), and a state with more than one allele is a mixed infection an index cannot name,
+    # so it becomes missing -- the same reading a directly loaded allele_index panel takes of a
+    # het. The result is column-for-column identical to that panel, so every analysis reads what
+    # it always did; the set panel keeps the mixed identity only for the plot.
+    index_from_sets = function(nm) {
+      derived <- paste0("allele_index", if (identical(nm, private$primary)) "" else
+                        paste0("_", nm))
+      if (!is.null(private$panel_list[[derived]])) return(derived)
+      p <- private$panel_list[[nm]]
+      sets <- p$state_sets
+      if (is.null(sets))
+        stop("panel \"", nm, "\" holds allele sets but carries no state-set decomposition, so ",
+             "an allele index cannot be derived from it. Rebuild it with ",
+             "`load_genotypes(vcf, variants = \"all\", encoding = \"allele_set\")`.",
+             call. = FALSE)
+      idx <- .index_matrix_from_sets(p$genotype, sets)
+      private$panel_list[[derived]] <- list(
+        genotype = idx, allele = p$allele, pruned = p$pruned,
+        encoding = "allele_index", sites = p$sites)
+      if (!derived %in% private$told) {
+        private$told <- c(private$told, derived)
+        message("derived an allele-index panel (\"", derived, "\") from the allele-set panel \"",
+                nm, "\": each mixed call becomes missing, as it is in an allele-index panel.")
+      }
+      derived
+    },
+
+    # A biallelic dosage derived straight from an allele-set panel, so a mixed call keeps the
+    # intermediate 1 a direct `encoding = "dosage"` load gives it: {ref} -> 0, a {ref, alt} mix
+    # -> 1, {alt} -> 2. Multiallelic columns are dropped, exactly as a dosage load drops them,
+    # since a dosage cannot say which alternate a non-reference call carries. This is what makes
+    # the derived dosage equal to a direct dosage load column for column -- deriving it through
+    # the index (index_from_sets) would inherit that view's mixed -> NA and disagree at every het.
+    dosage_from_sets = function(nm) {
+      derived <- paste0("biallelic_dosage", if (identical(nm, private$primary)) "" else
+                        paste0("_", nm))
+      if (!is.null(private$panel_list[[derived]])) return(derived)
+      p <- private$panel_list[[nm]]
+      sets <- p$state_sets
+      sites <- p$sites
+      if (is.null(sets) || is.null(sites))
+        stop("panel \"", nm, "\" holds allele sets but carries no state-set / sites table, so ",
+             "a dosage cannot be derived from it. Rebuild it with ",
+             "`load_genotypes(vcf, variants = \"all\", encoding = \"allele_set\")`.",
+             call. = FALSE)
+      keep <- which(sites$n_alt_real == 1L)
+      if (!length(keep))
+        stop("panel \"", nm, "\" has no biallelic site in it, so no dosage view exists.",
+             call. = FALSE)
+      g <- p$genotype[, keep, drop = FALSE]
+      cols <- colnames(g)
+      d <- matrix(NA_integer_, nrow(g), ncol(g), dimnames = dimnames(g))
+      for (j in seq_len(ncol(g))) {
+        s <- sets[[cols[j]]]
+        if (is.null(s) || !length(s)) next
+        # a biallelic site's set is one of {ref}, {alt}, {ref, alt}: a pure alternate is 2, the
+        # ref+alt mix is 1, the reference is 0. (`*` was already dropped at encode, so no set
+        # here holds two non-reference alleles.)
+        val <- vapply(s, function(v)
+          if (length(v) == 1L) (if (v[1] == 0L) 0L else 2L)
+          else if (0L %in% v) 1L else NA_integer_, integer(1))
+        code <- g[, j]
+        ok <- !is.na(code)
+        d[ok, j] <- val[code[ok] + 1L]
+      }
+      private$panel_list[[derived]] <- list(
+        genotype = d, allele = "alt", pruned = p$pruned, encoding = "dosage",
+        sites = sites[keep, , drop = FALSE])
+      if (!derived %in% private$told) {
+        private$told <- c(private$told, derived)
+        message("derived a biallelic dosage panel (\"", derived, "\") from the allele-set ",
+                "panel \"", nm, "\": a mixed call keeps its intermediate dosage (1), the ",
+                ncol(p$genotype) - length(keep),
+                " multiallelic site(s) left out because a dosage cannot carry them")
+      }
       derived
     },
 

@@ -1,21 +1,27 @@
 # Extended haplotype homozygosity around one SNP, allele by allele.
 
 .EHH_LEVELS <- c("reference", "alternate")
-.EHH_FILL <- c(reference = "#2271B2", alternate = "#D55E00")
+# One shared, fixed, colour-blind-safe palette (Wong) for every EHH plot, so that separate
+# plots -- a biallelic focal beside a multiallelic one -- read the same: the reference curve is
+# always this blue, and the primary alternate always this vermillion, whether it is labelled
+# "alternate" (biallelic) or "alternate 1" (multiallelic). Only that shared colouring lets you
+# tell at a glance which curve is the reference across a row of panels. Further alternates take
+# distinct colours after the first.
+.EHH_REF_FILL <- "#2271B2"
+.EHH_ALT_FILL <- c("#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9")
+.EHH_FILL <- c(reference = .EHH_REF_FILL, alternate = .EHH_ALT_FILL[1])
 
-# rehh names a marker's allele columns EHH_MAJ, EHH_MIN1, EHH_MIN2, ... and those names are
-# **positional**, not frequency ranks: EHH_MAJ is allele 0 whether or not it is the commonest
-# one (on a 3-allele marker coded 10/30/20, FREQ_MAJ comes back as the rarest, 0.167). So the
-# k-th column is allele k-1, and that is the only thing the labels can safely be built from.
-# Two alleles keep the reference / alternate wording the plot has always used; more get
-# numbered, because "the alternate" stops meaning anything once there are several.
-# Name an allele by *which allele it is*, never by which column of a scan it landed in.
-# rehh's columns are dense over the alleles present in the haplotypes it was handed, so a
-# group that happens to lack allele 2 gets two columns and would otherwise call its allele 1
-# "alternate" while the group beside it calls the same allele "alternate 1" -- one allele,
-# two names, in one faceted plot.
-.ehh_allele_label <- function(a, n_alleles) {
-  alt <- if (n_alleles <= 2) rep("alternate", length(a)) else paste("alternate", a)
+# How an allele integer becomes a curve label. Reference is allele 0 by definition and keeps
+# that name and colour regardless of frequency. The alternates are numbered by their frequency
+# rank -- "alternate 1" is the commonest alternate -- so the primary alternate lines up in
+# colour with a biallelic plot's single "alternate" beside it. That rank is computed ONCE over
+# all the haplotypes (see .ehh_alt_rank), never per group, so an allele carries the same number
+# in every facet: a per-group ranking would call one allele "alternate 1" in one panel and
+# "alternate 2" in the next. `rank` is that global allele-integer -> rank map; without it the
+# number falls back to the allele index, the pre-frequency-ordering behaviour.
+.ehh_allele_label <- function(a, n_alleles, rank = NULL) {
+  num <- if (is.null(rank)) a else unname(rank[as.character(a)])
+  alt <- if (n_alleles <= 2) rep("alternate", length(a)) else paste("alternate", num)
   ifelse(a == 0L, "reference", alt)
 }
 
@@ -24,9 +30,32 @@
   c("reference", paste("alternate", seq_len(k - 1)))
 }
 
+# Frequency rank of each alternate allele across ALL haplotypes handed in: commonest -> 1.
+# Global on purpose (see .ehh_allele_label). Reference (allele 0) is excluded. Ties fall to the
+# lower allele index, which is stable and only decides colour, not identity.
+.ehh_alt_rank <- function(col) {
+  col <- col[!is.na(col)]
+  alt <- sort(unique(col[col != 0L]))
+  if (!length(alt)) return(stats::setNames(integer(0), character(0)))
+  cnt <- vapply(alt, function(a) sum(col == a), integer(1))
+  stats::setNames(as.integer(rank(-cnt, ties.method = "first")), as.character(alt))
+}
+
+# reference -> the fixed blue; "alternate" and "alternate 1" -> the same vermillion; "alternate
+# 2", "alternate 3", ... -> the further fixed colours in order. Only if a marker carries more
+# alternates than the fixed set holds does the whole thing fall back to a generated palette, so
+# a run of colours is never silently reused for two different alleles.
 .ehh_allele_fill <- function(levels) {
-  if (all(levels %in% names(.EHH_FILL))) return(.EHH_FILL[levels])
-  stats::setNames(.pick_palette(length(levels)), levels)
+  one <- function(l) {
+    if (identical(l, "reference")) return(.EHH_REF_FILL)
+    if (identical(l, "alternate")) return(.EHH_ALT_FILL[1])
+    n <- suppressWarnings(as.integer(sub("^alternate +", "", l)))
+    if (!is.na(n) && n >= 1L && n <= length(.EHH_ALT_FILL)) return(.EHH_ALT_FILL[n])
+    NA_character_
+  }
+  cols <- vapply(levels, one, character(1))
+  if (anyNA(cols)) return(stats::setNames(.pick_palette(length(levels)), levels))
+  stats::setNames(cols, levels)
 }
 
 # The focal SNP's row in an iHS scan, one value per panel of the plot.
@@ -123,7 +152,11 @@
   # The alleles at this marker across the whole object, so a label means the same allele in
   # every facet, and the alleles this group actually carries, which may be a subset.
   gcol <- which(hap$map$chr == chr & hap$map$pos == mrk_pos)[1]
-  all_alleles <- sort(unique(as.integer(hap$hap[, gcol])))
+  all_col <- as.integer(hap$hap[, gcol])
+  all_alleles <- sort(unique(all_col))
+  # frequency rank of the alternates over the whole object, so "alternate 1" is the commonest
+  # alternate and means the same allele in every facet
+  arank <- .ehh_alt_rank(all_col)
   alleles <- o@haplo[, mrk[1]]
   present <- sort(unique(as.integer(alleles[!is.na(alleles)])))
 
@@ -149,8 +182,12 @@
   if (length(cols) != length(present) || (length(freq) && length(freq) != length(cols)))
     return(sprintf("rehh returned %d curves and %d frequencies for the %d allele(s) here",
                    length(cols), length(freq), length(present)))
-  lab <- .ehh_allele_label(present, length(all_alleles))
-  levs <- .ehh_allele_label(all_alleles, length(all_alleles))
+  lab <- .ehh_allele_label(present, length(all_alleles), arank)
+  # levels in rank order (reference, alternate 1, alternate 2, ...) so the legend reads in
+  # order however the allele integers happen to sort against their frequency
+  n_alt <- length(arank)
+  levs <- if (n_alt <= 1L) .EHH_LEVELS[seq_len(n_alt + 1L)]
+          else c("reference", paste("alternate", seq_len(n_alt)))
   out <- do.call(rbind, lapply(seq_along(cols), function(k) data.frame(
     pos = d$POSITION, ehh = d[[cols[k]]],
     allele = factor(lab[k], levels = levs), stringsAsFactors = FALSE)))
@@ -274,9 +311,14 @@ ehh_candidates <- function(x, focal, group = NULL, genes = NULL, min_haplotypes 
 #'   supplied only to resolve `focal`, and an EHH window is wide enough that a full annotation
 #'   would crowd a hundred names under it, so this is opt-in.
 #' @param gene_label_angle Rotation for the gene names, in degrees.
-#' @param colours,colors Named colours for the focal alleles. A biallelic marker has
-#'   `reference` and `alternate`; one with more alleles has `reference`, `alternate 1`,
-#'   `alternate 2`, ... and takes its default colours from the shared palette.
+#' @param colours,colors Named colours overriding the focal alleles' defaults. A biallelic
+#'   marker's levels are `reference` and `alternate`; a multiallelic one's are `reference`,
+#'   `alternate 1`, `alternate 2`, ..., numbered by descending frequency so `alternate 1` is
+#'   the commonest alternate. The defaults are one shared colour-blind-safe palette across every
+#'   EHH plot -- `reference` always the same blue, `alternate` and `alternate 1` the same
+#'   vermillion -- so separate biallelic and multiallelic panels read together and the reference
+#'   curve is the same colour in each. Name any subset to override, e.g.
+#'   `colours = c("alternate 2" = "grey50")`.
 #' @param show_freq Note each panel's haplotype count and allele frequencies inside it
 #'   (default `TRUE`); `FALSE` leaves the panel clean.
 #' @param freq_position Which corner that note sits in: `"topleft"` (default), `"topright"`,
