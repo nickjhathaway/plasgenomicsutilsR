@@ -22,6 +22,7 @@ reference:
   - plot_ibd_pair_network
   - ibd_pair_clusters
   - ibd_pair_links
+  - ibd_unrelated_set
 - title: Genome-wide IBD between groups
   desc: >
     The per-pair IBD fraction reduced to one row per pair of metadata groups, over every
