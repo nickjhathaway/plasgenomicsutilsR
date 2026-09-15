@@ -64,11 +64,17 @@ ibd$clone(deep = TRUE)$restrict_groups(drop = groups[1])
     \item \href{#method-IbdResults-plot_pairwise_ibd_for_genes}{\code{IbdResults$plot_pairwise_ibd_for_genes()}}
     \item \href{#method-IbdResults-gene_ibd_overlap}{\code{IbdResults$gene_ibd_overlap()}}
     \item \href{#method-IbdResults-gene_ibd_pairs}{\code{IbdResults$gene_ibd_pairs()}}
+    \item \href{#method-IbdResults-ibd_block_extension_test}{\code{IbdResults$ibd_block_extension_test()}}
+    \item \href{#method-IbdResults-ibd_block_extension_scan}{\code{IbdResults$ibd_block_extension_scan()}}
+    \item \href{#method-IbdResults-ibd_block_extension_by_allele}{\code{IbdResults$ibd_block_extension_by_allele()}}
+    \item \href{#method-IbdResults-carrier_genome_wide_relatedness}{\code{IbdResults$carrier_genome_wide_relatedness()}}
+    \item \href{#method-IbdResults-plot_pairwise_block_extension}{\code{IbdResults$plot_pairwise_block_extension()}}
     \item \href{#method-IbdResults-add_ibd_clusters}{\code{IbdResults$add_ibd_clusters()}}
     \item \href{#method-IbdResults-plot_ibd_network}{\code{IbdResults$plot_ibd_network()}}
     \item \href{#method-IbdResults-plot_ibd_pair_network}{\code{IbdResults$plot_ibd_pair_network()}}
     \item \href{#method-IbdResults-ibd_pair_clusters}{\code{IbdResults$ibd_pair_clusters()}}
     \item \href{#method-IbdResults-ibd_pair_links}{\code{IbdResults$ibd_pair_links()}}
+    \item \href{#method-IbdResults-ibd_unrelated_set}{\code{IbdResults$ibd_unrelated_set()}}
     \item \href{#method-IbdResults-pair_fraction_summary}{\code{IbdResults$pair_fraction_summary()}}
     \item \href{#method-IbdResults-pos_selection_genes}{\code{IbdResults$pos_selection_genes()}}
     \item \href{#method-IbdResults-clone}{\code{IbdResults$clone()}}
@@ -588,6 +594,106 @@ the usual "everything except these" form.}
 }
 
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-ibd_block_extension_test"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-ibd_block_extension_test}{}}}
+\subsection{\code{IbdResults$ibd_block_extension_test()}}{
+  Test whether IBD segments are longer at a locus than the sharing pairs'
+own genome-wide background (see \code{\link[=ibd_block_extension_test]{ibd_block_extension_test()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$ibd_block_extension_test(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=ibd_block_extension_test]{ibd_block_extension_test()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-ibd_block_extension_scan"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-ibd_block_extension_scan}{}}}
+\subsection{\code{IbdResults$ibd_block_extension_scan()}}{
+  Genome-wide window scan of IBD block extension, with loci placed against
+it (see \code{\link[=ibd_block_extension_scan]{ibd_block_extension_scan()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$ibd_block_extension_scan(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=ibd_block_extension_scan]{ibd_block_extension_scan()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-ibd_block_extension_by_allele"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-ibd_block_extension_by_allele}{}}}
+\subsection{\code{IbdResults$ibd_block_extension_by_allele()}}{
+  IBD block extension split by carriage of a variant, the IBD analogue of
+iHS (see \code{\link[=ibd_block_extension_by_allele]{ibd_block_extension_by_allele()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$ibd_block_extension_by_allele(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=ibd_block_extension_by_allele]{ibd_block_extension_by_allele()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-carrier_genome_wide_relatedness"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-carrier_genome_wide_relatedness}{}}}
+\subsection{\code{IbdResults$carrier_genome_wide_relatedness()}}{
+  Are a variant's carriers more related genome-wide to begin with -- the
+background control for the carrier split (see \code{\link[=carrier_genome_wide_relatedness]{carrier_genome_wide_relatedness()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$carrier_genome_wide_relatedness(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=carrier_genome_wide_relatedness]{carrier_genome_wide_relatedness()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-plot_pairwise_block_extension"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-plot_pairwise_block_extension}{}}}
+\subsection{\code{IbdResults$plot_pairwise_block_extension()}}{
+  Block extension between every pair of groups, as a triangle per locus
+(see \code{\link[=plot_pairwise_block_extension]{plot_pairwise_block_extension()}}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$plot_pairwise_block_extension(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=plot_pairwise_block_extension]{plot_pairwise_block_extension()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-IbdResults-add_ibd_clusters"></a>}}
 \if{latex}{\out{\hypertarget{method-IbdResults-add_ibd_clusters}{}}}
 \subsection{\code{IbdResults$add_ibd_clusters()}}{
@@ -682,6 +788,26 @@ table.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{...}}{Passed to \code{\link[=ibd_pair_links]{ibd_pair_links()}}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-IbdResults-ibd_unrelated_set"></a>}}
+\if{latex}{\out{\hypertarget{method-IbdResults-ibd_unrelated_set}{}}}
+\subsection{\code{IbdResults$ibd_unrelated_set()}}{
+  The largest set of mutually unrelated samples found, in which no pair
+shares more than a given fraction (see \code{\link[=ibd_unrelated_set]{ibd_unrelated_set()}}). Needs the pair table.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{IbdResults$ibd_unrelated_set(...)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{...}}{Passed to \code{\link[=ibd_unrelated_set]{ibd_unrelated_set()}}.}
     }
     \if{html}{\out{</div>}}
   }

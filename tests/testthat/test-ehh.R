@@ -260,11 +260,12 @@ test_that("a focal marker with three alleles gets three curves, correctly labell
   b <- ggplot2::ggplot_build(p)
   lab <- unique(unlist(lapply(b$data, function(d)
     if ("label" %in% names(d)) as.character(d$label))))
-  # rehh names the columns EHH_MAJ / EHH_MIN1 / EHH_MIN2 positionally, not by frequency, so
-  # allele 0 stays "reference" even though it is not the rarest or the commonest by design
+  # allele 0 is always "reference", whatever its frequency; the alternates are numbered by
+  # frequency, so allele 2 (count 20) is "alternate 1" and allele 1 (count 10) "alternate 2".
+  # That makes the commonest alternate share a colour with a biallelic plot's lone "alternate".
   expect_match(lab[1], "reference 30 \\(50%\\)")
-  expect_match(lab[1], "alternate 1 10 \\(17%\\)")
-  expect_match(lab[1], "alternate 2 20 \\(33%\\)")
+  expect_match(lab[1], "alternate 1 20 \\(33%\\)")
+  expect_match(lab[1], "alternate 2 10 \\(17%\\)")
   k <- as.integer(regmatches(lab[1], gregexpr("[0-9]+(?= \\()", lab[1], perl = TRUE))[[1]])
   expect_equal(sum(k), 60)                      # every haplotype accounted for, none dropped
 
@@ -296,9 +297,40 @@ test_that("nothing about the curves is fixed at three alleles", {
     lab <- unique(unlist(lapply(b$data, function(d)
       if ("label" %in% names(d)) as.character(d$label))))
     k <- as.integer(regmatches(lab[1], gregexpr("[0-9]+(?= \\()", lab[1], perl = TRUE))[[1]])
-    expect_equal(k, counts)                     # in allele order, not frequency order
+    expect_equal(k, counts)                     # counts printed in allele order (labels aside)
     expect_equal(sum(k), sum(counts))           # no allele quietly left out
   }
+})
+
+test_that("alternates are numbered by frequency and share colours across arities", {
+  skip_if_not_installed("rehh")
+  skip_if_not_installed("ggplot2")
+  curve_colours <- function(pp) {
+    bb <- ggplot2::ggplot_build(pp)
+    d <- bb$data[[which(vapply(bb$data, function(z)
+      "colour" %in% names(z) && nrow(z) > 50, logical(1)))[1]]]
+    d$colour
+  }
+  # the alternates sort by frequency regardless of allele index: here the rarer allele 1 is
+  # "alternate 2" and the commoner allele 2 is "alternate 1"
+  hap <- .multi_hap(c(30, 10, 20))
+  cur <- plasgenomicsutilsR:::.ehh_curve(hap, seq_len(nrow(hap$hap)),
+                                         hap$map$pos[hap$map$pos == 11000],
+                                         hap$map$chr[hap$map$pos == 11000], FALSE, 0.05)
+  cnt <- attr(cur, "count")
+  expect_equal(cnt[["alternate 1"]], 20L)             # commonest alternate
+  expect_equal(cnt[["alternate 2"]], 10L)
+
+  # reference and the primary alternate hold their colours whether the focal is biallelic or
+  # not, so a row of plots reads together
+  ref_fill <- plasgenomicsutilsR:::.EHH_REF_FILL
+  alt1_fill <- plasgenomicsutilsR:::.EHH_ALT_FILL[1]
+  tri <- ggplot2::ggplot_build(plot_ehh(hap, "c1:11000", span = 12000))
+  fills_tri <- unique(curve_colours(plot_ehh(hap, "c1:11000", span = 12000)))
+  bi_fills <- unique(curve_colours(plot_ehh(.multi_hap(c(35, 25)), "c1:11000", span = 12000)))
+  expect_true(ref_fill %in% fills_tri && ref_fill %in% bi_fills)   # reference: same blue in both
+  expect_true(alt1_fill %in% fills_tri && alt1_fill %in% bi_fills)  # primary alt: same vermillion
+  expect_length(fills_tri, 3)                          # three distinct allele colours
 })
 
 test_that("the curve builder refuses a marker it cannot label rather than guessing", {
@@ -443,4 +475,152 @@ test_that("a group carrying no reference allele keeps both of its alternates", {
   expect_setequal(levels(droplevels(cur$allele)), c("alternate 1", "alternate 2"))
   expect_equal(sum(attr(cur, "count")), length(rows))  # every haplotype still accounted for
   expect_equal(names(attr(cur, "count")), c("alternate 1", "alternate 2"))
+})
+
+test_that("add_ihs puts the focal SNP's score in the corner note", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("rehh")
+  hap <- hap_for_ehh()
+  # a pfcrt SNP that is variable in both countries, so both panels draw a curve
+  foc <- "Pf3D7_07_v3:405361"
+  G <- PF_EXAMPLE_DRUG_GENES
+  sc <- suppressWarnings(run_ihs(hap, group = "country", min_maf = 0.02))
+  sc_pooled <- suppressWarnings(run_ihs(hap, min_maf = 0.02))
+  ann <- function(p) {
+    i <- vapply(p$layers, function(l) is.data.frame(l$data) && "label" %in% names(l$data),
+                logical(1))
+    if (!any(i)) NULL else p$layers[[which(i)[1]]]$data
+  }
+  ehh <- function(...) plot_ehh(hap, foc, genes = G, span = 30000, ...)
+  at <- function(d, g) d$label[as.character(d$group) == g]
+
+  # off by default: the note is exactly what it was before
+  base <- ann(ehh(group = "country"))
+  expect_false(any(grepl("iHS", base$label)))
+
+  # the score joins the counts on its own line, as the magnitude, matching the scan
+  got <- suppressMessages(ann(ehh(group = "country", add_ihs = sc)))
+  want <- abs(sc$ihs[sc$pos == 405361 & sc$group == "Cambodia"])
+  expect_match(at(got, "Cambodia"), "^n = 30;.*\nabs\\(iHS\\) ")
+  expect_equal(as.numeric(sub(".*abs\\(iHS\\) ", "", at(got, "Cambodia"))), round(want, 2))
+  # the counts line itself is untouched by adding one
+  expect_equal(sub("\n.*", "", at(got, "Cambodia")), at(base, "Cambodia"))
+  # a panel the scan has no score for keeps its counts rather than borrowing the other's
+  expect_equal(at(got, "Ghana"), at(base, "Ghana"))
+  expect_message(ehh(group = "country", add_ihs = sc), "no iHS for Ghana")
+
+  # an ungrouped scan labels a pooled plot
+  pooled <- suppressMessages(ann(ehh(add_ihs = sc_pooled)))
+  expect_match(pooled$label, "abs\\(iHS\\) ")
+
+  # the bars of the conventional |iHS| render as letters at this text size, so the label
+  # spells the magnitude out instead; pin that so it cannot drift back to bars
+  expect_false(any(grepl("|", got$label, fixed = TRUE)))
+
+  # polarized, the sign is meaningful and is kept
+  signed <- sc; signed$ihs <- -abs(signed$ihs)
+  pol <- suppressMessages(ann(ehh(group = "country", polarized = TRUE, add_ihs = signed)))
+  expect_match(at(pol, "Cambodia"), "\niHS -")
+
+  # `show_freq = FALSE` leaves the score alone rather than dropping the note entirely
+  only <- suppressMessages(ann(ehh(group = "country", add_ihs = sc, show_freq = FALSE)))
+  expect_equal(as.character(only$group), "Cambodia")
+  expect_match(only$label, "^abs\\(iHS\\) ")
+
+  # running the scan here agrees with handing one in
+  ran <- suppressWarnings(suppressMessages(
+    ann(ehh(group = "country", add_ihs = TRUE, ihs_args = list(min_maf = 0.02)))))
+  expect_equal(at(ran, "Cambodia"), at(got, "Cambodia"))
+
+  # a grouped scan cannot label a pooled plot, and says so instead of picking a group
+  expect_message(ehh(add_ihs = sc), "pools every haplotype")
+  # nor can a scan that does not carry the focal SNP
+  expect_message(ehh(group = "country", add_ihs = sc[sc$pos != 405361, ]),
+                 "no iHS for Pf3D7_07_v3:405361 in the scan")
+
+  # a scan run on other haplotypes is caught by the frequency it reports at this SNP
+  moved <- sc; moved$freq_minor[moved$pos == 405361] <- 0.3
+  expect_message(ehh(group = "country", add_ihs = moved), "different set of haplotypes")
+  # ...and a matching one does not trip it, which is what makes the check worth having
+  msgs <- character(0)
+  withCallingHandlers(ehh(group = "country", add_ihs = sc),
+                      message = function(m) { msgs <<- c(msgs, conditionMessage(m))
+                                              invokeRestart("muffleMessage") })
+  expect_false(any(grepl("different set of haplotypes", msgs)))
+
+  # the two arguments that would let the note describe a different scan than the curves
+  expect_error(ehh(add_ihs = TRUE, ihs_args = list(group = "country")), "must not set")
+  expect_error(ehh(add_ihs = TRUE, ihs_args = list(polarized = TRUE)), "must not set")
+  expect_error(ehh(add_ihs = TRUE, ihs_args = list(1, 2)), "named list")
+  expect_error(ehh(add_ihs = "yes"), "TRUE, FALSE, or a run_ihs")
+  expect_error(ehh(add_ihs = sc[, c("group", "chr", "pos")]), "no 'ihs' column")
+  expect_warning(ehh(group = "country", add_ihs = sc, ihs_args = list(min_maf = 0.02)),
+                 "ignored")
+})
+
+test_that("a contrast column gives one corner line per contrast", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("rehh")
+  hap <- hap_for_ehh()
+  foc <- "Pf3D7_07_v3:405361"
+  ann <- function(p) {
+    i <- vapply(p$layers, function(l) is.data.frame(l$data) && "label" %in% names(l$data),
+                logical(1))
+    if (!any(i)) NULL else p$layers[[which(i)[1]]]$data
+  }
+  base <- data.frame(chr = "Pf3D7_07_v3", pos = 405361, group = c("Cambodia", "Ghana"),
+                     ihs = c(-3.1, 2.4), stringsAsFactors = FALSE)
+  # two named contrasts, the second missing for one panel
+  two <- rbind(cbind(base, contrast = "A"),
+               cbind(base[1, ], contrast = "B"))
+  two$ihs[3] <- 1.75
+  p <- plot_ehh(hap, foc, genes = PF_EXAMPLE_DRUG_GENES, span = 30000,
+                group = "country", add_ihs = two)
+  d <- ann(p)
+  cam <- d$label[as.character(d$group) == "Cambodia"]
+  gha <- d$label[as.character(d$group) == "Ghana"]
+  # the panel with both gets both lines, each named
+  expect_match(cam, "A abs\\(iHS\\) 3\\.10")
+  expect_match(cam, "B abs\\(iHS\\) 1\\.75")
+  # the panel with only one gets only that line, still named
+  expect_match(gha, "A abs\\(iHS\\) 2\\.40")
+  expect_false(grepl("B abs", gha))
+  expect_equal(lengths(regmatches(cam, gregexpr("abs\\(iHS\\)", cam)))[[1]], 2L)
+
+  # and a table without the column behaves exactly as it did before
+  one <- ann(plot_ehh(hap, foc, genes = PF_EXAMPLE_DRUG_GENES, span = 30000,
+                      group = "country", add_ihs = base))
+  expect_match(one$label[as.character(one$group) == "Cambodia"], "^n = .*\nabs\\(iHS\\) 3\\.10$")
+})
+
+test_that("the focal MAF of an allele-index marker is not a dosage mean", {
+  # `min(mean(v), 1 - mean(v))` is a dosage formula. On allele *indices* it is not a
+  # frequency at all: with counts 10/10/40 it returns -0.5, and a negative number can never
+  # win `which.max()`, so plot_ehh() would silently measure from a biallelic neighbour
+  # instead of the codon that was asked for.
+  for (case in list(list(c(30, 10, 20), 0.5),
+                    list(c(28, 29, 13), 1 - 29 / 70),
+                    list(c(10, 10, 40), 1 - 40 / 60))) {
+    hap <- .multi_hap(case[[1]])
+    cand <- plasgenomicsutilsR:::.focal_candidates(hap, "c1:11000", NULL, NULL)
+    expect_equal(unname(cand$maf), case[[2]], tolerance = 1e-9)
+    expect_true(all(cand$maf >= 0))
+  }
+})
+
+test_that("ehh_candidates reports the same non-negative MAF, and picks the right focal", {
+  skip_if_not_installed("rehh")
+  hap <- .multi_hap(c(10, 10, 40))
+  cand <- ehh_candidates(hap, "c1:11000")
+  expect_true(all(cand$maf >= 0))
+  expect_equal(cand$maf[cand$snp_id == "c1:11000"], round(1 - 40 / 60, 4))
+  # the triallelic marker is the most balanced one in the window, so it must be chosen
+  expect_true(cand$chosen[cand$snp_id == "c1:11000"])
+})
+
+test_that("a biallelic marker's MAF is unchanged by the k-allele form", {
+  # the two formulas must agree exactly on 0/1 data, or every existing number moves
+  hap <- .multi_hap(c(35, 25))
+  cand <- plasgenomicsutilsR:::.focal_candidates(hap, "c1:11000", NULL, NULL)
+  expect_equal(unname(cand$maf), 25 / 60, tolerance = 1e-9)
 })

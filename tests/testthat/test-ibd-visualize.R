@@ -1292,3 +1292,105 @@ test_that("the top-track quantile line is genome-wide, per group, and stacks", {
                                  top_quantile = "0.99"), "top_quantile")
 })
 
+
+test_that("shade and ribbon are off by default and independent when on", {
+  skip_if_not_installed("ggplot2")
+  x <- example_ibd_results()
+  bars <- function(p) {
+    i <- which(vapply(p$layers,
+                      function(l) is.data.frame(l$data) && ".col" %in% names(l$data),
+                      logical(1)))
+    lapply(i, function(k) sort(unique(p$layers[[k]]$data$.col)))
+  }
+  rib <- function(p) {
+    i <- vapply(p$layers, function(l) is.data.frame(l$data) && "cell" %in% names(l$data),
+                logical(1))
+    if (!any(i)) NULL else p$layers[[which(i)[1]]]$data
+  }
+
+  # default: one colour per track and no ribbon, i.e. the figure as it was
+  off <- plot_ibd_tugofwar(x)
+  expect_true(all(lengths(bars(off)) == 1L))
+  expect_null(rib(off))
+
+  # shading splits each track in two, and only the peaks keep the full colour
+  sh <- plot_ibd_tugofwar(x, shade = TRUE)
+  expect_true(all(lengths(bars(sh)) == 2L))
+  expect_null(rib(sh))
+  i <- which(vapply(sh$layers,
+                    function(l) is.data.frame(l$data) && ".col" %in% names(l$data),
+                    logical(1)))[1]
+  d <- sh$layers[[i]]$data
+  # the bar is the 99th percentile, so about a hundredth of the rows should clear it
+  expect_lt(mean(d$.col == "#fd8d3c"), 0.05)
+
+  # ...and the wash is what fades the rest
+  expect_equal(unique(plot_ibd_tugofwar(x, shade = TRUE,
+                                        shade_wash = 0)$layers[[i]]$data$.col),
+               "#fd8d3c")
+  expect_true("#FFFFFF" %in% plot_ibd_tugofwar(x, shade = TRUE,
+                                               shade_wash = 1)$layers[[i]]$data$.col)
+
+  # the ribbon appears on its own, without touching the bars
+  rb <- plot_ibd_tugofwar(x, ribbon = TRUE)
+  expect_true(all(lengths(bars(rb)) == 1L))
+  expect_s3_class(rib(rb), "data.frame")
+  expect_setequal(levels(rib(rb)$cell), c("both", "selection only", "IBD only"))
+
+  # both together, and every combination actually draws
+  for (p in list(off, sh, rb, plot_ibd_tugofwar(x, shade = TRUE, ribbon = TRUE)))
+    expect_silent(ggplot2::ggplotGrob(p))
+})
+
+test_that("the ribbon classifies peaks, not windows", {
+  skip_if_not_installed("ggplot2")
+  x <- example_ibd_results()
+  # zoomed, the result is a patchwork whose own layers are the gene track, so look one
+  # level down when the panel itself is not the top object
+  find_cell <- function(p) {
+    i <- vapply(p$layers, function(l) is.data.frame(l$data) && "cell" %in% names(l$data),
+                logical(1))
+    if (any(i)) p$layers[[which(i)[1]]]$data else NULL
+  }
+  rib <- function(...) {
+    p <- plot_ibd_tugofwar(x, ribbon = TRUE, ...)
+    d <- find_cell(p)
+    if (is.null(d) && inherits(p, "patchwork") && length(p) >= 1) d <- find_cell(p[[1]])
+    d
+  }
+  # merging is what stops a run of rows over one peak being reported as many peaks, and a
+  # wider gap can only ever join peaks, never split them
+  n <- vapply(c(0, 5e4, 5e5), function(g) nrow(rib(peak_gap = g)), numeric(1))
+  expect_true(all(diff(n) < 0))
+
+  # every peak carries at least one half, and "both" means both really reach into it
+  d <- rib()
+  expect_true(all(as.character(d$cell) %in% c("both", "selection only", "IBD only")))
+  expect_true(all(d$xmax > d$xmin))     # a single-marker peak is widened, never zero-width
+
+  # a stricter bar cannot find more peaks than a looser one
+  expect_lte(nrow(rib(peak_quantile = 0.999)), nrow(rib(peak_quantile = 0.95)))
+
+  # the bar is genome-wide: cropping to part of the genome must not restate which peaks
+  # clear it, only which of them are on screen
+  chrs <- as.character(unique(x$get_per_snp_group()$chr))[1:4]
+  full <- rib()
+  crop <- rib(chroms = chrs)
+  keep <- full[full$chr %in% chrs, ]
+  expect_equal(nrow(crop), nrow(keep))
+  expect_setequal(as.character(crop$cell), as.character(keep$cell))
+
+  # a zoom keeps the ribbon, and keeps only the peaks inside the window
+  zoomed <- rib(zoom = "7")
+  expect_true(nrow(zoomed) > 0)
+  expect_equal(unique(as.character(zoomed$chr)), "7")
+
+  expect_error(plot_ibd_tugofwar(x, shade = TRUE, peak_quantile = 1), "peak_quantile")
+  expect_error(plot_ibd_tugofwar(x, ribbon = TRUE, peak_gap = -1), "peak_gap")
+  expect_error(plot_ibd_tugofwar(x, shade = TRUE, shade_wash = 2), "shade_wash")
+  expect_error(plot_ibd_tugofwar(x, ribbon = TRUE, ribbon_colours = c(nope = "red")),
+               "both/top/bottom")
+  # a line drawn at one bar and colours cut at another is a figure that cannot be read
+  expect_message(plot_ibd_tugofwar(x, shade = TRUE, top_quantile = 0.95,
+                                   peak_quantile = 0.99), "will not sit where")
+})

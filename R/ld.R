@@ -26,10 +26,10 @@ LD_MAX_SNPS <- 3000L
 
 .ld_prepare <- function(x, group, meta, genotype, het) {
   if (inherits(x, "PopStructure")) {
-    G <- .geno_for(x, genotype)
+    G <- .geno_for(x, genotype, what = "ld_index()")
     if (is.null(meta)) meta <- x$get_meta()
   } else {
-    G <- .coerce_geno(x)
+    G <- .coerce_geno(x, "ld_index()")
   }
   if (is.null(colnames(G)))
     stop("genotypes need `chr:pos` column names", call. = FALSE)

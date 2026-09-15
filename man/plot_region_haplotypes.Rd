@@ -11,6 +11,7 @@ plot_region_haplotypes(
   annotations = NULL,
   genotypes = NULL,
   samples = NULL,
+  prefer = c("index", "full"),
   spacing = c("even", "genomic", "gapped"),
   cluster = TRUE,
   dendrogram = TRUE,
@@ -67,6 +68,12 @@ from \code{x}, so one pruned object can supply the annotations while the full pa
 the calls -- which is the combination this plot wants.}
 
 \item{samples}{Optional sample ids to keep.}
+
+\item{prefer}{Which of \code{x}'s panels to draw when \code{genotypes} is \code{NULL}. \code{"index"} (default)
+prefers an \code{allele_set} panel, then an \code{allele_index} one, so a multiallelic site keeps one
+state per allele and a mixed call keeps its identity, falling back to the full biallelic
+dosage panel. \code{"full"} forces that dosage panel, which shows a mix only as a generic
+"mixed" and collapses multiallelic identity.}
 
 \item{spacing}{\code{"even"} (default) gives every SNP equal width; \code{"genomic"} places each at
 its real coordinate; \code{"gapped"} keeps the equal widths and inserts blank columns for
@@ -143,7 +150,8 @@ collapses every non-reference call to the same number -- which is why such sites
 usually dropped from a callset in the first place. Markers given here are read as the
 \strong{set of alleles} each sample carries, so \code{reference}, \verb{alternate 1}, \verb{alternate 2} and
 the mixed states between them stay distinct. Needs \code{bcftools} on \code{PATH}; samples are
-matched by name, and a position already in the genotypes is an error. Only the states
+matched by name, and a position already in the genotypes is replaced with the richer
+allele-set form read here (a dosage column cannot keep two alternates apart). Only the states
 that actually occur are added to the legend: the full enumeration of a triallelic site
 is seven, and most of them are ordinarily empty.}
 }

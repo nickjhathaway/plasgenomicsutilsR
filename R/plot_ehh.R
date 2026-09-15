@@ -1,21 +1,27 @@
 # Extended haplotype homozygosity around one SNP, allele by allele.
 
 .EHH_LEVELS <- c("reference", "alternate")
-.EHH_FILL <- c(reference = "#2271B2", alternate = "#D55E00")
+# One shared, fixed, colour-blind-safe palette (Wong) for every EHH plot, so that separate
+# plots -- a biallelic focal beside a multiallelic one -- read the same: the reference curve is
+# always this blue, and the primary alternate always this vermillion, whether it is labelled
+# "alternate" (biallelic) or "alternate 1" (multiallelic). Only that shared colouring lets you
+# tell at a glance which curve is the reference across a row of panels. Further alternates take
+# distinct colours after the first.
+.EHH_REF_FILL <- "#2271B2"
+.EHH_ALT_FILL <- c("#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9")
+.EHH_FILL <- c(reference = .EHH_REF_FILL, alternate = .EHH_ALT_FILL[1])
 
-# rehh names a marker's allele columns EHH_MAJ, EHH_MIN1, EHH_MIN2, ... and those names are
-# **positional**, not frequency ranks: EHH_MAJ is allele 0 whether or not it is the commonest
-# one (on a 3-allele marker coded 10/30/20, FREQ_MAJ comes back as the rarest, 0.167). So the
-# k-th column is allele k-1, and that is the only thing the labels can safely be built from.
-# Two alleles keep the reference / alternate wording the plot has always used; more get
-# numbered, because "the alternate" stops meaning anything once there are several.
-# Name an allele by *which allele it is*, never by which column of a scan it landed in.
-# rehh's columns are dense over the alleles present in the haplotypes it was handed, so a
-# group that happens to lack allele 2 gets two columns and would otherwise call its allele 1
-# "alternate" while the group beside it calls the same allele "alternate 1" -- one allele,
-# two names, in one faceted plot.
-.ehh_allele_label <- function(a, n_alleles) {
-  alt <- if (n_alleles <= 2) rep("alternate", length(a)) else paste("alternate", a)
+# How an allele integer becomes a curve label. Reference is allele 0 by definition and keeps
+# that name and colour regardless of frequency. The alternates are numbered by their frequency
+# rank -- "alternate 1" is the commonest alternate -- so the primary alternate lines up in
+# colour with a biallelic plot's single "alternate" beside it. That rank is computed ONCE over
+# all the haplotypes (see .ehh_alt_rank), never per group, so an allele carries the same number
+# in every facet: a per-group ranking would call one allele "alternate 1" in one panel and
+# "alternate 2" in the next. `rank` is that global allele-integer -> rank map; without it the
+# number falls back to the allele index, the pre-frequency-ordering behaviour.
+.ehh_allele_label <- function(a, n_alleles, rank = NULL) {
+  num <- if (is.null(rank)) a else unname(rank[as.character(a)])
+  alt <- if (n_alleles <= 2) rep("alternate", length(a)) else paste("alternate", num)
   ifelse(a == 0L, "reference", alt)
 }
 
@@ -24,9 +30,83 @@
   c("reference", paste("alternate", seq_len(k - 1)))
 }
 
+# Frequency rank of each alternate allele across ALL haplotypes handed in: commonest -> 1.
+# Global on purpose (see .ehh_allele_label). Reference (allele 0) is excluded. Ties fall to the
+# lower allele index, which is stable and only decides colour, not identity.
+.ehh_alt_rank <- function(col) {
+  col <- col[!is.na(col)]
+  alt <- sort(unique(col[col != 0L]))
+  if (!length(alt)) return(stats::setNames(integer(0), character(0)))
+  cnt <- vapply(alt, function(a) sum(col == a), integer(1))
+  stats::setNames(as.integer(rank(-cnt, ties.method = "first")), as.character(alt))
+}
+
+# reference -> the fixed blue; "alternate" and "alternate 1" -> the same vermillion; "alternate
+# 2", "alternate 3", ... -> the further fixed colours in order. Only if a marker carries more
+# alternates than the fixed set holds does the whole thing fall back to a generated palette, so
+# a run of colours is never silently reused for two different alleles.
 .ehh_allele_fill <- function(levels) {
-  if (all(levels %in% names(.EHH_FILL))) return(.EHH_FILL[levels])
-  stats::setNames(.pick_palette(length(levels)), levels)
+  one <- function(l) {
+    if (identical(l, "reference")) return(.EHH_REF_FILL)
+    if (identical(l, "alternate")) return(.EHH_ALT_FILL[1])
+    n <- suppressWarnings(as.integer(sub("^alternate +", "", l)))
+    if (!is.na(n) && n >= 1L && n <= length(.EHH_ALT_FILL)) return(.EHH_ALT_FILL[n])
+    NA_character_
+  }
+  cols <- vapply(levels, one, character(1))
+  if (anyNA(cols)) return(stats::setNames(.pick_palette(length(levels)), levels))
+  stats::setNames(cols, levels)
+}
+
+# The focal SNP's row in an iHS scan, one value per panel of the plot.
+#
+# iHS is standardised against the whole genome, so it cannot be recomputed from the window
+# this plot draws -- the number has to come from a genome-wide scan, either one handed in or
+# one run here. Matching is by chromosome and position, and then by panel name: a scan
+# carrying `group` is read per group, one without a `group` column applies to every panel.
+# A panel with no row in the scan gets `NA` rather than a neighbour's score.
+.ehh_ihs_at <- function(scan, chr, pos, panels, contrast = NULL) {
+  df <- as.data.frame(scan)
+  for (nm in c("chr", "pos", "ihs"))
+    if (!nm %in% names(df))
+      stop("`add_ihs` needs a run_ihs() result; this table has no '", nm, "' column",
+           call. = FALSE)
+  # one focal marker can be asked more than one question -- reference against each of a
+  # multiallelic site's alternates, say -- so a `contrast` column splits the table into
+  # named sets and each is looked up on its own.
+  if (!is.null(contrast)) df <- df[as.character(df$contrast) == contrast, , drop = FALSE]
+  # the scan may name chromosomes as the haplotypes do or in the short form, so compare
+  # both through the same normalisation rather than trusting either spelling
+  hit <- df[normalise_chr(as.character(df$chr)) == normalise_chr(chr) &
+              as.numeric(df$pos) == as.numeric(pos), , drop = FALSE]
+  out <- stats::setNames(rep(NA_real_, length(panels)), panels)
+  freq <- out
+  if (!nrow(hit)) return(list(ihs = out, freq_minor = freq, grouped = "group" %in% names(df)))
+  if ("group" %in% names(df)) {
+    g <- as.character(hit$group)
+    m <- match(panels, g)
+    out[] <- hit$ihs[m]
+    if ("freq_minor" %in% names(hit)) freq[] <- hit$freq_minor[m]
+  } else {
+    # an ungrouped scan describes one population, so it labels every panel it is shown with
+    out[] <- hit$ihs[1]
+    if ("freq_minor" %in% names(hit)) freq[] <- hit$freq_minor[1]
+  }
+  list(ihs = out, freq_minor = freq, grouped = "group" %in% names(df))
+}
+
+# How one panel's iHS is written. Unpolarized, the sign is not the derived allele's -- it is
+# just which of major/minor carried the longer haplotype -- so only the magnitude is shown,
+# the same restraint run_ihs() documents.
+#
+# `abs(iHS)` rather than the conventional `|iHS|`: at this text size the vertical bars are
+# the same stroke as a lowercase l in every sans face the device is likely to pick, so
+# "|iHS|" renders as "liHSl" and is genuinely misread -- checked at 600 dpi, and spacing the
+# bars out does not fix it. The wording follows run_ihs()'s own docs, which say to read
+# `abs(ihs)`.
+.ehh_ihs_label <- function(v, polarized) {
+  if (!is.finite(v)) return(NA_character_)
+  if (isTRUE(polarized)) sprintf("iHS %+.2f", v) else sprintf("abs(iHS) %.2f", abs(v))
 }
 
 # The SNP the decay is measured from. A `chr:pos` id or a bare position names one outright; a
@@ -72,7 +152,11 @@
   # The alleles at this marker across the whole object, so a label means the same allele in
   # every facet, and the alleles this group actually carries, which may be a subset.
   gcol <- which(hap$map$chr == chr & hap$map$pos == mrk_pos)[1]
-  all_alleles <- sort(unique(as.integer(hap$hap[, gcol])))
+  all_col <- as.integer(hap$hap[, gcol])
+  all_alleles <- sort(unique(all_col))
+  # frequency rank of the alternates over the whole object, so "alternate 1" is the commonest
+  # alternate and means the same allele in every facet
+  arank <- .ehh_alt_rank(all_col)
   alleles <- o@haplo[, mrk[1]]
   present <- sort(unique(as.integer(alleles[!is.na(alleles)])))
 
@@ -98,8 +182,12 @@
   if (length(cols) != length(present) || (length(freq) && length(freq) != length(cols)))
     return(sprintf("rehh returned %d curves and %d frequencies for the %d allele(s) here",
                    length(cols), length(freq), length(present)))
-  lab <- .ehh_allele_label(present, length(all_alleles))
-  levs <- .ehh_allele_label(all_alleles, length(all_alleles))
+  lab <- .ehh_allele_label(present, length(all_alleles), arank)
+  # levels in rank order (reference, alternate 1, alternate 2, ...) so the legend reads in
+  # order however the allele integers happen to sort against their frequency
+  n_alt <- length(arank)
+  levs <- if (n_alt <= 1L) .EHH_LEVELS[seq_len(n_alt + 1L)]
+          else c("reference", paste("alternate", seq_len(n_alt)))
   out <- do.call(rbind, lapply(seq_along(cols), function(k) data.frame(
     pos = d$POSITION, ehh = d[[cols[k]]],
     allele = factor(lab[k], levels = levs), stringsAsFactors = FALSE)))
@@ -119,10 +207,11 @@
 # the choice would be no use for overriding it.
 .focal_candidates <- function(x, focal, genes, reference) {
   idx <- .focal_marker(focal, x$map, genes, reference)
-  maf <- vapply(idx, function(i) {
-    p <- mean(x$hap[, i], na.rm = TRUE)
-    min(p, 1 - p)
-  }, numeric(1))
+  # `.minor_af()` rather than `min(mean(v), 1 - mean(v))`: the latter is a dosage formula
+  # and returns a negative number on an allele-index column, which `which.max()` below can
+  # never choose -- so a multiallelic focal was silently passed over for a biallelic
+  # neighbour. The two agree exactly on 0/1 data.
+  maf <- vapply(idx, function(i) .minor_af(x$hap[, i]), numeric(1))
   list(idx = idx, maf = maf, best = idx[which.max(maf)])
 }
 
@@ -178,8 +267,7 @@ ehh_candidates <- function(x, focal, group = NULL, genes = NULL, min_haplotypes 
     rows <- .ihs_rows(x, group, x$meta, min_haplotypes)
     for (g in names(rows)) {
       out[[paste0("maf_", g)]] <- round(vapply(idx, function(i) {
-        p <- mean(x$hap[rows[[g]], i], na.rm = TRUE)
-        if (is.nan(p)) NA_real_ else min(p, 1 - p)
+        .minor_af(x$hap[rows[[g]], i])
       }, numeric(1)), 4)
     }
     gcols <- paste0("maf_", names(rows))
@@ -223,14 +311,39 @@ ehh_candidates <- function(x, focal, group = NULL, genes = NULL, min_haplotypes 
 #'   supplied only to resolve `focal`, and an EHH window is wide enough that a full annotation
 #'   would crowd a hundred names under it, so this is opt-in.
 #' @param gene_label_angle Rotation for the gene names, in degrees.
-#' @param colours,colors Named colours for the focal alleles. A biallelic marker has
-#'   `reference` and `alternate`; one with more alleles has `reference`, `alternate 1`,
-#'   `alternate 2`, ... and takes its default colours from the shared palette.
+#' @param colours,colors Named colours overriding the focal alleles' defaults. A biallelic
+#'   marker's levels are `reference` and `alternate`; a multiallelic one's are `reference`,
+#'   `alternate 1`, `alternate 2`, ..., numbered by descending frequency so `alternate 1` is
+#'   the commonest alternate. The defaults are one shared colour-blind-safe palette across every
+#'   EHH plot -- `reference` always the same blue, `alternate` and `alternate 1` the same
+#'   vermillion -- so separate biallelic and multiallelic panels read together and the reference
+#'   curve is the same colour in each. Name any subset to override, e.g.
+#'   `colours = c("alternate 2" = "grey50")`.
 #' @param show_freq Note each panel's haplotype count and allele frequencies inside it
 #'   (default `TRUE`); `FALSE` leaves the panel clean.
 #' @param freq_position Which corner that note sits in: `"topleft"` (default), `"topright"`,
 #'   `"bottomleft"` or `"bottomright"`. The top corners are usually clear, since EHH is 1 at
 #'   the focal SNP and both curves have flattened along the bottom by the window's edges.
+#' @param add_ihs Add the focal SNP's iHS to that corner note. A [run_ihs()] result is read
+#'   for the focal SNP -- the cheap path, and the one to prefer, since it reuses a scan you
+#'   already have and so the number in the corner is the same one the genome-wide figures
+#'   were drawn from. `TRUE` runs [run_ihs()] here instead, on `x`, with this plot's `group`
+#'   and `polarized` and anything in `ihs_args`; that is a whole-genome scan per call, so it
+#'   is slow and worth doing once into a variable rather than once per plot. `NULL` (default)
+#'   or `FALSE` adds nothing. iHS is standardised against the whole genome and cannot be
+#'   recovered from the window drawn here, which is why there is no third option. Read
+#'   against the same caution [run_ihs()] carries: unpolarized, only the magnitude is shown,
+#'   because the sign is major-versus-minor and not ancestral-versus-derived.
+#'
+#'   A `contrast` column in the table asks the same focal marker more than one question --
+#'   the reference against each alternate of a multiallelic codon, say. Each named set gets
+#'   its own line in the corner, prefixed by its name, and a panel with no value for one of
+#'   them simply omits that line rather than printing a blank. Without the column the table
+#'   is read as a single unnamed contrast, as before.
+#' @param ihs_args Extra arguments for the [run_ihs()] call made by `add_ihs = TRUE`, as a
+#'   named list -- `maxgap`, `maf_bands`, `min_maf` and the rest. `group` and `polarized` come
+#'   from this plot so the two halves cannot disagree, and naming either here is an error.
+#'   Ignored, with a warning, when `add_ihs` is a scan you computed yourself.
 #' @param reference Reference id, used when `focal` names a whole chromosome.
 #' @param title Plot title: `NULL` (default) uses `"EHH around <snp>"`, a string sets a custom
 #'   one, and `NA`/`FALSE` draws none. Set it here rather than adding `labs(title = )` to the
@@ -248,11 +361,33 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
                      gene_label_angle = 0, colours = NULL, show_freq = TRUE,
                      freq_position = c("topleft", "topright", "bottomleft", "bottomright"),
                      reference = DEFAULT_REFERENCE, title = NULL, subtitle = NULL,
-                     colors = NULL) {
+                     add_ihs = NULL, ihs_args = list(), colors = NULL) {
   colours <- .alias_arg("colours", "colors")
   .need_package("ggplot2", "plot_ehh()")
   .need_package("rehh", "plot_ehh()")
   freq_position <- match.arg(freq_position)
+  # checked before anything expensive runs: `add_ihs = TRUE` scans the whole genome, and a
+  # mistyped `ihs_args` should not be found out on the far side of that
+  want_ihs <- !is.null(add_ihs) && !isFALSE(add_ihs)
+  if (want_ihs) {
+    if (isTRUE(add_ihs)) {
+      if (!is.list(ihs_args) || (length(ihs_args) && is.null(names(ihs_args))))
+        stop("`ihs_args` must be a named list of arguments for run_ihs()", call. = FALSE)
+      # these two describe the same thing as the plot's own arguments; letting them be set
+      # twice is how the corner note ends up describing a different scan from the curves
+      clash <- intersect(names(ihs_args), c("hap", "group", "polarized"))
+      if (length(clash))
+        stop("`ihs_args` must not set ", paste(sprintf("`%s`", clash), collapse = " or "),
+             ": it is taken from plot_ehh()'s own argument so the scan and the curves ",
+             "cannot disagree", call. = FALSE)
+    } else {
+      if (!is.data.frame(add_ihs))
+        stop("`add_ihs` must be TRUE, FALSE, or a run_ihs() result", call. = FALSE)
+      if (length(ihs_args))
+        warning("`ihs_args` is ignored when `add_ihs` is a scan you computed yourself; ",
+                "those settings belong in the run_ihs() call that made it", call. = FALSE)
+    }
+  }
   if (inherits(x, "PopStructure")) {
     message("building haplotypes with parasite_haplotypes() defaults; pass a ",
             "parasite_haplotypes() object to control the Fws / MAF filtering")
@@ -329,19 +464,99 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
   if (faceted)
     p <- p + ggplot2::facet_wrap(~ .data$group, ncol = 1, strip.position = "right")
 
-  if (isTRUE(show_freq)) {
+  ihs_lab <- NULL
+  if (want_ihs) {
+    scan <- if (isTRUE(add_ihs))
+      do.call(run_ihs, c(list(hap = x, group = group, polarized = polarized), ihs_args))
+    else add_ihs
+    # a `contrast` column asks the same focal marker more than one question. Each named set
+    # becomes its own line in the corner, prefixed by its name, because two bare numbers
+    # stacked in a corner say nothing about which is which.
+    contrasts <- if ("contrast" %in% names(as.data.frame(scan)))
+      unique(as.character(as.data.frame(scan)$contrast)) else NULL
+    if (!is.null(contrasts)) {
+      per <- lapply(contrasts, function(ct) {
+        g <- .ehh_ihs_at(scan, mrk_chr, mrk_pos, names(freqs), contrast = ct)
+        blank <- !is.finite(g$ihs)
+        if (all(blank))
+          message("no iHS for the ", ct, " contrast at ", map$snp_id[cand],
+                  " in any panel drawn")
+        else if (any(blank))
+          message("no iHS for the ", ct, " contrast in ",
+                  paste(names(freqs)[blank], collapse = ", "))
+        stats::setNames(vapply(names(freqs), function(nm) {
+          v <- .ehh_ihs_label(g$ihs[[nm]], polarized)
+          if (is.na(v)) NA_character_ else paste(ct, v)
+        }, character(1)), names(freqs))
+      })
+      ihs_lab <- stats::setNames(lapply(names(freqs), function(nm) {
+        v <- vapply(per, function(p) p[[nm]], character(1))
+        v[!is.na(v)]
+      }), names(freqs))
+      if (!length(unlist(ihs_lab))) ihs_lab <- NULL
+    } else {
+    got <- .ehh_ihs_at(scan, mrk_chr, mrk_pos, names(freqs))
+    miss <- names(freqs)[!is.finite(got$ihs)]
+    if (length(miss) == length(freqs)) {
+      if (got$grouped && is.null(group))
+        message("the scan is grouped and this plot pools every haplotype, so no panel ",
+                "matches it; pass a run_ihs() result without `group`, or facet this plot ",
+                "by the same column")
+      else
+        message("no iHS for ", map$snp_id[cand], " in the scan (it may be below the scan's ",
+                "`min_maf`, or dropped at a `maxgap` border), so none is shown")
+    } else if (length(miss)) {
+      message("no iHS for ", paste(miss, collapse = ", "), " at ", map$snp_id[cand],
+              "; those panels are labelled without one")
+    }
+    # A scan computed on a different set of haplotypes than the curves would put a number
+    # in the corner that describes other samples. There is no sample list in a scan to
+    # compare, but its minor-allele frequency at this SNP is one the plot also knows.
+    if (any(is.finite(got$freq_minor))) {
+      own <- vapply(names(freqs), function(g) {
+        # only a biallelic marker has one minor allele to compare; and only a panel that
+        # will actually show a score is worth warning about
+        f <- freqs[[g]]
+        if (length(f) == 2 && is.finite(got$ihs[[g]])) min(f) else NA_real_
+      }, numeric(1))
+      d <- abs(own - got$freq_minor)
+      off <- names(freqs)[is.finite(d) & d > 0.02]
+      if (length(off))
+        message("the scan's minor-allele frequency at ", map$snp_id[cand], " differs from ",
+                "this plot's for ", paste(off, collapse = ", "),
+                " -- the scan looks to have been run on a different set of haplotypes, so ",
+                "its iHS describes those samples, not the curves drawn here")
+    }
+    ihs_lab <- stats::setNames(lapply(names(freqs), function(g) {
+      v <- .ehh_ihs_label(got$ihs[[g]], polarized)
+      if (is.na(v)) character(0) else v
+    }), names(freqs))
+    if (!length(unlist(ihs_lab))) ihs_lab <- NULL
+    }
+  }
+
+  if (isTRUE(show_freq) || !is.null(ihs_lab)) {
     # the count as well as the share: reading "8%" against "n = 60" to get 5 haplotypes is
     # arithmetic the reader should not have to do, and 8% of 60 reads very differently from
     # 8% of 600. The counts are the ones the haplotypes were counted into, not the share
     # multiplied back out.
     lab <- vapply(names(freqs), function(g) {
-      f <- freqs[[g]]
-      k <- attr(curves[[g]], "count")
-      shares <- if (is.null(k)) sprintf("%s %.0f%%", names(f), 100 * f)
-                else sprintf("%s %d (%.0f%%)", names(f), k[names(f)], 100 * f)
-      paste0("n = ", attr(curves[[g]], "n"), "; ", paste(shares, collapse = ", "))
+      lines <- character(0)
+      if (isTRUE(show_freq)) {
+        f <- freqs[[g]]
+        k <- attr(curves[[g]], "count")
+        shares <- if (is.null(k)) sprintf("%s %.0f%%", names(f), 100 * f)
+                  else sprintf("%s %d (%.0f%%)", names(f), k[names(f)], 100 * f)
+        lines <- paste0("n = ", attr(curves[[g]], "n"), "; ",
+                        paste(shares, collapse = ", "))
+      }
+      # its own line rather than appended to the counts: the counts line is already long
+      # on a faceted plot, and the score is the thing a reader is looking for
+      if (!is.null(ihs_lab)) lines <- c(lines, ihs_lab[[g]])
+      paste(lines, collapse = "\n")
     }, character(1))
     ann <- data.frame(group = names(freqs), label = unname(lab), stringsAsFactors = FALSE)
+    ann <- ann[nzchar(ann$label), , drop = FALSE]
     if (faceted) ann$group <- factor(ann$group, levels = levels(df$group))
     # A corner the curves are least likely to occupy: EHH is 1 at the focal SNP and decays
     # outwards, so the far edges are low and the top corners stay clear. The default is the top
@@ -351,9 +566,11 @@ plot_ehh <- function(x, focal, group = NULL, span = 50000, min_haplotypes = 10,
                  topright    = list(x = xlim[2], y = 0.99, h = 1, v = 1),
                  bottomleft  = list(x = xlim[1], y = 0.01, h = 0, v = 0),
                  bottomright = list(x = xlim[2], y = 0.01, h = 1, v = 0))
-    p <- p + ggplot2::geom_text(
-      data = ann, ggplot2::aes(x = at$x, y = at$y, label = .data$label),
-      inherit.aes = FALSE, hjust = at$h, vjust = at$v, size = 2.6, colour = "grey30")
+    if (nrow(ann))
+      p <- p + ggplot2::geom_text(
+        data = ann, ggplot2::aes(x = at$x, y = at$y, label = .data$label),
+        inherit.aes = FALSE, hjust = at$h, vjust = at$v, size = 2.6, colour = "grey30",
+        lineheight = 0.95)
   }
 
   n_panels <- if (faceted) nlevels(df$group) else 1L

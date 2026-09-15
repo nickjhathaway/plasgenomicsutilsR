@@ -761,7 +761,7 @@ test_that("extra samples in the marker's callset are left out, and said so", {
   expect_setequal(unique(hm$data$sample), samps)      # and none of the extras got in
 })
 
-test_that("additional_genotypes refuses what it cannot place", {
+test_that("additional_genotypes replaces a clash and refuses what it cannot place", {
   skip_if_not(nzchar(Sys.which("bcftools")))
   skip_if_not_installed("SNPRelate")
   ps <- example_pop_structure(umap = FALSE)
@@ -770,14 +770,170 @@ test_that("additional_genotypes refuses what it cannot place", {
   samps <- rownames(ps$genotype(prefer = "full"))
   d <- tempfile(); dir.create(d)
 
-  # a position already genotyped is two answers for one column
+  # a position already in the panel is REPLACED with the allele-set form read here, not
+  # refused: a combined callset that keeps the codon sites inline legitimately feeds one back
   same <- .set_bcf(d, rep("0/0", length(samps)), chrom = loc$chr[1],
                    pos = loc$pos[1] + 1L, samps = samps)
-  expect_error(plot_region_haplotypes(ps, ids[1], additional_genotypes = same),
-               "already in the genotypes")
-  # and a callset missing samples cannot fill the column
+  expect_message(plot_region_haplotypes(ps, ids[1], additional_genotypes = same),
+                 "replaced")
+  # and a callset missing samples still cannot fill the column
   d2 <- tempfile(); dir.create(d2)
   few <- .set_bcf(d2, rep("0/0", 3), chrom = loc$chr[1], pos = loc$pos[1] + 5L,
                   samps = samps[1:3])
   expect_error(plot_region_haplotypes(ps, ids[1], additional_genotypes = few), "are not in")
+})
+
+test_that(".geno_calls never lets dosage arithmetic touch a nominal state column", {
+  # `idx <- 3L - v` is a *dosage* transform. An additional_genotypes column's `v` is a
+  # nominal index into that marker's own states, so under `allele = "ref"` a 4-state column
+  # produced a 0 subscript (R drops it silently: 3 labels for 4 inputs) and a 5-state one
+  # produced a negative subscript, which errors outright. Five states is ordinary -- the
+  # test above this one already asserts one occurs.
+  lv4 <- c("reference", "alternate 1", "alternate 2", "alternate 1 + alternate 2")
+  lv5 <- c(lv4, "reference + alternate 1")
+  for (lv in list(lv4, lv5)) {
+    v <- seq_along(lv) - 1L
+    id <- rep("c1:100", length(v))
+    sl <- stats::setNames(list(lv), "c1:100")
+    for (al in c("alt", "ref")) {
+      got <- plasgenomicsutilsR:::.geno_calls(v, al, id, sl)
+      expect_length(got, length(v))
+      expect_equal(as.character(got), lv)
+    }
+  }
+})
+
+test_that(".geno_calls still reads a plain dosage column both ways round", {
+  # the state-level branch must not change what a normal column does
+  v <- c(0L, 1L, 2L, NA_integer_)
+  expect_equal(as.character(plasgenomicsutilsR:::.geno_calls(v, "alt")),
+               c("reference", "mixed", "alternate", NA))
+  expect_equal(as.character(plasgenomicsutilsR:::.geno_calls(v, "ref")),
+               c("alternate", "mixed", "reference", NA))
+})
+
+test_that(".geno_calls handles a state column sitting beside dosage columns", {
+  # the failure mode that made this silent: the shortened vector only misaligns the calls
+  # that come *after* the state column, so a marker at the end of the window looked fine
+  v  <- c(0L, 2L, 3L, 0L, 2L)
+  id <- c("c1:100", "c1:100", "c1:100", "c1:200", "c1:200")
+  sl <- stats::setNames(list(c("reference", "alternate 1", "alternate 2")), "c1:100")
+  got <- plasgenomicsutilsR:::.geno_calls(v, "ref", id, sl)
+  expect_length(got, 5L)
+  # v = 3 is beyond that marker's three states, so it is missing, not a silent drop
+  expect_equal(as.character(got),
+               c("reference", "alternate 2", NA, "alternate", "reference"))
+})
+
+test_that("the fill palette is short rather than recycled when it runs out", {
+  # `.distinct_fills`' own comment says "a palette that ran out is better short than
+  # recycled into a duplicate", and the caller then recycled with `rep(length.out=)`. Two
+  # distinct allele states sharing a fill is exactly the confusion the greedy CIEDE2000 pick
+  # exists to avoid, and it fails silently: the plot looks fine.
+  got <- plasgenomicsutilsR:::.distinct_fills(plasgenomicsutilsR:::.GENO_FILL, 20L)
+  expect_lt(length(got), 20L)                    # the palette really does run out
+  expect_equal(length(unique(got)), length(got))
+})
+
+test_that("a marker with more states than colours warns instead of duplicating a fill", {
+  skip_if_not_installed("ggplot2")
+  fills <- plasgenomicsutilsR:::.GENO_FILL
+  extra <- paste("state", 1:20)
+  expect_warning(
+    out <- plasgenomicsutilsR:::.assign_extra_fills(fills, extra),
+    "colours")
+  used <- out[extra]
+  used <- used[!is.na(used)]
+  expect_equal(length(unique(used)), length(used), info = "no fill is used twice")
+})
+
+test_that("nominal state codes are not treated as an ordered scale when clustering", {
+  # `alternate 2` is not "twice as far from reference as alternate 1" -- the codes are an
+  # arbitrary sorted index. Euclidean distance on them also lets one triallelic marker carry
+  # up to 4 units of distance where a biallelic SNP carries 2, so it outweighs several SNPs
+  # in the Ward ordering that decides row order.
+  G <- matrix(c(0L, 0L, 2L,
+                0L, 0L, 2L,
+                0L, 0L, 2L), nrow = 3, byrow = TRUE,
+              dimnames = list(c("a", "b", "c"), c("c1:1", "c1:2", "c1:3")))
+  G["a", "c1:3"] <- 0L; G["b", "c1:3"] <- 1L; G["c", "c1:3"] <- 4L
+  nominal <- "c1:3"
+  d_plain <- as.matrix(stats::dist(G))
+  d_nom <- as.matrix(plasgenomicsutilsR:::.geno_dist(G, nominal))
+  # on the raw scale c looks 4x further from a than b does; on state identity they are equal
+  expect_gt(d_plain["a", "c"], d_plain["a", "b"])
+  expect_equal(unname(d_nom["a", "c"]), unname(d_nom["a", "b"]))
+})
+
+test_that("with no nominal columns the distance is the ordinary one", {
+  G <- matrix(c(0L, 2L, 0L, 2L, 2L, 0L), nrow = 3,
+              dimnames = list(c("a", "b", "c"), c("c1:1", "c1:2")))
+  expect_equal(as.matrix(plasgenomicsutilsR:::.geno_dist(G, character(0))),
+               as.matrix(stats::dist(G)))
+})
+
+test_that("additional_genotypes replaces a position already in the panel with its allele-set form", {
+  skip_if_not_installed("ggplot2")
+  skip_if(!nzchar(Sys.which("bcftools")), "needs bcftools")
+  # A combined callset that keeps the codon sites inline means a position fed through
+  # additional_genotypes can already be in the panel (as a biallelic dosage column). The
+  # allele-set form read here is richer -- it keeps alternate 1 / alternate 2 apart -- so it
+  # must REPLACE the existing column rather than erroring (the old behaviour).
+  ps <- ps_for_hap()
+  samp <- rownames(ps$genotype(prefer = "full"))
+  clash_vcf_pos <- 429019L   # 0-based 429018 = Pf3D7_07_v3:429018, which is in the panel
+  new_vcf_pos   <- 430001L   # 0-based 430000, not in the panel
+  hdr <- c("##fileformat=VCFv4.2", "##contig=<ID=Pf3D7_07_v3,length=1445207>",
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste0("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t",
+                  paste(samp, collapse = "\t")))
+  row <- function(pos, alt, gts) paste(c("Pf3D7_07_v3", pos, ".", "A", alt, ".", "PASS", ".",
+                                         "GT", gts), collapse = "\t")
+  gts_multi <- rep(c("0/0", "1/1", "2/2"), length.out = length(samp))   # A > C,G (triallelic)
+  gts_new   <- rep(c("0/0", "1/1"), length.out = length(samp))
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(hdr, row(clash_vcf_pos, "C,G", gts_multi), row(new_vcf_pos, "T", gts_new)), vcf)
+
+  # clashing position is in the panel
+  expect_true("Pf3D7_07_v3:429018" %in% colnames(ps$genotype(prefer = "full")))
+
+  # it must NOT error, and it should say it replaced the clashing position
+  expect_message(
+    p <- plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES,
+                                additional_genotypes = vcf),
+    "replaced")
+  expect_s3_class(p, "patchwork")
+  # the triallelic column is drawn with three allele states (not collapsed to a dosage)
+  hm <- hap_panel(p)
+  states_at <- unique(as.character(hm$data$call[hm$data$snp_id == "Pf3D7_07_v3:429018"]))
+  expect_true(length(states_at) >= 3 || any(grepl("alternate 2|alternate1|alternate 2", states_at)))
+})
+
+test_that("prefer = 'index' (the default) draws a multiallelic site with one state per allele", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("SeqArray")
+  # a panel that carries a triallelic site as allele indices; the plot should show its three
+  # alleles as distinct states (reference / alternate 1 / alternate 2), not collapse them to
+  # a dosage the way the biallelic panel would
+  vcf <- tempfile(fileext = ".vcf")
+  samp <- sprintf("s%02d", 1:12)
+  hdr <- c("##fileformat=VCFv4.2", "##contig=<ID=Pf3D7_07_v3,length=1445207>",
+           '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+           paste0("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t", paste(samp, collapse = "\t")))
+  rec <- function(pos, alt, gts) paste(c("Pf3D7_07_v3", pos, ".", "A", alt, ".", "PASS", ".", "GT", gts), collapse = "\t")
+  rows <- c(rec(429000, "G", rep(c("0/0","1/1"), length.out = 12)),
+            rec(429500, "C,G", rep(c("0/0","1/1","2/2"), length.out = 12)),  # triallelic focal
+            rec(430000, "T", rep(c("0/0","1/1"), length.out = 12)))
+  writeLines(c(hdr, rows), vcf)
+  g <- suppressMessages(load_genotypes(vcf, gds = tempfile(fileext = ".gds"), prune = FALSE,
+                                       variants = "all", encoding = "allele_index"))
+  ps <- suppressMessages(PopStructure$new(g, meta = data.frame(sample = g$sample.id, region = "X")))
+  expect_equal(plasgenomicsutilsR:::.index_panel_of(ps), ps$panels()[1])  # it is an index panel
+
+  p <- suppressMessages(plot_region_haplotypes(ps, "7", genes = PF_EXAMPLE_DRUG_GENES, pad = 5000))
+  expect_s3_class(p, "patchwork")
+  hm <- hap_panel(p)
+  states <- unique(as.character(hm$data$call[hm$data$snp_id == "Pf3D7_07_v3:429499"]))
+  # three alleles carried -> reference, alternate 1, alternate 2 all appear
+  expect_true(all(c("reference", "alternate 1", "alternate 2") %in% states))
 })
