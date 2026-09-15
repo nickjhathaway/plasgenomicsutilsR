@@ -13,7 +13,7 @@ tinted to their track (selection on top, IBD on the bottom)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,7 +51,7 @@ tinted to their track (selection on top, IBD on the bottom)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>IBD / selection "tug-of-war" mirror plot</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/visualize.R" class="external-link"><code>R/visualize.R</code></a></small>
       <div class="d-none name"><code>plot_ibd_tugofwar.Rd</code></div>
     </div>
 
@@ -82,11 +82,18 @@ tinted to their track (selection on top, IBD on the bottom).</p>
 <span>  label_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  draw_threshold <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  top_quantile <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  shade <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  shade_wash <span class="op">=</span> <span class="fl">0.55</span>,</span>
+<span>  ribbon <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  peak_quantile <span class="op">=</span> <span class="fl">0.99</span>,</span>
+<span>  peak_gap <span class="op">=</span> <span class="fl">50000</span>,</span>
+<span>  ribbon_colours <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  metric_label <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  top_percent <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  centre_gap <span class="op">=</span> <span class="fl">0.08</span>,</span>
 <span>  selection_colour <span class="op">=</span> <span class="st">"#fd8d3c"</span>,</span>
-<span>  ibd_colour <span class="op">=</span> <span class="st">"#2166ac"</span></span>
+<span>  ibd_colour <span class="op">=</span> <span class="st">"#2166ac"</span>,</span>
+<span>  ribbon_colors <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -206,6 +213,63 @@ the fraction. The quantile is taken on the table as passed in, before <code>chro
 its own peaks are then judged against; and per group when the track has a group
 column, so each panel's line is that region's genome-wide quantile whether or not the
 other regions are drawn. Stacks with <code>draw_threshold</code>, in its own colour.</p></dd>
+
+
+<dt id="arg-shade">shade<a class="anchor" aria-label="anchor" href="#arg-shade"></a></dt>
+<dd><p>Draw the stretch of each track that sits below its bar in a washed-out
+version of its own colour, so the peaks that clear the bar carry the full one
+(default <code>FALSE</code>). It is one hue at two strengths per track, not a second hue, so it
+survives every dichromacy and reproduces in grey. The bar is <code>peak_quantile</code>.</p></dd>
+
+
+<dt id="arg-shade-wash">shade_wash<a class="anchor" aria-label="anchor" href="#arg-shade-wash"></a></dt>
+<dd><p>How far towards white <code>shade</code> takes the below-bar stretch, from 0 (no
+change) to 1 (invisible); default 0.55. Worth turning down for print, where a wash that
+reads on a screen can drop out altogether.</p></dd>
+
+
+<dt id="arg-ribbon">ribbon<a class="anchor" aria-label="anchor" href="#arg-ribbon"></a></dt>
+<dd><p>Draw a strip along the centre line saying, for each peak, whether both
+halves called it or only one (default <code>FALSE</code>). This is the comparison the mirror is
+for, and reading it off two bars either side of a gap is exactly what the eye is bad
+at. Both halves are cut at <code>peak_quantile</code>.</p>
+<p>The unit is a peak, not a window, and that is the whole reason this is worth a function
+rather than a colour mapped per row. A sliding window puts many overlapping rows over
+one peak and the two halves seldom summit on the same row, so a row-by-row rule paints
+a fringe of "only this half" around the shoulders of every peak they agree on. Runs
+above the bar are merged into peaks first (joining across gaps up to <code>peak_gap</code>), the
+two halves' peaks are then unioned, and each resulting peak is labelled by which halves
+reach into it.</p>
+<p>Read it knowing what the halves can and cannot see. A peak only the IBD half calls is
+as likely to be a sweep near fixation, where a statistic contrasting two alleles has
+nothing left to contrast, as it is to be nothing. A peak only the top half calls is
+consistent with several origins of the same allele, and equally with low recombination
+or unmodelled structure – it is a screen, not a test, and counting haplotype
+backgrounds among the carriers is what settles it.</p></dd>
+
+
+<dt id="arg-peak-quantile">peak_quantile<a class="anchor" aria-label="anchor" href="#arg-peak-quantile"></a></dt>
+<dd><p>Quantile of each half's own genome-wide distribution that <code>shade</code>
+and <code>ribbon</code> treat as the bar (default <code>0.99</code>). Taken per group and before <code>chroms</code>,
+<code>skip_chr</code> and <code>zoom</code> crop anything, as <code>plot_ibd_tugofwar()</code>'s <code>top_quantile</code> is.
+Matched quantiles are the defensible choice here because neither half then borrows the
+other's stringency; giving one half a nominal cutoff and the other an empirical one can
+reverse which half looks the more sensitive, and the ribbon would report that as
+biology. It cuts both halves at the same place by construction, so the count of
+top-only and bottom-only peaks is close to matched – it is <em>which</em> loci fall in each
+that carries the information, not how many.</p></dd>
+
+
+<dt id="arg-peak-gap">peak_gap<a class="anchor" aria-label="anchor" href="#arg-peak-gap"></a></dt>
+<dd><p>Distance in base pairs within which two runs above the bar are treated as
+one peak (default 50 kb). Also the distance at which the two halves' peaks are taken to
+be the same peak.</p></dd>
+
+
+<dt id="arg-ribbon-colours-ribbon-colors">ribbon_colours, ribbon_colors<a class="anchor" aria-label="anchor" href="#arg-ribbon-colours-ribbon-colors"></a></dt>
+<dd><p>Fills for the ribbon, named <code>both</code>, <code>top</code> and
+<code>bottom</code>. The default gives each single-half cell its own track's colour, so two of the
+three need no legend lookup, and <code>both</code> the darkest of the three.</p></dd>
 
 
 <dt id="arg-metric-label">metric_label<a class="anchor" aria-label="anchor" href="#arg-metric-label"></a></dt>

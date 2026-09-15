@@ -33,6 +33,8 @@ Genome-wide and group-by-group IBD figures.
   : Genome-wide IBD clusters, and which samples are connected
 - [`ibd_pair_links()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_links.md)
   : The IBD pairs a network draws
+- [`ibd_unrelated_set()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_unrelated_set.md)
+  : The largest mutually unrelated set of samples
 
 ## Genome-wide IBD between groups
 
@@ -55,6 +57,28 @@ adjacency list with gene coverage.
 - [`add_ibd_clusters()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/add_ibd_clusters.md)
   : Add IBD cluster ids to the stored metadata
 
+## IBD segment length at a locus
+
+Whether IBD segments spanning a locus are longer than the sharing pairs
+carry elsewhere, each pair measured against its own genome-wide
+background so that differences in outcrossing between groups cancel.
+
+- [`ibd_block_extension_test()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_test.md)
+  : Test whether IBD blocks are longer at a locus than the sharing
+  pairs' own background
+- [`ibd_block_extension_scan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_scan.md)
+  : Genome-wide scan of IBD block extension, and loci placed against it
+- [`ibd_block_extension_by_allele()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_by_allele.md)
+  : Split IBD block extension at a locus by carriage of a variant
+- [`carrier_genome_wide_relatedness()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/carrier_genome_wide_relatedness.md)
+  : Are a variant's carriers more related genome-wide to begin with?
+- [`locus_ibs_by_allele()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/locus_ibs_by_allele.md)
+  : Do two populations carry the same haplotype at a locus? An
+  allele-split IBS test
+- [`plot_pairwise_block_extension()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pairwise_block_extension.md)
+  : Block extension between every pair of groups, as a triangle per
+  locus
+
 ## Selection genes
 
 Genes hit by an above-threshold IBD selection signal.
@@ -71,6 +95,8 @@ workspace.
   : Population-structure workspace (PCA + UMAP + admixture)
 - [`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
   : Load genotypes from a VCF, optionally LD-pruned
+- [`allele_states()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/allele_states.md)
+  : What each sample carries at one variant
 - [`merge_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/merge_genotypes.md)
   : Merge loaded genotype sets into one
 - [`run_ld_prune()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ld_prune.md)

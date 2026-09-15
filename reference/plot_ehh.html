@@ -13,7 +13,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,7 +51,7 @@ picture behind a single point on an run_ihs() scan."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>EHH decay around one SNP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/plot_ehh.R" class="external-link"><code>R/plot_ehh.R</code></a></small>
       <div class="d-none name"><code>plot_ehh.Rd</code></div>
     </div>
 
@@ -81,6 +81,8 @@ picture behind a single point on an <code><a href="run_ihs.html">run_ihs()</a></
 <span>  reference <span class="op">=</span> <span class="va">DEFAULT_REFERENCE</span>,</span>
 <span>  title <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  subtitle <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  add_ihs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ihs_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -141,9 +143,14 @@ would crowd a hundred names under it, so this is opt-in.</p></dd>
 
 
 <dt id="arg-colours-colors">colours, colors<a class="anchor" aria-label="anchor" href="#arg-colours-colors"></a></dt>
-<dd><p>Named colours for the focal alleles. A biallelic marker has
-<code>reference</code> and <code>alternate</code>; one with more alleles has <code>reference</code>, <code>alternate 1</code>,
-<code>alternate 2</code>, ... and takes its default colours from the shared palette.</p></dd>
+<dd><p>Named colours overriding the focal alleles' defaults. A biallelic
+marker's levels are <code>reference</code> and <code>alternate</code>; a multiallelic one's are <code>reference</code>,
+<code>alternate 1</code>, <code>alternate 2</code>, ..., numbered by descending frequency so <code>alternate 1</code> is
+the commonest alternate. The defaults are one shared colour-blind-safe palette across every
+EHH plot – <code>reference</code> always the same blue, <code>alternate</code> and <code>alternate 1</code> the same
+vermillion – so separate biallelic and multiallelic panels read together and the reference
+curve is the same colour in each. Name any subset to override, e.g.
+<code>colours = c("alternate 2" = "grey50")</code>.</p></dd>
 
 
 <dt id="arg-show-freq">show_freq<a class="anchor" aria-label="anchor" href="#arg-show-freq"></a></dt>
@@ -170,6 +177,31 @@ gene track at the bottom, putting the title in the middle of the figure.</p></dd
 
 <dt id="arg-subtitle">subtitle<a class="anchor" aria-label="anchor" href="#arg-subtitle"></a></dt>
 <dd><p>Line under the title; <code>NULL</code> (default) draws none.</p></dd>
+
+
+<dt id="arg-add-ihs">add_ihs<a class="anchor" aria-label="anchor" href="#arg-add-ihs"></a></dt>
+<dd><p>Add the focal SNP's iHS to that corner note. A <code><a href="run_ihs.html">run_ihs()</a></code> result is read
+for the focal SNP – the cheap path, and the one to prefer, since it reuses a scan you
+already have and so the number in the corner is the same one the genome-wide figures
+were drawn from. <code>TRUE</code> runs <code><a href="run_ihs.html">run_ihs()</a></code> here instead, on <code>x</code>, with this plot's <code>group</code>
+and <code>polarized</code> and anything in <code>ihs_args</code>; that is a whole-genome scan per call, so it
+is slow and worth doing once into a variable rather than once per plot. <code>NULL</code> (default)
+or <code>FALSE</code> adds nothing. iHS is standardised against the whole genome and cannot be
+recovered from the window drawn here, which is why there is no third option. Read
+against the same caution <code><a href="run_ihs.html">run_ihs()</a></code> carries: unpolarized, only the magnitude is shown,
+because the sign is major-versus-minor and not ancestral-versus-derived.</p>
+<p>A <code>contrast</code> column in the table asks the same focal marker more than one question –
+the reference against each alternate of a multiallelic codon, say. Each named set gets
+its own line in the corner, prefixed by its name, and a panel with no value for one of
+them simply omits that line rather than printing a blank. Without the column the table
+is read as a single unnamed contrast, as before.</p></dd>
+
+
+<dt id="arg-ihs-args">ihs_args<a class="anchor" aria-label="anchor" href="#arg-ihs-args"></a></dt>
+<dd><p>Extra arguments for the <code><a href="run_ihs.html">run_ihs()</a></code> call made by <code>add_ihs = TRUE</code>, as a
+named list – <code>maxgap</code>, <code>maf_bands</code>, <code>min_maf</code> and the rest. <code>group</code> and <code>polarized</code> come
+from this plot so the two halves cannot disagree, and naming either here is an error.
+Ignored, with a warning, when <code>add_ihs</code> is a scan you computed yourself.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -11,7 +11,7 @@ gene, or in sliding windows."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,7 +49,7 @@ gene, or in sliding windows."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Within-population genetic diversity</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/diversity.R" class="external-link"><code>R/diversity.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/diversity.R" class="external-link"><code>R/diversity.R</code></a></small>
       <div class="d-none name"><code>pop_diversity.Rd</code></div>
     </div>
 
@@ -74,7 +74,8 @@ gene, or in sliding windows.</p>
 <span>  max_missing <span class="op">=</span> <span class="fl">0.1</span>,</span>
 <span>  min_samples <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  genotype <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  meta <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  meta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alleles <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dosage"</span>, <span class="st">"index"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -141,6 +142,12 @@ is measured over.</p></dd>
 
 <dt id="arg-meta">meta<a class="anchor" aria-label="anchor" href="#arg-meta"></a></dt>
 <dd><p>When <code>x</code> is a matrix, a data frame with <code>sample</code> plus <code>group</code>.</p></dd>
+
+
+<dt id="arg-alleles">alleles<a class="anchor" aria-label="anchor" href="#arg-alleles"></a></dt>
+<dd><p>Which genotype view to read: <code>"dosage"</code> (default) counts alternate copies,
+collapsing a multiallelic site to one number; <code>"index"</code> reads allele indices so every
+allele contributes to the k-allele heterozygosity terms. Derived from the panel as needed.</p></dd>
 
 </dl></div>
     <div class="section level2">

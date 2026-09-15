@@ -15,7 +15,7 @@ genome-wide ordering."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,7 +53,7 @@ genome-wide ordering."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Genotypes over one region, clustered by sample</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/plot_region_haplotypes.R" class="external-link"><code>R/plot_region_haplotypes.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/plot_region_haplotypes.R" class="external-link"><code>R/plot_region_haplotypes.R</code></a></small>
       <div class="d-none name"><code>plot_region_haplotypes.Rd</code></div>
     </div>
 
@@ -74,6 +74,7 @@ genome-wide ordering.</p>
 <span>  annotations <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  genotypes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  samples <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  prefer <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"index"</span>, <span class="st">"full"</span><span class="op">)</span>,</span>
 <span>  spacing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"even"</span>, <span class="st">"genomic"</span>, <span class="st">"gapped"</span><span class="op">)</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dendrogram <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -145,6 +146,14 @@ the calls – which is the combination this plot wants.</p></dd>
 
 <dt id="arg-samples">samples<a class="anchor" aria-label="anchor" href="#arg-samples"></a></dt>
 <dd><p>Optional sample ids to keep.</p></dd>
+
+
+<dt id="arg-prefer">prefer<a class="anchor" aria-label="anchor" href="#arg-prefer"></a></dt>
+<dd><p>Which of <code>x</code>'s panels to draw when <code>genotypes</code> is <code>NULL</code>. <code>"index"</code> (default)
+prefers an <code>allele_set</code> panel, then an <code>allele_index</code> one, so a multiallelic site keeps one
+state per allele and a mixed call keeps its identity, falling back to the full biallelic
+dosage panel. <code>"full"</code> forces that dosage panel, which shows a mix only as a generic
+"mixed" and collapses multiallelic identity.</p></dd>
 
 
 <dt id="arg-spacing">spacing<a class="anchor" aria-label="anchor" href="#arg-spacing"></a></dt>
@@ -265,7 +274,8 @@ collapses every non-reference call to the same number – which is why such site
 usually dropped from a callset in the first place. Markers given here are read as the
 <strong>set of alleles</strong> each sample carries, so <code>reference</code>, <code>alternate 1</code>, <code>alternate 2</code> and
 the mixed states between them stay distinct. Needs <code>bcftools</code> on <code>PATH</code>; samples are
-matched by name, and a position already in the genotypes is an error. Only the states
+matched by name, and a position already in the genotypes is replaced with the richer
+allele-set form read here (a dosage column cannot keep two alternates apart). Only the states
 that actually occur are added to the legend: the full enumeration of a triallelic site
 is seven, and most of them are ordinarily empty.</p></dd>
 

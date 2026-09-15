@@ -20,7 +20,8 @@ pop_diff(
   statistic = c("jost_d", "gst_hedrick", "fst"),
   meta = NULL,
   clamp = TRUE,
-  genotype = NULL
+  genotype = NULL,
+  alleles = c("dosage", "index")
 )
 ```
 
@@ -65,6 +66,13 @@ pop_diff(
   `load_genotypes(vcf, prune = FALSE)`) so differentiation is measured
   on every SNP while PCA/UMAP keep using the pruned matrix. Ignored when
   `x` is a matrix.
+
+- alleles:
+
+  Which genotype view to read: `"dosage"` (default) counts alternate
+  copies, collapsing a multiallelic site; `"index"` reads allele indices
+  so every allele contributes to the differentiation terms. Derived from
+  the panel as needed.
 
 ## Value
 

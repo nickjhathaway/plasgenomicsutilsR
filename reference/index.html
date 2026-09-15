@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -149,6 +149,13 @@
 
         </dt>
         <dd>The IBD pairs a network draws</dd>
+
+        <dt>
+
+          <code><a href="ibd_unrelated_set.html">ibd_unrelated_set()</a></code>
+
+        </dt>
+        <dd>The largest mutually unrelated set of samples</dd>
       </dl></div><div class="section level2">
       <h2 id="genome-wide-ibd-between-groups">Genome-wide IBD between groups<a class="anchor" aria-label="anchor" href="#genome-wide-ibd-between-groups"></a></h2>
 
@@ -196,6 +203,57 @@
         </dt>
         <dd>Add IBD cluster ids to the stored metadata</dd>
       </dl></div><div class="section level2">
+      <h2 id="ibd-segment-length-at-a-locus">IBD segment length at a locus<a class="anchor" aria-label="anchor" href="#ibd-segment-length-at-a-locus"></a></h2>
+
+      <div class="section-desc"><p>Whether IBD segments spanning a locus are longer than the sharing pairs carry elsewhere, each pair measured against its own genome-wide background so that differences in outcrossing between groups cancel.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="ibd_block_extension_test.html">ibd_block_extension_test()</a></code>
+
+        </dt>
+        <dd>Test whether IBD blocks are longer at a locus than the sharing pairs' own background</dd>
+
+        <dt>
+
+          <code><a href="ibd_block_extension_scan.html">ibd_block_extension_scan()</a></code>
+
+        </dt>
+        <dd>Genome-wide scan of IBD block extension, and loci placed against it</dd>
+
+        <dt>
+
+          <code><a href="ibd_block_extension_by_allele.html">ibd_block_extension_by_allele()</a></code>
+
+        </dt>
+        <dd>Split IBD block extension at a locus by carriage of a variant</dd>
+
+        <dt>
+
+          <code><a href="carrier_genome_wide_relatedness.html">carrier_genome_wide_relatedness()</a></code>
+
+        </dt>
+        <dd>Are a variant's carriers more related genome-wide to begin with?</dd>
+
+        <dt>
+
+          <code><a href="locus_ibs_by_allele.html">locus_ibs_by_allele()</a></code>
+
+        </dt>
+        <dd>Do two populations carry the same haplotype at a locus? An allele-split IBS test</dd>
+
+        <dt>
+
+          <code><a href="plot_pairwise_block_extension.html">plot_pairwise_block_extension()</a></code>
+
+        </dt>
+        <dd>Block extension between every pair of groups, as a triangle per locus</dd>
+      </dl></div><div class="section level2">
       <h2 id="selection-genes">Selection genes<a class="anchor" aria-label="anchor" href="#selection-genes"></a></h2>
 
       <div class="section-desc"><p>Genes hit by an above-threshold IBD selection signal.</p></div>
@@ -234,6 +292,13 @@
 
         </dt>
         <dd>Load genotypes from a VCF, optionally LD-pruned</dd>
+
+        <dt>
+
+          <code><a href="allele_states.html">allele_states()</a></code>
+
+        </dt>
+        <dd>What each sample carries at one variant</dd>
 
         <dt>
 

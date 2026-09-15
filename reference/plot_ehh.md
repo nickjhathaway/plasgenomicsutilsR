@@ -28,6 +28,8 @@ plot_ehh(
   reference = DEFAULT_REFERENCE,
   title = NULL,
   subtitle = NULL,
+  add_ihs = NULL,
+  ihs_args = list(),
   colors = NULL
 )
 ```
@@ -97,10 +99,15 @@ plot_ehh(
 
 - colours, colors:
 
-  Named colours for the focal alleles. A biallelic marker has
-  `reference` and `alternate`; one with more alleles has `reference`,
-  `alternate 1`, `alternate 2`, ... and takes its default colours from
-  the shared palette.
+  Named colours overriding the focal alleles' defaults. A biallelic
+  marker's levels are `reference` and `alternate`; a multiallelic one's
+  are `reference`, `alternate 1`, `alternate 2`, ..., numbered by
+  descending frequency so `alternate 1` is the commonest alternate. The
+  defaults are one shared colour-blind-safe palette across every EHH
+  plot – `reference` always the same blue, `alternate` and `alternate 1`
+  the same vermillion – so separate biallelic and multiallelic panels
+  read together and the reference curve is the same colour in each. Name
+  any subset to override, e.g. `colours = c("alternate 2" = "grey50")`.
 
 - show_freq:
 
@@ -129,6 +136,42 @@ plot_ehh(
 - subtitle:
 
   Line under the title; `NULL` (default) draws none.
+
+- add_ihs:
+
+  Add the focal SNP's iHS to that corner note. A
+  [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
+  result is read for the focal SNP – the cheap path, and the one to
+  prefer, since it reuses a scan you already have and so the number in
+  the corner is the same one the genome-wide figures were drawn from.
+  `TRUE` runs
+  [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
+  here instead, on `x`, with this plot's `group` and `polarized` and
+  anything in `ihs_args`; that is a whole-genome scan per call, so it is
+  slow and worth doing once into a variable rather than once per plot.
+  `NULL` (default) or `FALSE` adds nothing. iHS is standardised against
+  the whole genome and cannot be recovered from the window drawn here,
+  which is why there is no third option. Read against the same caution
+  [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
+  carries: unpolarized, only the magnitude is shown, because the sign is
+  major-versus-minor and not ancestral-versus-derived.
+
+  A `contrast` column in the table asks the same focal marker more than
+  one question – the reference against each alternate of a multiallelic
+  codon, say. Each named set gets its own line in the corner, prefixed
+  by its name, and a panel with no value for one of them simply omits
+  that line rather than printing a blank. Without the column the table
+  is read as a single unnamed contrast, as before.
+
+- ihs_args:
+
+  Extra arguments for the
+  [`run_ihs()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/run_ihs.md)
+  call made by `add_ihs = TRUE`, as a named list – `maxgap`,
+  `maf_bands`, `min_maf` and the rest. `group` and `polarized` come from
+  this plot so the two halves cannot disagree, and naming either here is
+  an error. Ignored, with a warning, when `add_ihs` is a scan you
+  computed yourself.
 
 ## Value
 

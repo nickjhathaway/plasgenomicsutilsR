@@ -21,7 +21,7 @@ object from a bundled **public** genotype matrix. Two datasets ship:
 
 ``` r
 example_pop_structure(
-  dataset = c("ghana_cambodia", "africa"),
+  dataset = c("ghana_cambodia", "africa", "multiallelic"),
   umap = TRUE,
   seed = 42
 )

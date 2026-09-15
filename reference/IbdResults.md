@@ -79,6 +79,16 @@ Expected columns (superset; extras are kept):
 
 - [`IbdResults$gene_ibd_pairs()`](#method-IbdResults-gene_ibd_pairs)
 
+- [`IbdResults$ibd_block_extension_test()`](#method-IbdResults-ibd_block_extension_test)
+
+- [`IbdResults$ibd_block_extension_scan()`](#method-IbdResults-ibd_block_extension_scan)
+
+- [`IbdResults$ibd_block_extension_by_allele()`](#method-IbdResults-ibd_block_extension_by_allele)
+
+- [`IbdResults$carrier_genome_wide_relatedness()`](#method-IbdResults-carrier_genome_wide_relatedness)
+
+- [`IbdResults$plot_pairwise_block_extension()`](#method-IbdResults-plot_pairwise_block_extension)
+
 - [`IbdResults$add_ibd_clusters()`](#method-IbdResults-add_ibd_clusters)
 
 - [`IbdResults$plot_ibd_network()`](#method-IbdResults-plot_ibd_network)
@@ -88,6 +98,8 @@ Expected columns (superset; extras are kept):
 - [`IbdResults$ibd_pair_clusters()`](#method-IbdResults-ibd_pair_clusters)
 
 - [`IbdResults$ibd_pair_links()`](#method-IbdResults-ibd_pair_links)
+
+- [`IbdResults$ibd_unrelated_set()`](#method-IbdResults-ibd_unrelated_set)
 
 - [`IbdResults$pair_fraction_summary()`](#method-IbdResults-pair_fraction_summary)
 
@@ -614,6 +626,101 @@ Sample pairs sharing IBD over each gene (see
 
 ------------------------------------------------------------------------
 
+### `IbdResults$ibd_block_extension_test()`
+
+Test whether IBD segments are longer at a locus than the sharing pairs'
+own genome-wide background (see
+[`ibd_block_extension_test()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_test.md)).
+
+#### Usage
+
+    IbdResults$ibd_block_extension_test(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`ibd_block_extension_test()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_test.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$ibd_block_extension_scan()`
+
+Genome-wide window scan of IBD block extension, with loci placed against
+it (see
+[`ibd_block_extension_scan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_scan.md)).
+
+#### Usage
+
+    IbdResults$ibd_block_extension_scan(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`ibd_block_extension_scan()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_scan.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$ibd_block_extension_by_allele()`
+
+IBD block extension split by carriage of a variant, the IBD analogue of
+iHS (see
+[`ibd_block_extension_by_allele()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_by_allele.md)).
+
+#### Usage
+
+    IbdResults$ibd_block_extension_by_allele(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`ibd_block_extension_by_allele()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_block_extension_by_allele.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$carrier_genome_wide_relatedness()`
+
+Are a variant's carriers more related genome-wide to begin with – the
+background control for the carrier split (see
+[`carrier_genome_wide_relatedness()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/carrier_genome_wide_relatedness.md)).
+
+#### Usage
+
+    IbdResults$carrier_genome_wide_relatedness(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`carrier_genome_wide_relatedness()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/carrier_genome_wide_relatedness.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$plot_pairwise_block_extension()`
+
+Block extension between every pair of groups, as a triangle per locus
+(see
+[`plot_pairwise_block_extension()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pairwise_block_extension.md)).
+
+#### Usage
+
+    IbdResults$plot_pairwise_block_extension(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`plot_pairwise_block_extension()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_pairwise_block_extension.md).
+
+------------------------------------------------------------------------
+
 ### `IbdResults$add_ibd_clusters()`
 
 Add single-linkage IBD cluster ids to the metadata.
@@ -704,6 +811,26 @@ Needs the pair table.
 
   Passed to
   [`ibd_pair_links()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_pair_links.md).
+
+------------------------------------------------------------------------
+
+### `IbdResults$ibd_unrelated_set()`
+
+The largest set of mutually unrelated samples found, in which no pair
+shares more than a given fraction (see
+[`ibd_unrelated_set()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_unrelated_set.md)).
+Needs the pair table.
+
+#### Usage
+
+    IbdResults$ibd_unrelated_set(...)
+
+#### Arguments
+
+- `...`:
+
+  Passed to
+  [`ibd_unrelated_set()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/ibd_unrelated_set.md).
 
 ------------------------------------------------------------------------
 

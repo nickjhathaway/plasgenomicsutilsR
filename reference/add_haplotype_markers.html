@@ -9,7 +9,7 @@ allele indices so a site with more than two alleles keeps them apart."></head><b
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,7 +47,7 @@ allele indices so a site with more than two alleles keeps them apart."></head><b
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Add markers to a haplotype set from a callset of their own</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>add_haplotype_markers.Rd</code></div>
     </div>
 
@@ -111,6 +111,27 @@ at the haplotype layer, where an allele is an index rather than a count.</p>
 <p>Samples are matched by name, not position. The marker is inserted in coordinate order, so
 the haplotypes still read along the genome, and a position already present is an error
 rather than a silent replacement.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="allele-count">Allele count<a class="anchor" aria-label="anchor" href="#allele-count"></a></h2>
+    <p>not a reduction, and not a problem here:
+<code>scan_hh()</code> reports only two allele frequencies whatever a marker carries, which looks like
+a reduction and is not one for this statistic. Rsb's input is <code>iNES</code>, a <strong>site-level</strong>
+homozygosity computed over every haplotype: at a four-allele marker <code>scan_hh()</code>'s <code>iNES</code> is
+identical to <code><a href="https://rdrr.io/pkg/rehh/man/calc_ehhs.html" class="external-link">rehh::calc_ehhs()</a></code>'s over the full data. No haplotype is dropped and no allele
+is ignored; only the reported <code>FREQ_</code> columns reduce, and this function does not return them.</p>
+<p><code>iNES</code> normalises by the focal site's own homozygosity, so splitting the same haplotypes
+into more allele classes moves it by 1% or less. That is why Rsb carries no multiallelic
+warning while <code><a href="run_xpehh.html">run_xpehh()</a></code> does – see there.</p>
+<p>iES falls as the focal splits, and XP-EHH divides two of them:
+No haplotype is dropped and no allele ignored – <code>scan_hh()</code>'s <code>iES</code> at a four-allele marker
+is identical to <code><a href="https://rdrr.io/pkg/rehh/man/calc_ehhs.html" class="external-link">rehh::calc_ehhs()</a></code>'s over the full data, and only the reported <code>FREQ_</code>
+columns reduce. But <code>iES</code> is a site-level homozygosity <strong>pooled across allele classes</strong>, so
+it falls as the focal is split into more of them. Measured on identical haplotypes:</p><table class="table table"><tr><td>alleles at the focal</td><td><code>iES</code></td><td><code>iNES</code></td></tr><tr><td>2</td><td>991.8</td><td>2406.7</td></tr><tr><td>3</td><td>631.5 (-36%)</td><td>2388.6 (-1%)</td></tr><tr><td>4</td><td>558.5 (-44%)</td><td>2395.8 (0%)</td></tr></table><p>XP-EHH divides one population's <code>iES</code> by the other's, so a marker carrying <strong>different</strong>
+numbers of alleles in the two populations puts them on different footings, and the score
+partly measures the diversity difference rather than the haplotype-length difference. It
+warns when that happens, and reports <code>n_alleles_pop1</code> / <code>n_alleles_pop2</code> so those markers
+can be dropped. <code><a href="run_rsb.html">run_rsb()</a></code> reads <code>iNES</code> instead and is not affected.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -219,12 +219,12 @@ see
 
 ihs <- run_ihs(hap, group = "country")
 head(ihs, 3)
-#> # A tibble: 3 × 7
-#>   group    chr            pos snp_id             freq_minor    ihs neg_log10_p
-#>   <fct>    <chr>        <dbl> <chr>                   <dbl>  <dbl>       <dbl>
-#> 1 Cambodia Pf3D7_02_v3 273786 Pf3D7_02_v3:273786      0.467 -0.215      0.0811
-#> 2 Cambodia Pf3D7_04_v3  92596 Pf3D7_04_v3:92596       0.1   -0.499      0.209 
-#> 3 Cambodia Pf3D7_04_v3 544672 Pf3D7_04_v3:544672      0.467 -0.186      0.0695
+#> # A tibble: 3 × 8
+#>   group    chr            pos snp_id       freq_minor   unihs    ihs neg_log10_p
+#>   <fct>    <chr>        <dbl> <chr>             <dbl>   <dbl>  <dbl>       <dbl>
+#> 1 Cambodia Pf3D7_02_v3 273786 Pf3D7_02_v3…      0.467 -0.0681 -0.215      0.0811
+#> 2 Cambodia Pf3D7_04_v3  92596 Pf3D7_04_v3…      0.1   -0.492  -0.499      0.209 
+#> 3 Cambodia Pf3D7_04_v3 544672 Pf3D7_04_v3…      0.467 -0.0253 -0.186      0.0695
 ```
 
 **How to read it.** At each SNP, iHS contrasts how far haplotype
@@ -460,12 +460,13 @@ see exactly those completed sweeps:
 ``` r
 
 head(run_rsb(hap, group = "country"), 3)
-#> # A tibble: 3 × 8
-#>   pair              pop1     pop2  chr            pos snp_id   value neg_log10_p
-#>   <chr>             <chr>    <chr> <chr>        <dbl> <chr>    <dbl>       <dbl>
-#> 1 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3  92596 Pf3D7_0… -2.14        1.49
-#> 2 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 401090 Pf3D7_0… -2.16        1.51
-#> 3 Cambodia vs Ghana Cambodia Ghana Pf3D7_04_v3 544672 Pf3D7_0… -2.04        1.38
+#> # A tibble: 3 × 10
+#>   pair       pop1  pop2  chr      pos snp_id n_alleles_pop1 n_alleles_pop2 value
+#>   <chr>      <chr> <chr> <chr>  <dbl> <chr>           <int>          <int> <dbl>
+#> 1 Cambodia … Camb… Ghana Pf3D…  92596 Pf3D7…              2              2 -2.14
+#> 2 Cambodia … Camb… Ghana Pf3D… 401090 Pf3D7…              2              2 -2.16
+#> 3 Cambodia … Camb… Ghana Pf3D… 544672 Pf3D7…              2              2 -2.04
+#> # ℹ 1 more variable: neg_log10_p <dbl>
 ```
 
 `pairs = list(c("a", "b"))` restricts the comparison; the default is

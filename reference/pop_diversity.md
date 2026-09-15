@@ -20,7 +20,8 @@ pop_diversity(
   max_missing = 0.1,
   min_samples = 4,
   genotype = NULL,
-  meta = NULL
+  meta = NULL,
+  alleles = c("dosage", "index")
 )
 ```
 
@@ -94,6 +95,13 @@ pop_diversity(
 - meta:
 
   When `x` is a matrix, a data frame with `sample` plus `group`.
+
+- alleles:
+
+  Which genotype view to read: `"dosage"` (default) counts alternate
+  copies, collapsing a multiallelic site to one number; `"index"` reads
+  allele indices so every allele contributes to the k-allele
+  heterozygosity terms. Derived from the panel as needed.
 
 ## Value
 

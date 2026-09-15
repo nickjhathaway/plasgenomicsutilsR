@@ -47,6 +47,8 @@ set of samples (or a metadata match) for output.
 
 - [`PopStructure$genotype()`](#method-PopStructure-genotype)
 
+- [`PopStructure$encoding()`](#method-PopStructure-encoding)
+
 - [`PopStructure$pca_scores()`](#method-PopStructure-pca_scores)
 
 - [`PopStructure$pca_variance()`](#method-PopStructure-pca_variance)
@@ -62,6 +64,10 @@ set of samples (or a metadata match) for output.
 - [`PopStructure$get_colours()`](#method-PopStructure-get_colours)
 
 - [`PopStructure$allele()`](#method-PopStructure-allele)
+
+- [`PopStructure$sites()`](#method-PopStructure-sites)
+
+- [`PopStructure$state_levels()`](#method-PopStructure-state_levels)
 
 - [`PopStructure$positions()`](#method-PopStructure-positions)
 
@@ -131,7 +137,8 @@ list).
       pruned = NULL,
       full = NULL,
       one_based = FALSE,
-      colours = NULL
+      colours = NULL,
+      pca_panel = c("auto", "onehot", "dosage")
     )
 
 #### Arguments
@@ -183,6 +190,16 @@ list).
   or read straight off a VCF); shift them to the 0-based convention on
   the way in.
 
+- `pca_panel`:
+
+  Which derived view PCA and UMAP run on when the panel holds allele
+  indices. `"onehot"` gives every ALT its own indicator column, so a
+  multiallelic site still reaches the ordination; `"dosage"` drops those
+  sites, which is what the object did before. `"auto"` (default) takes
+  one-hot when the panel holds a multiallelic site and dosage otherwise
+  – so a wholly biallelic panel's PCA is unchanged, because on a
+  biallelic site the indicator column *is* the alt-dosage column.
+
 ------------------------------------------------------------------------
 
 ### `PopStructure$add_panel()`
@@ -193,7 +210,14 @@ the correlation between neighbouring SNPs is the signal.
 
 #### Usage
 
-    PopStructure$add_panel(name, geno, allele = NULL, pruned = NULL)
+    PopStructure$add_panel(
+      name,
+      geno,
+      allele = NULL,
+      pruned = NULL,
+      sites = NULL,
+      encoding = NULL
+    )
 
 #### Arguments
 
@@ -500,7 +524,7 @@ The genotype matrix for the active samples (samples x SNPs).
 
 #### Usage
 
-    PopStructure$genotype(panel = NULL, prefer = NULL)
+    PopStructure$genotype(panel = NULL, prefer = NULL, needs = NULL)
 
 #### Arguments
 
@@ -512,6 +536,32 @@ The genotype matrix for the active samples (samples x SNPs).
 
   Panel to use *if the object has it*, falling back to the primary one –
   how an analysis asks for the panel it wants without requiring it.
+
+- `needs`:
+
+  What the caller can read: `"dosage"`, `"allele_index"`, or `"onehot"`
+  (one indicator column per ALT, which is how a multiallelic site
+  reaches PCA). The object serves or derives the panel that answers it,
+  so one object covers every analysis. `NULL` takes the panel as it is.
+
+------------------------------------------------------------------------
+
+### `PopStructure$encoding()`
+
+How a panel's `$genotype()` is coded: `"dosage"` (alternate copies) or
+`"allele_index"` (which allele each sample carries). An object built
+from a bare matrix reports `"dosage"`, since that is what one has always
+been.
+
+#### Usage
+
+    PopStructure$encoding(panel = NULL)
+
+#### Arguments
+
+- `panel`:
+
+  Which panel to report on; the primary one when `NULL`.
 
 ------------------------------------------------------------------------
 
@@ -595,6 +645,49 @@ older version).
 #### Usage
 
     PopStructure$allele(panel = NULL)
+
+#### Arguments
+
+- `panel`:
+
+  Which panel to report on; the primary one when `NULL`.
+
+------------------------------------------------------------------------
+
+### `PopStructure$sites()`
+
+The per-record allele table for a panel, or `NULL` when the panel was
+built from a bare matrix that never carried one. One row per genotype
+column, in the same order; see
+[`load_genotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/load_genotypes.md)
+for the columns. Ask it before reading a per-allele number off a dosage
+matrix – a column with `n_alt_real > 1` has had its alternates collapsed
+onto one number and cannot answer one.
+
+#### Usage
+
+    PopStructure$sites(panel = NULL)
+
+#### Arguments
+
+- `panel`:
+
+  Which panel to describe; the primary one when `NULL`.
+
+------------------------------------------------------------------------
+
+### `PopStructure$state_levels()`
+
+The per-column state names of an `allele_set` panel: a named list, one
+entry per genotype column, giving the states a cell's code resolves to
+(e.g. `reference` / `alternate 1` / `alternate 1 + alternate 2`). `NULL`
+for a dosage or allele-index panel, which do not carry sets.
+[`plot_region_haplotypes()`](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/plot_region_haplotypes.md)
+reads it to draw each cell as the alleles it actually carries.
+
+#### Usage
+
+    PopStructure$state_levels(panel = NULL)
 
 #### Arguments
 

@@ -21,7 +21,7 @@ parasite_haplotypes(
   seed = 42,
   meta = NULL,
   genotype = NULL,
-  alleles = c("dosage", "index")
+  alleles = c("auto", "dosage", "index")
 )
 ```
 

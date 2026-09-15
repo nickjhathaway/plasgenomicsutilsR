@@ -13,7 +13,7 @@ its frequency."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,7 +51,7 @@ its frequency."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Integrated haplotype score (iHS)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/ihs.R" class="external-link"><code>R/ihs.R</code></a></small>
       <div class="d-none name"><code>run_ihs.Rd</code></div>
     </div>
 
@@ -76,7 +76,8 @@ its frequency.</p>
 <span>  maxgap <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  scalegap <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  discard_at_border <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  threads <span class="op">=</span> <span class="fl">1</span></span>
+<span>  threads <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ref"</span>, <span class="st">"pairwise"</span>, <span class="st">"none"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -165,11 +166,28 @@ scan that comes back mostly <code>NA</code> says so.</p></dd>
 <dt id="arg-threads">threads<a class="anchor" aria-label="anchor" href="#arg-threads"></a></dt>
 <dd><p>Threads for <span class="pkg">rehh</span>.</p></dd>
 
+
+<dt id="arg-contrast">contrast<a class="anchor" aria-label="anchor" href="#arg-contrast"></a></dt>
+<dd><p>For a multiallelic marker, which allele pairs to score. <code>"ref"</code> (default)
+contrasts each alternate against the reference – one <code>"0&gt;k"</code> row per alternate, kept in
+the returned <code>contrast</code> column; <code>"pairwise"</code> scores every pair of alleles; <code>"none"</code> takes
+the single major-versus-minor value <span class="pkg">rehh</span> reports and drops the multiallelic
+distinction. A biallelic marker has one contrast, so all three agree there.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tibble with <code>group</code>, <code>chr</code>, <code>pos</code>, <code>snp_id</code>, <code>freq_minor</code>, <code>ihs</code> and
+    <p>A tibble with <code>group</code>, <code>chr</code>, <code>pos</code>, <code>snp_id</code>, <code>freq_minor</code>, <code>unihs</code>, <code>ihs</code> and
 <code>neg_log10_p</code>.</p>
+<p><code>unihs</code> is the <strong>un</strong>standardised statistic, <code>log(iHH_major / iHH_minor)</code> (ancestral
+over derived when <code>polarized = TRUE</code>), so <code>exp(unihs)</code> is the integrated-EHH ratio
+itself. <code>ihs</code> is that value z-scored within its frequency band, which is what makes
+scores comparable along the genome but also throws the scale away – the band's mean and
+sd are not recoverable from <code>ihs</code> alone, so keep <code>unihs</code> if you ever want the ratio back.
+Note that <code>ihs = 0</code> does <strong>not</strong> mean a ratio of 1: it means average for that group, and
+the average is below 1 wherever minor-allele haplotypes are systematically longer.</p>
+<p><code>ihs</code> and <code>neg_log10_p</code> are <code>NA</code> wherever the integral could not be formed for one of
+the two alleles – see the note on missing scores below.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -178,6 +196,45 @@ by default and the comparison is major versus minor allele rather than ancestral
 versus derived. That is the standard treatment for <em>P. falciparum</em> and it means the
 <em>sign</em> of <code>ihs</code> should not be read as "selection on the derived allele" – use
 <code>abs(ihs)</code> and <code>neg_log10_p</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="contrasts">Contrasts<a class="anchor" aria-label="anchor" href="#contrasts"></a></h2>
+
+
+<p><code>log(iHH_A / iHH_B)</code> is a ratio, so it needs exactly two terms and there is no k-allele
+iHS. At a marker carrying three alleles the honest answer is <strong>k-1 contrasts</strong>, each saying
+which two it compared, and the <code>contrast</code> column names them as <code>"0&gt;1"</code>, <code>"0&gt;2"</code> and so on
+in allele-index order (<code>$sites$alt</code> on the panel says which base each index is).</p>
+<p><code>"ref"</code> compares each alternate against the reference only. That is what keeps independent
+origins apart: at a codon where three changes arose separately, pooling them into one
+"not reference" class merges exactly the distinction the scan exists to draw.</p>
+<p>What makes this cheap is that <strong>per-allele iHH does not depend on which other alleles are
+at the marker</strong> – EHH for an allele class only ever involves that class's haplotypes. So
+every contrast at a marker comes out of one <code><a href="https://rdrr.io/pkg/rehh/man/calc_ehh.html" class="external-link">rehh::calc_ehh()</a></code> call, and the numbers are
+identical to what an explicitly subset and recoded panel would give (verified to nine
+decimal places). Only multiallelic markers cost anything extra.</p>
+<p>A biallelic marker has one contrast, so <code>"ref"</code> reproduces <code>"none"</code> exactly, value for
+value. The standardisation is over every row at once, so a marker contributing two rows has
+both judged against the same genome-wide distribution.</p>
+<p>Downstream, <code>contrast</code> is a grouping key: <code><a href="ihs_windows.html">ihs_windows()</a></code>, <code><a href="ihs_genes.html">ihs_genes()</a></code>,
+<code><a href="selection_peaks.html">selection_peaks()</a></code> and <code><a href="plot_ihs.html">plot_ihs()</a></code> all split on it, because two contrasts at one position
+are two measurements rather than two SNPs at one site.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="why-a-snp-can-appear-for-one-group-only-or-score-na">Why a SNP can appear for one group only, or score <code>NA</code><a class="anchor" aria-label="anchor" href="#why-a-snp-can-appear-for-one-group-only-or-score-na"></a></h2>
+
+
+<p>The scan is per group, so a SNP is tested in a group only where it is polymorphic there
+and clears <code>min_maf</code> there. A variant private to one region therefore has one row, not
+one per region, and that is a statement about the cohort rather than a fault.</p>
+<p>A row can be present with <code>ihs</code> and <code>neg_log10_p</code> both <code>NA</code>. That means the SNP passed the
+frequency filter but <span class="pkg">rehh</span> could not integrate EHH for at least one of its two
+alleles, so the log ratio is undefined. The usual causes are too few haplotypes carrying
+the minor allele for the decay to be estimated, and EHH that never falls below the cutoff
+before the data runs out – a chromosome end, or a gap wider than <code>maxgap</code>. Both get more
+common in small groups and at low minor-allele counts, which is the same corner where a
+score that <em>is</em> returned deserves the least trust. Treat <code>NA</code> as "not measurable here",
+not as "no selection".</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -198,19 +255,19 @@ package rehh to detect positive selection from haplotype structure.
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_pop_structure.html">example_pop_structure</a></span><span class="op">(</span>umap <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="parasite_haplotypes.html">parasite_haplotypes</a></span><span class="op">(</span><span class="va">ps</span>, maf <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">run_ihs</span><span class="op">(</span><span class="va">hap</span>, group <span class="op">=</span> <span class="st">"country"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 365 × 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    group    chr             pos snp_id            freq_minor     ihs neg_log10_p</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Cambodia Pf3D7_02_v3  <span style="text-decoration: underline;">273</span>786 Pf3D7_02_v3:2737…     0.467  -<span style="color: #BB0000;">0.215</span>       0.081<span style="text-decoration: underline;">1</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Cambodia Pf3D7_04_v3   <span style="text-decoration: underline;">92</span>596 Pf3D7_04_v3:92596     0.1    -<span style="color: #BB0000;">0.499</span>       0.209 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">544</span>672 Pf3D7_04_v3:5446…     0.467  -<span style="color: #BB0000;">0.186</span>       0.069<span style="text-decoration: underline;">5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">898</span>667 Pf3D7_04_v3:8986…     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.533</span>       0.226 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Cambodia Pf3D7_04_v3 1<span style="text-decoration: underline;">006</span>054 Pf3D7_04_v3:1006…     0.133  -<span style="color: #BB0000;">0.182</span>       0.067<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Cambodia Pf3D7_07_v3   <span style="text-decoration: underline;">80</span>465 Pf3D7_07_v3:80465     0.367  -<span style="color: #BB0000;">0.033</span><span style="color: #BB0000; text-decoration: underline;">2</span>      0.011<span style="text-decoration: underline;">7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>090 Pf3D7_07_v3:3750…     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.314</span>       0.123 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>470 Pf3D7_07_v3:3754…     0.066<span style="text-decoration: underline;">7</span>  3.09        2.71  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>817 Pf3D7_07_v3:3758…     0.066<span style="text-decoration: underline;">7</span>  3.09        2.71  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">376</span>527 Pf3D7_07_v3:3765…     0.333   0.327       0.128 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 365 × 8</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    group    chr             pos snp_id    freq_minor   unihs     ihs neg_log10_p</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> Cambodia Pf3D7_02_v3  <span style="text-decoration: underline;">273</span>786 Pf3D7_02…     0.467  -<span style="color: #BB0000;">0.068</span><span style="color: #BB0000; text-decoration: underline;">1</span> -<span style="color: #BB0000;">0.215</span>       0.081<span style="text-decoration: underline;">1</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> Cambodia Pf3D7_04_v3   <span style="text-decoration: underline;">92</span>596 Pf3D7_04…     0.1    -<span style="color: #BB0000;">0.492</span>  -<span style="color: #BB0000;">0.499</span>       0.209 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">544</span>672 Pf3D7_04…     0.467  -<span style="color: #BB0000;">0.025</span><span style="color: #BB0000; text-decoration: underline;">3</span> -<span style="color: #BB0000;">0.186</span>       0.069<span style="text-decoration: underline;">5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> Cambodia Pf3D7_04_v3  <span style="text-decoration: underline;">898</span>667 Pf3D7_04…     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.542</span>  -<span style="color: #BB0000;">0.533</span>       0.226 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> Cambodia Pf3D7_04_v3 1<span style="text-decoration: underline;">006</span>054 Pf3D7_04…     0.133  -<span style="color: #BB0000;">0.018</span><span style="color: #BB0000; text-decoration: underline;">1</span> -<span style="color: #BB0000;">0.182</span>       0.067<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> Cambodia Pf3D7_07_v3   <span style="text-decoration: underline;">80</span>465 Pf3D7_07…     0.367   0.203  -<span style="color: #BB0000;">0.033</span><span style="color: #BB0000; text-decoration: underline;">2</span>      0.011<span style="text-decoration: underline;">7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>090 Pf3D7_07…     0.066<span style="text-decoration: underline;">7</span> -<span style="color: #BB0000;">0.216</span>  -<span style="color: #BB0000;">0.314</span>       0.123 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>470 Pf3D7_07…     0.066<span style="text-decoration: underline;">7</span>  4.87    3.09        2.71  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">375</span>817 Pf3D7_07…     0.066<span style="text-decoration: underline;">7</span>  4.87    3.09        2.71  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> Cambodia Pf3D7_07_v3  <span style="text-decoration: underline;">376</span>527 Pf3D7_07…     0.333   0.740   0.327       0.128 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 355 more rows</span></span>
 </code></pre></div>
     </div>

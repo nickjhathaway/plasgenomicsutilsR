@@ -105,6 +105,24 @@ classic examples *var* and *rifin* will **not** appear: they are
 subtelomeric, so a core-genome filter removes them before the scan ever
 sees them.
 
+## Biallelic by definition, not by implementation
+
+Beta1 weights each neighbour by how close its **folded** allele
+frequency is to the core SNP's, and folding – `min(x, 1 - x)` –
+presupposes one allele and its complement. A site with three alleles has
+no single folded frequency to compare, so there is nothing to generalise
+here: this is the one statistic in the package where "does not extend to
+k alleles" is a property of the method rather than of the code. Siewert
+& Voight define Beta on biallelic sites and BetaScan takes biallelic
+input.
+
+An allele-index panel is therefore refused rather than collapsed. On a
+[PopStructure](https://nickjhathaway.github.io/plasgenomicsutilsR/reference/PopStructure.md)
+built from allele indices the biallelic dosage view is derived
+automatically, so the score is computed over the sites it is defined for
+and the multiallelic ones are simply absent – which the panel's own site
+count makes visible.
+
 ## References
 
 Siewert, K. M. & Voight, B. F. (2017) Detecting long-term balancing

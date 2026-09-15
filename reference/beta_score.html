@@ -15,7 +15,7 @@ selection, and in P. falciparum typically an antigen rather than a drug target."
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,7 +53,7 @@ selection, and in P. falciparum typically an antigen rather than a drug target."
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Beta: balancing selection from clustered allele frequencies</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/beta_score.R" class="external-link"><code>R/beta_score.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/beta_score.R" class="external-link"><code>R/beta_score.R</code></a></small>
       <div class="d-none name"><code>beta_score.Rd</code></div>
     </div>
 
@@ -148,6 +148,21 @@ look for; a scan that surfaces none of them is a reason to check the input befor
 believing anything else in it. Note the classic examples <em>var</em> and <em>rifin</em> will
 <strong>not</strong> appear: they are subtelomeric, so a core-genome filter removes them before the
 scan ever sees them.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="biallelic-by-definition-not-by-implementation">Biallelic by definition, not by implementation<a class="anchor" aria-label="anchor" href="#biallelic-by-definition-not-by-implementation"></a></h2>
+
+
+<p>Beta1 weights each neighbour by how close its <strong>folded</strong> allele frequency is to the core
+SNP's, and folding – <code>min(x, 1 - x)</code> – presupposes one allele and its complement. A site
+with three alleles has no single folded frequency to compare, so there is nothing to
+generalise here: this is the one statistic in the package where "does not extend to k
+alleles" is a property of the method rather than of the code. Siewert &amp; Voight define Beta
+on biallelic sites and BetaScan takes biallelic input.</p>
+<p>An allele-index panel is therefore refused rather than collapsed. On a <a href="PopStructure.html">PopStructure</a> built
+from allele indices the biallelic dosage view is derived automatically, so the score is
+computed over the sites it is defined for and the multiallelic ones are simply absent –
+which the panel's own site count makes visible.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

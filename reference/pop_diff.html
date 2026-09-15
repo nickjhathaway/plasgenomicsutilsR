@@ -13,7 +13,7 @@ plot_diff_heatmap() for a group summary, or top_differentiating_snps() for marke
 
     <a class="navbar-brand me-2" href="../index.html">plasgenomicsutilsR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,7 +51,7 @@ plot_diff_heatmap() for a group summary, or top_differentiating_snps() for marke
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Population differentiation between metadata groups, per SNP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.4.1/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nickjhathaway/plasgenomicsutilsR/blob/v0.5.0/R/jost_d.R" class="external-link"><code>R/jost_d.R</code></a></small>
       <div class="d-none name"><code>pop_diff.Rd</code></div>
     </div>
 
@@ -70,7 +70,8 @@ the differentiating SNPs you want here. Feed the result to <code><a href="pop_di
 <span>  statistic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"jost_d"</span>, <span class="st">"gst_hedrick"</span>, <span class="st">"fst"</span><span class="op">)</span>,</span>
 <span>  meta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  clamp <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  genotype <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  genotype <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alleles <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dosage"</span>, <span class="st">"index"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -109,6 +110,12 @@ genome-wide in <em>P. falciparum</em>); its standardized form G'st is provided i
 use <strong>instead</strong> of a <code>PopStructure</code>'s stored matrix – pass the <strong>full, unpruned</strong>
 set here (e.g. <code>load_genotypes(vcf, prune = FALSE)</code>) so differentiation is measured on
 every SNP while PCA/UMAP keep using the pruned matrix. Ignored when <code>x</code> is a matrix.</p></dd>
+
+
+<dt id="arg-alleles">alleles<a class="anchor" aria-label="anchor" href="#arg-alleles"></a></dt>
+<dd><p>Which genotype view to read: <code>"dosage"</code> (default) counts alternate copies,
+collapsing a multiallelic site; <code>"index"</code> reads allele indices so every allele contributes
+to the differentiation terms. Derived from the panel as needed.</p></dd>
 
 </dl></div>
     <div class="section level2">

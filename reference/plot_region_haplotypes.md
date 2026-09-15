@@ -17,6 +17,7 @@ plot_region_haplotypes(
   annotations = NULL,
   genotypes = NULL,
   samples = NULL,
+  prefer = c("index", "full"),
   spacing = c("even", "genomic", "gapped"),
   cluster = TRUE,
   dendrogram = TRUE,
@@ -96,6 +97,15 @@ plot_region_haplotypes(
 - samples:
 
   Optional sample ids to keep.
+
+- prefer:
+
+  Which of `x`'s panels to draw when `genotypes` is `NULL`. `"index"`
+  (default) prefers an `allele_set` panel, then an `allele_index` one,
+  so a multiallelic site keeps one state per allele and a mixed call
+  keeps its identity, falling back to the full biallelic dosage panel.
+  `"full"` forces that dosage panel, which shows a mix only as a generic
+  "mixed" and collapses multiallelic identity.
 
 - spacing:
 
@@ -231,9 +241,10 @@ plot_region_haplotypes(
   sample carries, so `reference`, `alternate 1`, `alternate 2` and the
   mixed states between them stay distinct. Needs `bcftools` on `PATH`;
   samples are matched by name, and a position already in the genotypes
-  is an error. Only the states that actually occur are added to the
-  legend: the full enumeration of a triallelic site is seven, and most
-  of them are ordinarily empty.
+  is replaced with the richer allele-set form read here (a dosage column
+  cannot keep two alternates apart). Only the states that actually occur
+  are added to the legend: the full enumeration of a triallelic site is
+  seven, and most of them are ordinarily empty.
 
 ## Value
 
