@@ -139,3 +139,54 @@
   }
   out
 }
+
+# ---- genotype encodings ----------------------------------------------------
+
+#' @keywords internal
+#' @noRd
+# A dosage matrix (0/1/2 alt copies) and an allele-index matrix (0..k-1, naming *which*
+# allele) are both integer matrices, and at a triallelic marker coded 0/1/2 they are
+# indistinguishable by inspection. So the object carries its own `encoding` and this reads
+# it, falling back to a value check for a bare matrix -- which catches the unambiguous half,
+# an index above 2.
+#
+# The point is to refuse rather than to mangle. `.haploid_calls()` maps 0 -> 0 and 2 -> 1 and
+# leaves the rest NA, so an index panel comes back with allele 2 renamed allele 1, allele 1
+# turned to missing and allele 3 turned to missing: a matrix of the right shape and the wrong
+# contents, which nothing downstream can detect.
+.require_dosage <- function(x, what) {
+  enc <- if (is.list(x) && !is.null(x$encoding)) x$encoding else NULL
+  mat <- if (is.list(x) && !is.null(x$genotype)) x$genotype else x
+  if (!is.null(enc) && !identical(enc, "dosage"))
+    stop(what, " needs alt-allele dosages (0/1/2), and this panel is encoded \"", enc,
+         "\". A dosage cannot say which of several alternates a call carries, so there is ",
+         "no faithful conversion -- contrast one allele at a time instead.", call. = FALSE)
+  if (is.null(enc) && is.numeric(mat) && length(mat)) {
+    mx <- suppressWarnings(max(mat, na.rm = TRUE))
+    if (is.finite(mx) && mx > 2)
+      stop(what, " needs alt-allele dosages (0/1/2); this matrix holds ", mx,
+           ", which is an allele index rather than a dosage. Pass a dosage panel, or ",
+           "record the panel's `encoding` if it really is one.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+# `snp_id` -> chr and pos, for a key with any number of trailing fields.
+#
+# The one-hot expansion names a split multiallelic column `chr:pos:allele`, and the Python
+# package writes `chr:pos:ref:alt` wherever an allele has to be named. Parsing from the RIGHT
+# ("everything before the last colon is the chromosome") reads `Pf3D7_01_v3:100:A:G` as
+# chromosome "Pf3D7_01_v3:100:A" at position NA, so the whole scan is refused. Parse from the
+# LEFT instead: field 1 is the chromosome, field 2 is the position, and anything after names
+# an allele. No Pf contig name contains a colon, so nothing is lost by fixing the split.
+.snp_id_chr_pos <- function(id, what = "`snp_id`") {
+  parts <- strsplit(as.character(id), ":", fixed = TRUE)
+  if (any(lengths(parts) < 2L))
+    stop("could not read a position out of ", what,
+         "; expected \"chr:pos\" (optionally followed by allele fields)", call. = FALSE)
+  pos <- suppressWarnings(as.numeric(vapply(parts, `[`, character(1), 2L)))
+  if (anyNA(pos))
+    stop("could not read a position out of ", what,
+         "; expected \"chr:pos\" (optionally followed by allele fields)", call. = FALSE)
+  list(chr = normalise_chr(vapply(parts, `[`, character(1), 1L)), pos = pos)
+}

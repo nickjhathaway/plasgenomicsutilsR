@@ -47,6 +47,37 @@ Samples are matched by name, not position. The marker is inserted in coordinate 
 the haplotypes still read along the genome, and a position already present is an error
 rather than a silent replacement.
 }
+\section{Allele count}{
+ not a reduction, and not a problem here:
+\code{scan_hh()} reports only two allele frequencies whatever a marker carries, which looks like
+a reduction and is not one for this statistic. Rsb's input is \code{iNES}, a \strong{site-level}
+homozygosity computed over every haplotype: at a four-allele marker \code{scan_hh()}'s \code{iNES} is
+identical to \code{\link[rehh:calc_ehhs]{rehh::calc_ehhs()}}'s over the full data. No haplotype is dropped and no allele
+is ignored; only the reported \code{FREQ_} columns reduce, and this function does not return them.
+
+\code{iNES} normalises by the focal site's own homozygosity, so splitting the same haplotypes
+into more allele classes moves it by 1\% or less. That is why Rsb carries no multiallelic
+warning while \code{\link[=run_xpehh]{run_xpehh()}} does -- see there.
+
+ iES falls as the focal splits, and XP-EHH divides two of them:
+No haplotype is dropped and no allele ignored -- \code{scan_hh()}'s \code{iES} at a four-allele marker
+is identical to \code{\link[rehh:calc_ehhs]{rehh::calc_ehhs()}}'s over the full data, and only the reported \code{FREQ_}
+columns reduce. But \code{iES} is a site-level homozygosity \strong{pooled across allele classes}, so
+it falls as the focal is split into more of them. Measured on identical haplotypes:\tabular{lll}{
+   alleles at the focal \tab \code{iES} \tab \code{iNES} \cr
+   2 \tab 991.8 \tab 2406.7 \cr
+   3 \tab 631.5 (-36\%) \tab 2388.6 (-1\%) \cr
+   4 \tab 558.5 (-44\%) \tab 2395.8 (0\%) \cr
+}
+
+
+XP-EHH divides one population's \code{iES} by the other's, so a marker carrying \strong{different}
+numbers of alleles in the two populations puts them on different footings, and the score
+partly measures the diversity difference rather than the haplotype-length difference. It
+warns when that happens, and reports \code{n_alleles_pop1} / \code{n_alleles_pop2} so those markers
+can be dropped. \code{\link[=run_rsb]{run_rsb()}} reads \code{iNES} instead and is not affected.
+}
+
 \examples{
 \dontrun{
 hap <- parasite_haplotypes(ps, fws = fws)

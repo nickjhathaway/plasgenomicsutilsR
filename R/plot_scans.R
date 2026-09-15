@@ -135,6 +135,17 @@ plot_ihs <- function(scan, metric = c("neg_log10_p", "ihs", "value", "frac_extre
   metric <- match.arg(metric)
   if (metric == "ihs" && !"ihs" %in% names(scan)) metric <- "value"
   facet <- if ("group" %in% names(scan)) "group" else if ("pair" %in% names(scan)) "pair"
+  # Two contrasts at one position are two measurements. Overplotting them puts two points on
+  # one x with nothing to tell them apart, so they get their own facet -- combined with the
+  # group when there is one, since a marker can be multiallelic in one population and not in
+  # another.
+  if ("contrast" %in% names(scan) && length(unique(scan$contrast)) > 1L) {
+    scan <- as.data.frame(scan)
+    scan$.facet <- if (is.null(facet)) as.character(scan$contrast)
+                   else paste(as.character(scan[[facet]]), scan$contrast, sep = " | ")
+    scan$.facet <- factor(scan$.facet, levels = unique(scan$.facet))
+    facet <- ".facet"
+  }
   lab <- switch(metric, neg_log10_p = expression(-log[10](italic(p))),
                 frac_extreme = "fraction of SNPs extreme", metric)
   thr <- if (metric == "neg_log10_p") {

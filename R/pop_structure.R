@@ -4,7 +4,7 @@
 
 # ---- genotypes -------------------------------------------------------------
 
-# SNPRelate parses a VCF as text, so a binary BCF reaches it as mojibake and fails deep
+# The GDS builder parses a VCF as text, so a binary BCF reaches it as mojibake and fails deep
 # inside the parser with "invalid multibyte string". Hand it a VCF instead: reuse one
 # already sitting next to the BCF if there is one, otherwise convert with bcftools into
 # `vcf_dir` (default: alongside the BCF). Reusing rather than re-converting is the point
@@ -45,7 +45,7 @@
                         "not on PATH to convert it.\n  bcftools view -Oz -o %s %s"),
                  basename(path), out, path), call. = FALSE)
   if (!is.null(vcf_dir)) dir.create(vcf_dir, showWarnings = FALSE, recursive = TRUE)
-  message("converting BCF to ", out, " (SNPRelate reads VCF text only)")
+  message("converting BCF to ", out, " (the GDS builder reads VCF text only)")
   log <- system2(bcftools, c("view", "-Oz", "-o", shQuote(out), shQuote(path)),
                  stdout = TRUE, stderr = TRUE)
   st <- attr(log, "status")
@@ -78,87 +78,288 @@
   gdsfmt::add.gdsn(f, .GDS_VARIANTS_NODE, variants, closezip = TRUE)
   invisible(TRUE)
 }
+# SNPRelate reports a record's alleles as "REF/ALT1,ALT2". Splitting that is the whole of
+# the allele-identity recovery: the strings are already in the GDS and were simply not read.
+.parse_alleles <- function(x) {
+  x <- as.character(x)
+  ref <- ifelse(is.na(x), NA_character_, sub("/.*$", "", x))
+  rest <- ifelse(is.na(x) | !grepl("/", x), "", sub("^[^/]*/", "", x))
+  alt <- lapply(rest, function(z) {
+    if (!nzchar(z)) return(character(0))
+    a <- strsplit(z, ",", fixed = TRUE)[[1]]
+    a[nzchar(a) & a != "."]
+  })
+  list(ref = ref, alt = alt, n_alt = vapply(alt, length, integer(1)))
+}
+
+# "1 multiallelic, 2 indel" -- only the kinds actually present, so a clean callset says so
+# rather than listing three zeroes.
+#
+# The tally is exact: SeqArray has already read every record, so the classification the
+# selection used is the classification reported. Under the SNPRelate backend this had to be
+# taken by shelling out to bcftools, and went unstated when bcftools was absent.
+.skipped_note <- function(counts) {
+  if (is.null(counts) || !length(counts)) return("every record in the callset was read")
+  paste0("not read: ",
+         paste(sprintf("%d %s", unlist(counts), names(counts)), collapse = ", "))
+}
+
+# ---- SeqArray backend ------------------------------------------------------
+
+# A SeqVarGDS holds allele *indices*, so it can carry a record with any number of alleles.
+# A SNP-GDS holds a dosage -- how many copies of one allele a sample has -- which is two
+# numbers where a multiallelic site needs k. Measured on 200 real multiallelic Pf7 records,
+# SNPRelate's `biallelic.only` read **none** of them and `copy.num.of.ref` read all 200 and
+# gave every alternate the same number. That is the whole reason the backend changed.
+#
+# One consequence worth knowing: the GDS no longer depends on which records you asked for.
+# SeqArray reads everything and the selection happens in R, so one file serves every
+# `variants`/`encoding` combination and the old per-`variants` cache tag is gone.
+.GDS_BACKEND <- "seqarray"
+
+# Which class each record belongs to, from its allele strings. Same reading as the Python
+# package's `classify_record`, so the two agree about what a panel will hold: a record is one
+# class, and a `*` disqualifies it -- part of the cohort has no base there to compare, so it
+# is not a clean SNP site whatever its other alleles read.
+.classify_alleles <- function(ref, alt) {
+  vapply(seq_along(ref), function(i) {
+    a <- alt[[i]]
+    a <- a[nzchar(a) & a != "."]
+    if (!length(a)) return("no_alt")
+    if (any(a == "*")) return("spanning_del")
+    kind <- vapply(a, function(x) {
+      if (nchar(x) != nchar(ref[i])) return("indel")
+      if (nchar(ref[i]) == 1L) return("snv")
+      # Equal length and more than one base is not automatically an MNP: a single
+      # substitution is often written with padding -- REF=TTATA ALT=CTATA differs only at
+      # the first base -- and counting those as MNPs invents a population of them that is
+      # not there. bcftools reads them as SNVs; so does the companion Python package's
+      # `classify_record`, and so must this or a panel and its callset disagree.
+      rr <- strsplit(ref[i], "")[[1]]; xx <- strsplit(x, "")[[1]]
+      if (sum(rr != xx) == 1L) "snv" else "mnp"
+    }, character(1))
+    if (!all(kind == "snv")) return(if (length(unique(kind)) > 1L) "mixed" else
+                                    if (kind[1] == "mnp") "mnp" else "indel")
+    if (length(a) > 1L) return("multiallelic")
+    "biallelic_snv"
+  }, character(1))
+}
+
+# ploidy x sample x variant allele indices -> what the caller asked for.
+#
+# `dosage` counts alternate copies, which only means something when there is one alternate;
+# `allele_index` names which allele a sample carries. A heterozygous call is a mixed
+# infection rather than a diploid genotype -- the package's standing reading -- and a single
+# index cannot name two clones, so it becomes missing under `allele_index`.
+.encode_genotypes <- function(gt, encoding) {
+  d <- dim(gt)
+  ploidy <- d[1]
+  out <- matrix(NA_integer_, d[2], d[3])
+  if (identical(encoding, "dosage")) {
+    alt <- apply(gt > 0L, c(2, 3), sum)
+    called <- apply(!is.na(gt), c(2, 3), all)
+    out[called] <- as.integer(alt[called]) * (if (ploidy == 1L) 2L else 1L)
+    return(out)
+  }
+  first <- gt[1, , , drop = FALSE]
+  dim(first) <- d[-1]
+  if (ploidy == 1L) return(matrix(as.integer(first), d[2], d[3]))
+  same <- apply(gt, c(2, 3), function(v) !anyNA(v) && length(unique(v)) == 1L)
+  out[same] <- as.integer(first[same])
+  out
+}
+
+# ploidy x sample x variant allele indices -> per-cell allele *sets*, the one encoding that
+# keeps both a mixed call and a multiallelic identity that neither a dosage nor an allele index
+# can. A cell is coded as a 0-based index into that column's own list of states, mirroring
+# `.read_genotype_sets()`: the states are the sorted-unique allele sets that actually occur,
+# named by `.allele_set_name()`, and only the ones that occur are listed (a triallelic site has
+# seven possible states and is normally missing most of them).
+#
+# `sets` returns those same states as integer allele vectors, in the same order as `levels`, so
+# an allele index or a dosage can be *derived* from the panel later without re-reading the VCF:
+# a singleton set is the one allele the sample carries, and a larger set is a mixed infection.
+# That is the redundancy this encoding removes -- one lossless panel serves the plot (which
+# wants the sets) and every analysis (which reads a derived index/dosage).
+#
+# Vectorised over samples within each column, so ploidy <= 2 (Pf is 1 or 2) never pays the
+# variants x samples double loop the naive form would, and the build stays sane genome-wide.
+#
+# `star` mirrors load_genotypes(): with "missing" the `*` spanning-deletion allele is dropped
+# from every cell's set (a cell that was only `*` becomes missing), because `*` marks sequence
+# that is not there rather than a base -- the same reading the dosage/allele_index path takes.
+.encode_allele_sets <- function(gt, alt, star = c("missing", "allele")) {
+  star <- match.arg(star)
+  d <- dim(gt); ploidy <- d[1]; ns <- d[2]; nv <- d[3]
+  if (ploidy > 2L)
+    stop(".encode_allele_sets is vectorised for ploidy <= 2 (Pf is 1 or 2); got ", ploidy,
+         call. = FALSE)
+  drop_star <- identical(star, "missing")
+  codes <- matrix(NA_integer_, ns, nv)
+  levs <- vector("list", nv)
+  sets <- vector("list", nv)
+  n_star <- 0L
+  star_col <- 0L
+  for (j in seq_len(nv)) {
+    n_alleles <- 1L + length(alt[[j]])
+    # the `*` allele's index is its 1-based position in the record's ALT list
+    star_idx <- if (drop_star) match("*", alt[[j]]) else NA_integer_
+    h1 <- gt[1, , j]
+    h2 <- if (ploidy == 2L) gt[2, , j] else rep(NA_integer_, ns)
+    if (drop_star && !is.na(star_idx)) {
+      hit <- (!is.na(h1) & h1 == star_idx) | (!is.na(h2) & h2 == star_idx)
+      n_hit <- sum(hit)
+      if (n_hit > 0L) { n_star <- n_star + n_hit; star_col <- star_col + 1L }
+      h1[!is.na(h1) & h1 == star_idx] <- NA_integer_
+      h2[!is.na(h2) & h2 == star_idx] <- NA_integer_
+    }
+    # each cell's sorted-unique allele set as a "lo,hi" key; a single NA leaves the other allele
+    a <- ifelse(is.na(h1), h2, h1)
+    b <- ifelse(is.na(h2), h1, h2)
+    lo <- pmin(a, b); hi <- pmax(a, b)
+    key <- ifelse(lo == hi, as.character(lo), paste0(lo, ",", hi))
+    key[is.na(a) & is.na(b)] <- NA_character_
+    seen <- sort(unique(key[!is.na(key)]))
+    setints <- lapply(seen, function(k) as.integer(strsplit(k, ",", fixed = TRUE)[[1]]))
+    codes[, j] <- match(key, seen) - 1L
+    levs[[j]] <- vapply(setints, function(v) .allele_set_name(v, n_alleles), character(1))
+    sets[[j]] <- setints
+  }
+  list(codes = codes, levels = levs, sets = sets, n_star = n_star, star_col = star_col)
+}
+
+# An allele-index matrix from allele-set `codes` (0-based indices into each column's states)
+# and `state_sets` (the integer allele vectors those codes decode to, named by column): a
+# singleton set is the one allele the sample carries, a larger set is a mix that an index
+# cannot name and so becomes NA -- the reading a directly loaded allele_index panel takes of a
+# het. Shared by the PopStructure panel derivation and by `.coerce_geno()`, so a bare
+# `load_genotypes(encoding = "allele_set")` list can stand in wherever an allele_index one does.
+.index_matrix_from_sets <- function(codes, state_sets) {
+  idx <- matrix(NA_integer_, nrow(codes), ncol(codes), dimnames = dimnames(codes))
+  cols <- colnames(codes)
+  for (j in seq_len(ncol(codes))) {
+    s <- state_sets[[cols[j]]]
+    if (is.null(s) || !length(s)) next
+    val <- vapply(s, function(v) if (length(v) == 1L) as.integer(v[1]) else NA_integer_,
+                  integer(1))
+    code <- codes[, j]
+    ok <- !is.na(code)
+    idx[ok, j] <- val[code[ok] + 1L]
+  }
+  idx
+}
+
+# A sites table is only useful if it lines up with the matrix it describes, so a panel that
+# holds a different set of columns gets NULL rather than a table that quietly disagrees.
+.align_sites <- function(sites, cols) {
+  if (is.null(sites) || !is.data.frame(sites) || is.null(sites$site_key)) return(NULL)
+  k <- match(cols, sites$site_key)
+  if (anyNA(k)) return(NULL)
+  out <- sites[k, , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+# The per-column state lists of an allele_set panel (state names, and the integer allele sets
+# they decode to) are named by `site_key`, one entry per genotype column. Line them up with the
+# matrix's columns the way `.align_sites()` does: reorder by name when the names cover the
+# columns, fall back to positional when the count matches (a one-based shift renamed the
+# columns but kept their order), and give NULL when neither holds so nothing silently disagrees.
+.align_states <- function(states, cols) {
+  if (is.null(states)) return(NULL)
+  if (!is.null(names(states)) && all(cols %in% names(states))) return(states[cols])
+  if (length(states) == length(cols)) return(stats::setNames(states, cols))
+  NULL
+}
+
+# One row per record kept, in the matrix's column order. Built from what SNPRelate already
+# returns, so it costs no extra I/O and no new dependency.
+.sites_table <- function(snpinfo, idx, site_key) {
+  al <- .parse_alleles(if (is.null(snpinfo$allele)) NA_character_ else snpinfo$allele[idx])
+  out <- data.frame(
+    site_key = site_key,
+    chr = as.character(snpinfo$chromosome[idx]),
+    pos = as.numeric(snpinfo$position[idx]) - 1,   # 0-based, as everywhere else
+    ref = al$ref,
+    n_alt = al$n_alt,
+    stringsAsFactors = FALSE
+  )
+  # assigned rather than passed to data.frame(), which would wrap it in AsIs and make every
+  # downstream comparison against a plain list fail on class alone
+  out$alt <- al$alt
+  out[c("site_key", "chr", "pos", "ref", "alt", "n_alt")]
+}
 
 #' Load genotypes from a VCF, optionally LD-pruned
 #'
-#' Converts a VCF to GDS (only when needed) and returns the genotype matrix
-#' (samples x SNPs, coded 0/1/2, `NA` for missing) via \pkg{SNPRelate}, LD-pruned by
-#' default.
+#' Converts a VCF to GDS (only when needed) and returns the genotype matrix, LD-pruned by
+#' default. The backend is \pkg{SeqArray}, whose SeqVarGDS stores allele **indices** and so
+#' can hold a record with any number of alleles.
 #'
-#' Which you want depends on the question. Pruning is right for PCA, UMAP and admixture,
-#' where correlated SNPs would let one locus dominate the structure. It is wrong wherever
-#' the correlation between neighbouring SNPs *is* the signal -- differentiation
-#' ([pop_diff()]) and haplotypes ([plot_region_haplotypes()]) -- because it keeps one SNP out
-#' of each correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a
-#' second call with `prune = FALSE` only re-reads it.
+#' Pruned or not depends on the question. Pruning is right for PCA, UMAP and admixture, where
+#' correlated SNPs would let one locus dominate the structure. It is wrong wherever the
+#' correlation between neighbouring SNPs *is* the signal -- differentiation ([pop_diff()])
+#' and haplotypes ([plot_region_haplotypes()]) -- because it keeps one SNP out of each
+#' correlated run and drops the rest. Holding both is cheap: the GDS is reused, so a second
+#' call with `prune = FALSE` only re-reads it.
 #'
 #' @section Which records reach the panel:
-#' `prune = FALSE` means unpruned, not every record: the panel is usually smaller than the
-#' VCF's record count whatever `prune` is, because the default `variants = "biallelic_snvs"`
-#' has \pkg{SNPRelate} read the file with `method = "biallelic.only"`. Three kinds of record
-#' are skipped, silently:
+#' `prune = FALSE` means unpruned, not every record: the default `variants = "biallelic_snvs"`
+#' keeps only records whose single ALT is a substitution, so the panel is usually smaller than
+#' the VCF's record count. Three kinds are skipped, and the message says **how many of each**:
 #'
 #' * sites with **no ALT allele** (`ALT="."`) -- the reference positions an all-sites caller
-#'   emits. Usually the biggest share by far, and the easiest to miss, since nothing about them
-#'   says "variant": `bcftools view --exclude-types indels` leaves every one of them in place,
+#'   emits. Usually the biggest share by far, and the easiest to miss, since nothing about
+#'   them says "variant": `bcftools view --exclude-types indels` leaves every one in place,
 #'   because they are not indels.
 #' * **indels** and other non-SNV records.
-#' * sites with **more than one ALT**.
+#' * sites with **more than one ALT** -- which `variants = "all"` keeps.
 #'
-#' So a VCF of 28,927 records carrying 9,158 `ALT="."` positions and 48 multiallelic sites
-#' loads as 19,721 SNPs. When a panel comes out short, count what is actually there rather than
-#' the total, and drop the no-ALT records upstream if you would rather the two numbers agree:
+#' The tally is exact and costs nothing: SeqArray has already read every record by the time
+#' the selection happens, so the classification that chose the panel is the one reported. A
+#' record carrying a `*` is its own class and is skipped: part of the cohort has no base
+#' there to compare, so `A > *,T` is not a clean SNP site however well T behaves. The
+#' companion Python package's `spanning_del_filter` is the way to keep such a site -- it
+#' recodes the deleted calls as missing and drops the allele, after which the record really
+#' is an ordinary SNP.
 #'
-#' ```
-#' bcftools view -H -m2 -M2 -v snps file.vcf.gz | wc -l   # what will load
-#' bcftools view -e 'ALT="."' -Ob -o out.bcf in.bcf       # or --min-ac 1
-#' ```
-#'
-#' Sites that are **invariant across the loaded samples are kept**, as long as the VCF lists an
-#' ALT allele there: `"biallelic.only"` asks how many alleles the record declares, not whether
-#' these samples differ. A site every sample calls `1/1`, or every sample calls `0/0`, comes
-#' through -- which is why the functions needing variable sites ([parasite_haplotypes()],
-#' [run_ihs()]) apply their own `maf` cutoff instead of trusting the panel. SNPRelate's own help
-#' calls this "excluding monomorphic variants", which is easy to read as the stronger promise.
+#' Sites that are **invariant across the loaded samples are kept**, as long as the record
+#' lists an ALT. A site every sample calls `1/1`, or every sample calls `0/0`, comes through
+#' -- which is why the functions needing variable sites ([parasite_haplotypes()],
+#' [run_ihs()]) apply their own `maf` cutoff instead of trusting the panel.
 #'
 #' @section Keeping every variant:
-#' `variants = "all"` reads the VCF with `method = "copy.num.of.ref"` instead, which keeps
-#' every record -- multiallelic sites, indels and `ALT="."` positions included -- and stores
-#' the **copy number of the reference allele**. Nothing in this package reads that correctly,
-#' so it warns; the switch is here to hand the matrix to something that does.
-#'
-#' What breaks is the coding, not the reading. A dosage says how many reference copies a sample
-#' has and nothing about *which* alternate allele makes up the rest, so at `C -> T,G` a sample
-#' called `1/1` and a sample called `2/2` are both 0 reference copies and land on the same
-#' number despite carrying different alleles:
+#' `variants = "all"` keeps every record -- multiallelic sites, indels and `ALT="."` positions
+#' included. Pair it with `encoding = "allele_index"` to keep the alternates apart; with the
+#' default `encoding = "dosage"` it warns, because a dosage cannot say which alternate a
+#' non-reference call carries:
 #'
 #' ```
-#' variants = "biallelic_snvs"        variants = "all"
-#'   pos  allele  s1 s2 s3              pos  allele  s1 s2 s3
-#'   100  A/G      2  0  1              100  A/G      2  0  1
-#'   500  G/A      0  0  0              200  T/.      2  2  2   <- no ALT
-#'                                      300  AT/A     2  0  2   <- indel
-#'                                      400  C/T,G    2  0  0   <- 1/1 and 2/2 both 0
-#'                                      500  G/A      0  0  0
+#' encoding = "dosage"                  encoding = "allele_index"
+#'   pos  alleles  s1 s2 s3               pos  alleles  s1 s2 s3
+#'   400  C/T,G     0  2  2               400  C/T,G     0  1  2
+#'                     ^  ^                                  ^  ^
+#'                     1/1 and 2/2                           T and G, told apart
+#'                     land on one number
 #' ```
 #'
-#' The allele strings themselves survive in the GDS (`SNPRelate::snpgdsSNPList()$allele` gives
-#' `"C/T,G"`), so which alleles exist is recoverable even though the dosage cannot express
-#' them. The returned list records the choice as `variants`, and the GDS is tagged with it, so
-#' the two panels never get confused for one another through a reused `.gds`.
+#' One GDS serves every combination: SeqArray reads the whole callset and the selection
+#' happens in R, so asking for a different `variants` or `encoding` re-reads the same file
+#' rather than rebuilding it.
 #'
-#' @param vcf Path to a (bgzipped) VCF, or a **BCF** -- SNPRelate reads VCF text only, so
-#'   a BCF is converted first with `bcftools`, reusing any VCF already sitting next to it
-#'   rather than making another copy.
+#' @param vcf Path to a (bgzipped) VCF, or a **BCF** -- converted to VCF text first with
+#'   `bcftools`, reusing any VCF already sitting next to it rather than making another copy.
 #' @param gds Optional GDS path; derived from `vcf` if `NULL`.
 #' @param refresh What to do with a derived file older than what it was built from -- the
 #'   text VCF beside a BCF, and the GDS beside either. `"stale"` (default) rebuilds it,
 #'   `"always"` rebuilds regardless, `"never"` reuses it and warns. The default is a
 #'   rebuild because the alternative is silent: update the BCF and every result below comes
 #'   from the old records, with the GDS looking current because it is newer than the stale
-#'   VCF it was built from. A GDS built with a different `variants` is rebuilt whatever
-#'   `refresh` says -- that is a different set of records, not an older one.
-#' @param prune LD-prune (default `TRUE`). `FALSE` returns every record `variants` admits
+#'   VCF it was built from. A GDS left over from the older \pkg{SNPRelate} backend is a
+#'   different format entirely and is rebuilt whatever `refresh` says.
+#' @param prune LD-prune. Defaults to `TRUE` for `encoding = "dosage"` and `FALSE` otherwise,
+#'   because pruning measures correlation between dosages and an allele index is not a count
+#'   of anything. `FALSE` returns every record `variants` admits
 #'   (see *Which records reach the panel*), unpruned -- use this for the genotype matrix fed
 #'   to [pop_diff()] / [pop_diff_table()], since LD-pruning removes the very SNPs that carry
 #'   the differentiation signal.
@@ -169,20 +370,70 @@
 #' @param seed Random seed for the pruning.
 #' @param vcf_dir Where to put the VCF converted from a BCF (default: alongside the BCF).
 #'   Point it somewhere scratch to keep converted copies out of the data directory.
-#' @param allele Which allele the returned dosage counts. \pkg{SNPRelate} counts the
-#'   **reference** allele; the default `"alt"` flips that so the matrix means what the
-#'   rest of the package says it means. Only reported allele frequencies (and the
-#'   arbitrary sign of a PCA axis) depend on this -- every diversity, differentiation, LD
-#'   and selection statistic here is symmetric in `p` and `1 - p`.
+#' @param allele Which allele the returned dosage counts, `"alt"` (default) or `"ref"`. Only
+#'   reported allele frequencies (and the arbitrary sign of a PCA axis) depend on this --
+#'   every diversity, differentiation, LD and selection statistic here is symmetric in `p`
+#'   and `1 - p`. Meaningless for `encoding = "allele_index"`, which names an allele rather
+#'   than counting copies of one, and refused there.
 #' @param variants Which records to read. `"biallelic_snvs"` (default) keeps biallelic SNVs
-#'   only; `"all"` keeps every record, multiallelic sites and indels included, at the cost of a
-#'   dosage that cannot say which ALT it counts. See the two sections below -- nothing in this
-#'   package handles `"all"`, and it warns.
+#'   only; `"all"` keeps every record, multiallelic sites and indels included.
+#' @param encoding How `genotype` is coded. `"dosage"` (default) counts alternate copies,
+#'   0/1/2 -- the classical matrix, and what PCA, admixture, diversity and differentiation
+#'   read. `"allele_index"` names **which** allele each sample carries, 0 for the reference
+#'   and 1..k for the alternates, which can carry a multiallelic site but sets a mixed call to
+#'   missing. `"allele_set"` names the **set** of alleles a sample carries -- a singleton set
+#'   for a pure call, a two-element set for a mix -- so it keeps both a mixed call and its
+#'   multiallelic identity. It is a strict superset of the other two: a [PopStructure] derives
+#'   an `allele_index` (or, through it, a `dosage`) view from it on demand
+#'   (`$genotype(needs = )`), so one stored panel serves both the haplotype plot and every
+#'   analysis. See *Which encoding to ask for*.
+#' @section Which encoding to ask for:
+#' A **dosage** says how many copies of one allele a sample has. That is two numbers, and a
+#' site with three alleles needs three, so a dosage cannot say *which* alternate a
+#' non-reference call carries -- at a codon where D384A, D384G and D384Y arose separately,
+#' every carrier lands on the same number. Ask for it when the panel is biallelic and the
+#' consumer is PCA, UMAP, admixture, diversity or differentiation.
+#'
+#' An **allele index** names the allele: 0 for the reference, 1..k for the alternates in the
+#' record's own ALT order (`$sites$alt` says which is which). It carries a multiallelic site
+#' faithfully, and the dosage statistics refuse it rather than mangling it -- there is no
+#' faithful conversion, so contrast one allele at a time instead.
+#'
+#' The parasite is haploid, so a heterozygous call is a **mixed infection** rather than a
+#' diploid genotype, and one index cannot name two clones. Those calls are missing under
+#' `allele_index`, which is the same reading `pop_diversity(het = "missing")` takes.
+#'
+#' @param star How to treat the `*` spanning-deletion allele: `"missing"` (default) records it
+#'   as `has_spanning_del` and leaves it out of the allele count, so a call naming it becomes
+#'   missing; `"allele"` keeps it as a literal allele.
 #' @return A list with `genotype` (matrix; sample row names and `chr:pos0` column names --
 #'   0-based, like every other position in the package),
 #'   `sample.id`, `snp.id`, and the facts the matrix itself cannot carry: `allele` (which
-#'   allele the dosages count), `pruned`, `positions` and `variants`. [PopStructure] keeps
-#'   them, so anything that names a call or warns about pruning can ask instead of assuming.
+#'   allele a dosage counts), `encoding`, `pruned`, `positions` and `variants`.
+#'
+#'   For `encoding = "allele_set"` the codes in `genotype` are a 0-based index into per-column
+#'   state lists, so two more fields come back: `state_levels` (named by column: the state
+#'   names a code resolves to, e.g. `reference` / `alternate 1` / `alternate 1 + alternate 2`)
+#'   and `state_sets` (the same states as integer allele vectors, which is what lets an allele
+#'   index be derived from the set). [PopStructure] stores both.
+#'   [PopStructure] keeps them, so anything that names a call, refuses a non-dosage panel or
+#'   warns about pruning can ask instead of assuming.
+#'
+#'   Also `sites`: one row per genotype column, in the same order, with `site_key`, `chr`,
+#'   `pos` (0-based), `ref`, `alt`, `n_alt`, `n_alt_real` and `has_spanning_del`.
+#'
+#'   `alt` is a list column holding the record's **own** ALT list, in its own order and `*`
+#'   included, because that is what an allele index names -- `alt[[i]][k]` is the allele a
+#'   genotype of `k` refers to, and dropping anything from it would point the index at the
+#'   wrong base. `n_alt` counts that list for the same reason.
+#'
+#'   Whether a record is *multiallelic* is a different question, since `*` is a missingness
+#'   annotation rather than an allele: `n_alt_real` excludes it and is the one that answers,
+#'   with `has_spanning_del` recording the `*` separately. So `A > *,T` is an ordinary
+#'   biallelic SNV with `n_alt = 2` and `n_alt_real = 1`.
+#'
+#'   **Ask this table before reading a per-allele number off a dosage matrix**: a column with
+#'   `n_alt_real > 1` has had its alternates collapsed onto one number and cannot answer one.
 #' @seealso [PopStructure], [pop_structure()]
 #' @examples
 #' \dontrun{
@@ -193,29 +444,41 @@
 #' full <- load_genotypes("clean.vcf.gz", gds = "clean.gds", prune = FALSE)
 #' }
 #' @export
-load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
+load_genotypes <- function(vcf, gds = NULL, prune = NULL, ld_threshold = 0.2,
                          slide_max_bp = 20000, slide_max_n = 200, autosome_only = FALSE,
                          maf = NaN, missing_rate = NaN, seed = 42, vcf_dir = NULL,
                          allele = c("alt", "ref"),
                          variants = c("biallelic_snvs", "all"),
+                         encoding = c("dosage", "allele_index", "allele_set"),
+                         star = c("missing", "allele"),
                          refresh = c("stale", "never", "always")) {
-  .need_package("SNPRelate", "load_genotypes()")
+  .need_package("SeqArray", "load_genotypes()")
   .need_package("gdsfmt", "load_genotypes()")
   allele <- match.arg(allele)
   variants <- match.arg(variants)
+  encoding <- match.arg(encoding)
+  star <- match.arg(star)
   refresh <- match.arg(refresh)
-  method <- if (identical(variants, "all")) "copy.num.of.ref" else "biallelic.only"
+  # Pruning removes SNPs for correlating with a neighbour, which is what PCA and admixture
+  # want and what they need dosages for. An allele-index panel is not headed there, so the
+  # default follows the encoding rather than forcing the caller to switch it off.
+  if (is.null(prune)) prune <- identical(encoding, "dosage")
+  if (isTRUE(prune) && !identical(encoding, "dosage"))
+    stop("`prune = TRUE` needs `encoding = \"dosage\"`: LD pruning measures correlation ",
+         "between dosages, and an allele index is not a count of anything.", call. = FALSE)
+  if (identical(allele, "ref") && !identical(encoding, "dosage"))
+    stop("`allele = \"ref\"` needs `encoding = \"dosage\"`: an allele index names which ",
+         "allele a sample carries rather than counting copies of one, so there is nothing ",
+         "to flip.", call. = FALSE)
   if (!file.exists(vcf)) stop(sprintf("no such file: %s", vcf), call. = FALSE)
   vcf <- .as_text_vcf(vcf, vcf_dir, refresh)
   if (is.null(gds)) gds <- sub("\\.vcf(\\.gz)?$", ".gds", vcf, ignore.case = TRUE)
   if (identical(gds, vcf)) gds <- paste0(vcf, ".gds")
-  # A GDS built one way holds a different set of records, so reuse only when it was built the
-  # same way -- otherwise asking for `variants = "all"` would silently hand back the cached
-  # biallelic panel (or the reverse).
-  # A `variants` mismatch is not a staleness question and `refresh` does not reach it: a GDS
-  # built the other way holds a different set of records, so reusing it would answer a
-  # different question rather than an out-of-date one.
-  stale <- !file.exists(gds) || !identical(.gds_variants(gds), variants) ||
+
+  # SeqArray reads every record, so one GDS serves every `variants`/`encoding` combination
+  # and the selection happens below in R. A GDS left over from the SNPRelate backend holds a
+  # different format entirely, so the tag also catches those and rebuilds.
+  stale <- !file.exists(gds) || !identical(.gds_variants(gds), .GDS_BACKEND) ||
     identical(refresh, "always") ||
     (file.mtime(gds) < file.mtime(vcf) && !identical(refresh, "never"))
   if (file.exists(gds) && !stale && file.mtime(gds) < file.mtime(vcf))
@@ -223,58 +486,155 @@ load_genotypes <- function(vcf, gds = NULL, prune = TRUE, ld_threshold = 0.2,
                           "rather than rebuilt."), basename(gds), basename(vcf)),
             call. = FALSE)
   if (stale) {
-    # biallelic.only keeps biallelic SNVs and skips ALT="." reference positions, indels and
-    # multiallelic sites, so the panel is routinely smaller than the VCF's record count
-    SNPRelate::snpgdsVCF2GDS(vcf, gds, method = method, verbose = FALSE)
-    .tag_gds_variants(gds, variants)
+    SeqArray::seqVCF2GDS(vcf, gds, storage.option = "ZIP_RA", verbose = FALSE)
+    .tag_gds_variants(gds, .GDS_BACKEND)
   }
-  h <- SNPRelate::snpgdsOpen(gds)
-  on.exit(SNPRelate::snpgdsClose(h), add = TRUE)
-  snpinfo <- SNPRelate::snpgdsSNPList(h)              # snp.id, chromosome, position
-  # said out loud because it is the number people go looking for when a panel is smaller
-  # than the VCF they built it from
+
+  f <- SeqArray::seqOpen(gds)
+  on.exit(SeqArray::seqClose(f), add = TRUE)
+  # a filter set by an earlier call persists in the file, so start from everything
+  SeqArray::seqResetFilter(f, verbose = FALSE)
+
+  chrom <- as.character(SeqArray::seqGetData(f, "chromosome"))
+  pos1 <- as.integer(SeqArray::seqGetData(f, "position"))
+  al <- strsplit(SeqArray::seqGetData(f, "allele"), ",", fixed = TRUE)
+  ref <- vapply(al, function(x) x[1], character(1))
+  alt <- lapply(al, function(x) {
+    a <- x[-1]
+    a[nzchar(a) & a != "."]
+  })
+  kind <- .classify_alleles(ref, alt)
+  keep <- if (identical(variants, "all")) rep(TRUE, length(kind))
+          else kind == "biallelic_snv"
+  if (!any(keep))
+    stop("no records left after `variants = \"", variants, "\"` in ", basename(vcf),
+         ": the callset holds ", paste(sprintf("%d %s", table(kind), names(table(kind))),
+                                       collapse = ", "), ".", call. = FALSE)
+
+  # Counted from the callset itself rather than asked of an external tool: SeqArray has
+  # already read every record, so the tally is exact and costs nothing.
+  skipped <- table(kind[!keep])
+  skipped <- as.list(skipped[skipped > 0L])
   if (identical(variants, "all")) {
-    message(nrow(snpinfo), " records in ", basename(vcf),
+    message(sum(keep), " records in ", basename(vcf),
             " (every variant, including indels and multiallelic sites)")
-    warning("`variants = \"all\"` stores the copy number of the reference allele, so at a ",
-            "multiallelic site every non-reference genotype collapses to the same dosage no ",
-            "matter which ALT it carries, and indels and ALT=\".\" records come through too. ",
-            "Nothing downstream in this package reads that correctly -- use it to hand the ",
-            "matrix to something that does.", call. = FALSE)
   } else {
-    message(nrow(snpinfo), " biallelic SNVs in ", basename(vcf),
-            " (ALT=\".\" reference positions, indels and multiallelic sites are not read)")
+    message(sum(keep), " biallelic SNVs in ", basename(vcf),
+            " (", .skipped_note(skipped), ")")
   }
-  if (prune) {
+
+  SeqArray::seqSetFilter(f, variant.sel = which(keep), verbose = FALSE)
+  if (isTRUE(prune)) {
+    .need_package("SNPRelate", "load_genotypes(prune = TRUE)")
     set.seed(seed)
     snpset <- SNPRelate::snpgdsLDpruning(
-      h, autosome.only = autosome_only, ld.threshold = ld_threshold,
+      f, autosome.only = autosome_only, ld.threshold = ld_threshold,
       slide.max.bp = slide_max_bp, slide.max.n = slide_max_n,
       maf = maf, missing.rate = missing_rate, verbose = FALSE)
-    snp_ids <- unlist(snpset, use.names = FALSE)
-  } else {
-    snp_ids <- snpinfo$snp.id
+    sel <- sort(unlist(snpset, use.names = FALSE))
+    SeqArray::seqSetFilter(f, variant.id = sel, verbose = FALSE)
   }
-  geno <- SNPRelate::snpgdsGetGeno(h, snp.id = snp_ids, with.id = TRUE, verbose = FALSE)
-  idx <- match(geno$snp.id, snpinfo$snp.id)
-  rownames(geno$genotype) <- geno$sample.id
-  # SNPRelate reports 1-based VCF POS. Every SNP id and interval in both packages is 0-based
-  # (`?"plasgenomicsutilsR-coordinates"`), so shift here, at the one place positions enter R --
-  # otherwise a scan built from these genotypes sits one base off every IBD table and interval,
-  # which breaks exact joins and mis-assigns SNPs sitting on a gene boundary.
-  colnames(geno$genotype) <- paste0(snpinfo$chromosome[idx], ":",
-                                    as.integer(snpinfo$position[idx]) - 1L)
-  # SNPRelate counts the *reference* allele, while this package documents and reports
-  # alt dosage everywhere, so flip once here rather than leaving each caller to guess.
-  # Every statistic downstream is symmetric in p <-> 1 - p, so this changes only reported
-  # allele frequencies and the arbitrary sign of a PCA axis, never a differentiation,
-  # diversity, LD or selection value.
-  if (identical(allele, "alt")) geno$genotype <- 2L - geno$genotype
-  # Carried through so downstream code never has to guess which allele a 2 means. Nothing in
-  # a bare matrix says whether it counts reference or alternate alleles, and the two are
-  # indistinguishable after the fact, so a plot that names the calls has to be told.
-  list(genotype = geno$genotype, sample.id = geno$sample.id, snp.id = geno$snp.id,
-       allele = allele, pruned = prune, positions = "0-based", variants = variants)
+
+  vid <- SeqArray::seqGetData(f, "variant.id")
+  idx <- match(vid, seq_along(kind))
+  samples <- as.character(SeqArray::seqGetData(f, "sample.id"))
+  gt <- SeqArray::seqGetData(f, "genotype")
+  # SeqArray reports 1-based VCF POS. Every SNP id and interval in both packages is 0-based
+  # (`?"plasgenomicsutilsR-coordinates"`), so shift here, at the one place positions enter R
+  # -- otherwise a scan built from these genotypes sits one base off every IBD table and
+  # interval, which breaks exact joins and mis-assigns SNPs on a gene boundary.
+  col_names <- paste0(chrom[idx], ":", pos1[idx] - 1L)
+  state_levels <- NULL
+  state_sets <- NULL
+  n_star <- 0L
+  star_col <- 0L
+  if (identical(encoding, "allele_set")) {
+    # allele sets carry the mix and the `*` drop inside the encoder, cell by cell, so the
+    # index-matrix star loop below does not apply -- a set is not an integer to blank.
+    es <- .encode_allele_sets(gt, alt[idx], star)
+    mat <- es$codes
+    dimnames(mat) <- list(samples, col_names)
+    state_levels <- stats::setNames(es$levels, col_names)
+    state_sets <- stats::setNames(es$sets, col_names)
+    n_star <- es$n_star
+    star_col <- es$star_col
+  } else {
+    mat <- .encode_genotypes(gt, encoding)
+    dimnames(mat) <- list(samples, col_names)
+    # `*` is not a base. It says the sequence at this position is deleted on that haplotype --
+    # a confident observation, but not one of the alleles being compared, and every k-allele
+    # estimator in the package (`he`, pi, Jost's D, the one-hot expansion, `allele_states()`)
+    # counts whatever distinct values it finds in this matrix. Left in, a site with 60% `*`
+    # reads as a highly diverse site rather than a mostly-deleted one.
+    #
+    # So blank those calls by default: the haplotype has no base here, which is what NA means
+    # everywhere else in the matrix. The allele *indices* are untouched -- `sites$alt` still
+    # lists `*` in its own slot -- so index 2 still names the same base it did.
+    #
+    # `star = "allele"` keeps them, for the deliberate case of treating presence/absence as the
+    # state (Pf dimorphic sequence, where the deletion IS the other haplotype).
+    if (identical(star, "missing")) {
+      for (j in seq_len(ncol(mat))) {
+        k <- match("*", alt[[idx[j]]])
+        if (is.na(k)) next
+        # allele_index: exactly the calls that ARE the `*` allele. dosage: every alternate
+        # call, because a dosage has already collapsed the alternates and cannot say whether
+        # a 2 is the deleted haplotype or the base beside it -- blanking what cannot be
+        # attributed is the same rule, applied to a coarser matrix.
+        hit <- if (identical(encoding, "allele_index")) !is.na(mat[, j]) & mat[, j] == k
+               else !is.na(mat[, j]) & mat[, j] > 0L
+        if (!any(hit)) next
+        n_star <- n_star + sum(hit)
+        star_col <- star_col + 1L
+        mat[hit, j] <- NA_integer_
+      }
+    }
+  }
+
+  if (identical(encoding, "dosage") && identical(allele, "ref")) mat <- 2L - mat
+
+  # `alt` is the record's own ALT list, `*` included and in its own order, because that is
+  # what an allele index names -- dropping `*` would make index 1 point at the wrong base.
+  # `n_alt` counts it faithfully for the same reason. Whether a record is *multiallelic* is a
+  # separate question, since `*` is a missingness annotation rather than an allele, so
+  # `n_alt_real` answers that one and the two must not be conflated.
+  star_site <- vapply(alt[idx], function(a) any(a == "*"), logical(1))
+  sites <- data.frame(site_key = colnames(mat), chr = chrom[idx],
+                      pos = as.numeric(pos1[idx] - 1L), ref = ref[idx],
+                      n_alt = vapply(alt[idx], length, integer(1)),
+                      n_alt_real = vapply(alt[idx], function(a) sum(a != "*"), integer(1)),
+                      has_spanning_del = star_site,
+                      stringsAsFactors = FALSE)
+  sites$alt <- alt[idx]
+  sites <- sites[c("site_key", "chr", "pos", "ref", "alt", "n_alt", "n_alt_real",
+                   "has_spanning_del")]
+
+  n_multi <- sum(sites$n_alt_real > 1L, na.rm = TRUE)
+  if (n_multi > 0L) {
+    worst <- sites[which.max(sites$n_alt_real), ]
+    if (identical(encoding, "dosage")) {
+      warning(n_multi, " of ", nrow(sites), " records carry more than one ALT allele (most: ",
+              worst$site_key, ", ", worst$n_alt_real, " alternates), and a dosage cannot say ",
+              "which one a call carries -- every non-reference genotype there collapses to ",
+              "the same number. Use `encoding = \"allele_index\"` to keep them apart.",
+              call. = FALSE)
+    } else {
+      message(n_multi, " of ", nrow(sites), " records carry more than one ALT allele (most: ",
+              worst$site_key, ", ", worst$n_alt_real, " alternates); `$genotype` holds allele ",
+              if (identical(encoding, "allele_set")) "sets" else "indices",
+              ", so they stay distinct.")
+    }
+  }
+  if (n_star > 0L)
+    message(n_star, " call(s) of the `*` spanning-deletion allele across ", star_col,
+            " record(s) set to missing -- `*` marks sequence that is not there rather than ",
+            "a base, so counting it as an allele inflates every diversity estimate. Pass ",
+            "`star = \"allele\"` to keep them as a state.")
+
+  list(genotype = mat, sample.id = samples, snp.id = vid,
+       allele = allele, pruned = isTRUE(prune), positions = "0-based",
+       variants = variants, encoding = encoding, star = star, sites = sites,
+       state_levels = state_levels, state_sets = state_sets)
 }
 
 #' Deprecated name for load_genotypes()
@@ -297,7 +657,8 @@ run_ld_prune <- function(...) {
 }
 
 # mean-impute missing genotypes per SNP; drop all-missing columns
-.impute_geno <- function(mat) {
+.impute_geno <- function(mat, what = "pop_structure()") {
+  .require_dosage(mat, what)
   mat <- as.matrix(mat)
   cm <- colMeans(mat, na.rm = TRUE)
   keep <- !is.nan(cm)
@@ -341,6 +702,9 @@ pop_structure <- function(geno, samples = NULL, meta = NULL, n_pcs = 50, umap = 
                           umap_pca = 30, n_neighbors = 15, min_dist = 0.1, seed = 42) {
   meta <- .normalise_meta(meta)
   if (is.list(geno) && !is.null(geno$genotype)) {
+    # asked while the list is still here: once it is a bare matrix, a dosage and an allele
+    # index cannot be told apart
+    .require_dosage(geno, "pop_structure()")
     if (is.null(samples)) samples <- geno$sample.id
     mat <- geno$genotype
   } else {
@@ -584,6 +948,7 @@ run_snmf <- function(geno, K = 1:10, rep = 10, alpha = 10, seed = 42, cpu = 1,
     project <- .run_quiet(function() LEA::load.snmfProject(proj_file), verbose, log_file)
     if (file.exists(samp_file)) samples <- readRDS(samp_file)
   } else {
+    .require_dosage(mat, "run_snmf()")
     mat[is.na(mat)] <- 9L
     project <- .run_quiet(function() {
       LEA::write.geno(mat, output.file = geno_file)
@@ -1129,17 +1494,33 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param allele Which allele the dosages count, `"alt"` or `"ref"`. Taken from a
     #'   [load_genotypes()] list when it says so; a bare matrix cannot say, and the two codings
     #'   are indistinguishable afterwards, so anything that names the calls has to be told.
+    #' @param pca_panel Which derived view PCA and UMAP run on when the panel holds allele
+    #'   indices. `"onehot"` gives every ALT its own indicator column, so a multiallelic site
+    #'   still reaches the ordination; `"dosage"` drops those sites, which is what the object
+    #'   did before. `"auto"` (default) takes one-hot when the panel holds a multiallelic site
+    #'   and dosage otherwise -- so a wholly biallelic panel's PCA is unchanged, because on a
+    #'   biallelic site the indicator column *is* the alt-dosage column.
     initialize = function(geno, samples = NULL, meta = NULL, n_pcs = 50, colors = NULL,
                           allele = NULL, pruned = NULL, full = NULL,
-                          one_based = FALSE, colours = NULL) {
+                          one_based = FALSE, colours = NULL,
+                          pca_panel = c("auto", "onehot", "dosage")) {
+      pca_panel <- match.arg(pca_panel)
       colors <- .alias_arg("colors", "colours")
       meta <- .normalise_meta(meta)
       positions <- NULL
+      sites <- NULL
+      enc <- NULL
+      state_levels <- NULL
+      state_sets <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(samples)) samples <- geno$sample.id
         if (is.null(allele)) allele <- geno$allele
         if (is.null(pruned)) pruned <- geno$pruned
         positions <- geno$positions
+        sites <- geno$sites
+        enc <- geno$encoding
+        state_levels <- geno$state_levels
+        state_sets <- geno$state_sets
         geno <- geno$genotype
       }
       # A matrix built before positions were shifted (or straight off a VCF) carries 1-based
@@ -1150,6 +1531,12 @@ PopStructure <- R6::R6Class("PopStructure",
         positions <- "0-based"
       }
       private$snp_positions <- positions %||% if (isTRUE(one_based)) "0-based" else NULL
+      # shifted to 0-based above if it needed it, so the keys still match the matrix
+      if (!is.null(sites) && isTRUE(one_based)) sites$site_key <- colnames(geno)
+      private$snp_sites <- sites
+      private$snp_encoding <- enc %||% "dosage"
+      private$snp_state_levels <- state_levels
+      private$snp_state_sets <- state_sets
       private$was_pruned <- if (is.null(pruned)) NULL else isTRUE(pruned)
       private$allele_counted <- if (is.null(allele)) NULL else
         match.arg(allele, c("alt", "ref"))
@@ -1166,9 +1553,15 @@ PopStructure <- R6::R6Class("PopStructure",
         if (isFALSE(pruned)) "full" else "genotypes"
       private$panel_list <- stats::setNames(
         list(list(genotype = mat, allele = private$allele_counted,
-                  pruned = private$was_pruned)), private$primary)
+                  pruned = private$was_pruned, encoding = private$snp_encoding,
+                  sites = .align_sites(private$snp_sites, colnames(mat)),
+                  state_levels = .align_states(private$snp_state_levels, colnames(mat)),
+                  state_sets = .align_states(private$snp_state_sets, colnames(mat)))),
+        private$primary)
       private$n_pcs <- n_pcs
-      private$ps <- pop_structure(mat, samples = samples, n_pcs = n_pcs, umap = FALSE)
+      private$pca_panel <- pca_panel
+      private$ps <- pop_structure(private$pca_matrix(), samples = samples, n_pcs = n_pcs,
+                                  umap = FALSE)
       private$colors <- if (is.null(colors)) list() else colors
       if (!is.null(full)) self$add_panel("full", full, pruned = FALSE)
       if (!is.null(meta)) self$add_meta(meta)
@@ -1182,13 +1575,20 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param geno Genotype matrix, or a [load_genotypes()] list.
     #' @param allele,pruned What this panel is; taken from a `load_genotypes()` list when it
     #'   says so.
-    add_panel = function(name, geno, allele = NULL, pruned = NULL) {
+    add_panel = function(name, geno, allele = NULL, pruned = NULL, sites = NULL,
+                         encoding = NULL) {
       private$ensure_panels()
       if (!is.character(name) || length(name) != 1 || !nzchar(name))
         stop("`name` must be a single non-empty string", call. = FALSE)
+      state_levels <- NULL
+      state_sets <- NULL
       if (is.list(geno) && !is.null(geno$genotype)) {
         if (is.null(allele)) allele <- geno$allele
         if (is.null(pruned)) pruned <- geno$pruned
+        if (is.null(sites)) sites <- geno$sites
+        if (is.null(encoding)) encoding <- geno$encoding
+        state_levels <- geno$state_levels
+        state_sets <- geno$state_sets
         if (is.null(rownames(geno$genotype)) && !is.null(geno$sample.id))
           rownames(geno$genotype) <- geno$sample.id
         geno <- geno$genotype
@@ -1203,7 +1603,11 @@ PopStructure <- R6::R6Class("PopStructure",
       private$panel_list[[name]] <- list(
         genotype = mat[private$sample_ids, , drop = FALSE],
         allele = if (is.null(allele)) NULL else match.arg(allele, c("alt", "ref")),
-        pruned = if (is.null(pruned)) NULL else isTRUE(pruned))
+        pruned = if (is.null(pruned)) NULL else isTRUE(pruned),
+        encoding = encoding %||% "dosage",
+        sites = .align_sites(sites, colnames(mat)),
+        state_levels = .align_states(state_levels, colnames(mat)),
+        state_sets = .align_states(state_sets, colnames(mat)))
       invisible(self)
     },
 
@@ -1265,7 +1669,12 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param seed Random seed.
     run_umap = function(pca_components = 30, n_neighbors = 15, min_dist = 0.1, seed = 42) {
       private$collapse_to_active()
-      private$ps <- pop_structure(private$geno_mat, samples = private$sample_ids,
+      # UMAP runs on PCA scores, so it takes the same matrix the object's own PCA does --
+      # not `geno_mat`, which on an allele-index panel would have a call of allele 2 read as
+      # two copies of the alternate and separate samples by *which* alternate they carry as
+      # though that were a distance.
+      mat <- private$pca_matrix()
+      private$ps <- pop_structure(mat, samples = rownames(mat),
                                   meta = private$meta_df, n_pcs = private$n_pcs,
                                   umap = TRUE, umap_pca = pca_components,
                                   n_neighbors = n_neighbors, min_dist = min_dist, seed = seed)
@@ -1277,8 +1686,15 @@ PopStructure <- R6::R6Class("PopStructure",
     run_snmf = function(K = 1:10, rep = 10, alpha = 10, seed = 42, cpu = 1,
                         cache = TRUE, cache_dir = NULL, verbose = FALSE, log_file = NULL) {
       private$collapse_to_active()
+      # sNMF's `.geno` alphabet is 0/1/2/9 -- one number per (sample, locus) counting copies
+      # of one allele -- so a multiallelic locus has no representation in it. One-hot would
+      # not rescue it either: sNMF would read the indicator columns as independent loci when
+      # they are perfectly anti-correlated, inflating the locus count and distorting the
+      # ancestry estimate. So admixture takes the biallelic subset, which the object derives
+      # and says the size of. A genome-wide summary is the place that costs least.
+      mat <- self$genotype(needs = "dosage")
       private$snmf_fit <- run_snmf(
-        list(genotype = private$geno_mat, sample.id = private$sample_ids),
+        list(genotype = mat, sample.id = rownames(mat)),
         K = K, rep = rep, alpha = alpha, seed = seed, cpu = cpu,
         cache = cache, cache_dir = cache_dir, verbose = verbose, log_file = log_file)
       invisible(self)
@@ -1370,10 +1786,21 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @param panel Panel to return by name; the primary one when `NULL`.
     #' @param prefer Panel to use *if the object has it*, falling back to the primary one --
     #'   how an analysis asks for the panel it wants without requiring it.
-    genotype = function(panel = NULL, prefer = NULL) {
+    #' @param needs What the caller can read: `"dosage"`, `"allele_index"`, or `"onehot"`
+    #'   (one indicator column per ALT, which is how a multiallelic site reaches PCA). The
+    #'   object serves or derives the panel that answers it, so one object covers every
+    #'   analysis. `NULL` takes the panel as it is.
+    genotype = function(panel = NULL, prefer = NULL, needs = NULL) {
       nm <- private$pick_panel(panel, prefer)
-      private$panel_list[[nm]]$genotype[private$active_ids, , drop = FALSE]
+      if (!is.null(needs)) nm <- private$panel_for(nm, needs)   # may add a derived panel
+      p <- private$panel_list[[nm]]
+      p$genotype[private$active_ids, , drop = FALSE]
     },
+    #' @description How a panel's `$genotype()` is coded: `"dosage"` (alternate copies) or
+    #'   `"allele_index"` (which allele each sample carries). An object built from a bare
+    #'   matrix reports `"dosage"`, since that is what one has always been.
+    #' @param panel Which panel to report on; the primary one when `NULL`.
+    encoding = function(panel = NULL) private$panel_field(panel, "encoding") %||% "dosage",
     #' @description PCA scores for the active samples.
     pca_scores = function() private$ps$pca[private$idx(), , drop = FALSE],
     #' @description PCA variance-explained table.
@@ -1394,14 +1821,28 @@ PopStructure <- R6::R6Class("PopStructure",
     #' @description Which allele the dosages count (`"alt"` / `"ref"`), or `NULL` when the
     #'   object does not record it (built from a bare matrix, or saved by an older version).
     #' @param panel Which panel to report on; the primary one when `NULL`.
-    allele = function(panel = NULL) private$panel_list[[private$pick_panel(panel)]]$allele,
+    allele = function(panel = NULL) private$panel_field(panel, "allele"),
+    #' @description The per-record allele table for a panel, or `NULL` when the panel was
+    #'   built from a bare matrix that never carried one. One row per genotype column, in the
+    #'   same order; see [load_genotypes()] for the columns. Ask it before reading a
+    #'   per-allele number off a dosage matrix -- a column with `n_alt_real > 1` has had its
+    #'   alternates collapsed onto one number and cannot answer one.
+    #' @param panel Which panel to describe; the primary one when `NULL`.
+    sites = function(panel = NULL) private$panel_field(panel, "sites"),
+    #' @description The per-column state names of an `allele_set` panel: a named list, one entry
+    #'   per genotype column, giving the states a cell's code resolves to (e.g. `reference` /
+    #'   `alternate 1` / `alternate 1 + alternate 2`). `NULL` for a dosage or allele-index
+    #'   panel, which do not carry sets. [plot_region_haplotypes()] reads it to draw each cell
+    #'   as the alleles it actually carries.
+    #' @param panel Which panel to report on; the primary one when `NULL`.
+    state_levels = function(panel = NULL) private$panel_field(panel, "state_levels"),
     #' @description Which convention the SNP positions follow, or `NULL` when the object does
     #'   not record it (built before this was tracked -- rebuild it, or pass `one_based`).
     positions = function() private$snp_positions,
     #' @description Whether the SNPs were LD-pruned (`TRUE` / `FALSE`), or `NULL` when the
     #'   object does not record it.
     #' @param panel Which panel to report on; the primary one when `NULL`.
-    pruned = function(panel = NULL) private$panel_list[[private$pick_panel(panel)]]$pruned,
+    pruned = function(panel = NULL) private$panel_field(panel, "pruned"),
     #' @description Active sample ids.
     get_samples = function() private$active_ids,
 
@@ -1588,8 +2029,47 @@ PopStructure <- R6::R6Class("PopStructure",
     }
   ),
   private = list(
+    pca_panel = "auto",
+
+    # The matrix PCA and UMAP are actually run on.
+    #
+    # PCA needs a numeric matrix whose columns each count copies of ONE allele. An
+    # allele-index panel is not that -- allele 2 is a different base, not two copies -- so
+    # something has to be derived. There are two honest derivations and they answer different
+    # questions:
+    #
+    #   "dosage"  drops every multiallelic site and keeps the biallelic ones. That is what
+    #             the object did before, and on the pfpx1 384 kind of locus it drops exactly
+    #             the site the analysis is about.
+    #   "onehot"  keeps every site and gives each ALT its own indicator column. Nothing is
+    #             dropped, and on a biallelic site the indicator column IS the alt-dosage
+    #             column -- so a wholly biallelic panel's PCA does not move by one digit.
+    #
+    # "auto" takes one-hot whenever the panel holds a multiallelic site, because dropping a
+    # site loses more than weighting one slightly heavily: a k-alternate site contributes k
+    # anti-correlated columns, so it carries more of the total variance than a biallelic site
+    # does. On a panel that is a handful of multiallelic sites in tens of thousands that is
+    # unmeasurable; on a panel that is mostly multiallelic it is uniform. It is the middle
+    # case that is uneven, and `pca_panel = "dosage"` is the way back.
+    pca_matrix = function() {
+      enc <- private$snp_encoding %||% "dosage"
+      if (identical(enc, "dosage")) return(private$geno_mat)
+      want <- private$pca_panel %||% "auto"
+      if (identical(want, "auto")) {
+        st <- private$panel_list[[private$primary]]$sites
+        multi <- !is.null(st) && any(st$n_alt_real > 1L, na.rm = TRUE)
+        want <- if (multi) "onehot" else "dosage"
+      }
+      # two statements on purpose: `panel_for()` *adds* the derived panel, and R evaluates
+      # `private$panel_list` before the index expression that creates it, so the one-liner
+      # reads the list as it was and comes back NULL
+      nm <- private$panel_for(private$primary, want)
+      private$panel_list[[nm]]$genotype
+    },
+
     geno_mat = NULL, sample_ids = NULL, active_ids = NULL, meta_df = NULL,
-    allele_counted = NULL, was_pruned = NULL, snp_positions = NULL,
+    allele_counted = NULL, was_pruned = NULL, snp_positions = NULL, snp_sites = NULL,
+    snp_encoding = NULL, snp_state_levels = NULL, snp_state_sets = NULL,
     panel_list = NULL, primary = NULL,
     told = character(0),
 
@@ -1604,11 +2084,270 @@ PopStructure <- R6::R6Class("PopStructure",
           if (isFALSE(private$was_pruned)) "full" else "genotypes"
         private$panel_list <- stats::setNames(
           list(list(genotype = private$geno_mat, allele = private$allele_counted,
+                    sites = .align_sites(private$snp_sites, colnames(private$geno_mat)),
+                    encoding = private$snp_encoding %||% "dosage",
+                    state_levels = .align_states(private$snp_state_levels,
+                                                 colnames(private$geno_mat)),
+                    state_sets = .align_states(private$snp_state_sets,
+                                               colnames(private$geno_mat)),
                     pruned = private$was_pruned)), private$primary)
       }
       invisible(TRUE)
     },
 
+    # The panel that can answer what an analysis needs, deriving one if that is possible.
+    #
+    # A dosage view of the biallelic sites is derivable from an allele-index panel: drop the
+    # multiallelic columns, which a dosage cannot carry, and read index 0 as 0 copies and
+    # index 1 as 2 (the haploid reading the rest of the package takes). The reverse is not
+    # derivable -- a dosage never recorded which alternate a call named -- so an object built
+    # from dosages says so rather than guessing.
+    #
+    # The derived view is cached as its own panel, so the second analysis that needs it does
+    # not rebuild it and `$panels()` shows where it came from.
+    panel_for = function(nm, needs) {
+      needs <- match.arg(needs, c("dosage", "allele_index", "onehot"))
+      have <- private$panel_list[[nm]]$encoding %||% "dosage"
+      if (identical(have, needs)) return(nm)
+      # An allele-set panel is the lossless superset, and each derived view is meant to equal
+      # what loading the VCF directly with that encoding would give:
+      #   dosage        -> derived straight from the sets, so a biallelic mixed call keeps its
+      #                    intermediate 1 (deriving it via the index would force it to NA and
+      #                    silently disagree with a direct dosage load at every het);
+      #   allele_index  -> a mixed cell is NA, because one index cannot name two clones -- the
+      #                    same reading a direct allele_index load takes;
+      #   onehot        -> the index view, then expanded (a multiallelic mix has no single
+      #                    indicator value either, so it follows the index's missing).
+      # The set panel's extra information -- the identity of a mixed multiallelic cell -- lives
+      # in the plot, which reads the sets directly.
+      if (identical(have, "allele_set")) {
+        if (identical(needs, "dosage")) return(private$dosage_from_sets(nm))
+        idx_nm <- private$index_from_sets(nm)
+        if (identical(needs, "allele_index")) return(idx_nm)
+        return(private$panel_for(idx_nm, needs))
+      }
+      # One-hot is how a multiallelic site still reaches PCA and UMAP. One indicator column
+      # per ALT, reference column dropped -- which on a biallelic site *is* the alt-dosage
+      # column, so it is a strict generalisation and a biallelic panel's PCA does not move.
+      # A dosage panel is therefore already one-hot and is handed back as it is.
+      if (identical(needs, "onehot")) {
+        if (identical(have, "dosage")) return(nm)
+        return(private$onehot_panel(nm))
+      }
+      if (identical(needs, "allele_index")) {
+        # A dosage *can* be read as an allele index where the site has one alternate: 0 copies
+        # is allele 0 and 2 copies is allele 1. That is only safe when something says every
+        # site is biallelic, because a dosage of 2 at a collapsed multiallelic site could be
+        # any of the alternates -- which is the information a dosage never recorded.
+        p <- private$panel_list[[nm]]
+        if (!is.null(p$sites) && all(p$sites$n_alt_real == 1L, na.rm = TRUE) &&
+            !anyNA(p$sites$n_alt_real))
+          return(private$index_from_dosage(nm))
+        stop("this analysis needs allele indices and panel \"", nm, "\" holds dosages. ",
+             "Which alternate a call carries cannot be recovered from a dosage -- it was ",
+             "never recorded. Rebuild with ",
+             "`load_genotypes(vcf, variants = \"all\", encoding = \"allele_index\")`.",
+             call. = FALSE)
+      }
+
+      derived <- paste0("biallelic_dosage", if (identical(nm, private$primary)) "" else
+                        paste0("_", nm))
+      if (!is.null(private$panel_list[[derived]])) return(derived)
+      p <- private$panel_list[[nm]]
+      sites <- p$sites
+      if (is.null(sites))
+        stop("panel \"", nm, "\" holds allele indices but carries no `sites` table, so ",
+             "there is no way to tell which of its columns are biallelic. Rebuild it with ",
+             "`load_genotypes()`.", call. = FALSE)
+      keep <- which(sites$n_alt_real == 1L)
+      if (!length(keep))
+        stop("panel \"", nm, "\" has no biallelic site in it, so no dosage view exists.",
+             call. = FALSE)
+      g <- p$genotype[, keep, drop = FALSE]
+      d <- matrix(NA_integer_, nrow(g), ncol(g), dimnames = dimnames(g))
+      d[!is.na(g) & g == 0L] <- 0L
+      d[!is.na(g) & g == 1L] <- 2L
+      private$panel_list[[derived]] <- list(
+        genotype = d, allele = "alt", pruned = p$pruned, encoding = "dosage",
+        sites = sites[keep, , drop = FALSE])
+      if (!derived %in% private$told) {
+        private$told <- c(private$told, derived)
+        message("derived a biallelic dosage panel (\"", derived, "\") from \"", nm,
+                "\": ", length(keep), " of ", ncol(p$genotype), " sites, the ",
+                ncol(p$genotype) - length(keep),
+                " multiallelic ones left out because a dosage cannot carry them")
+      }
+      derived
+    },
+
+    # A biallelic dosage read as allele indices: 0 copies is allele 0, 2 copies is allele 1.
+    # Only reachable when the panel's sites table says every site has one alternate.
+    index_from_dosage = function(nm) {
+      derived <- paste0("allele_index", if (identical(nm, private$primary)) "" else
+                        paste0("_", nm))
+      if (!is.null(private$panel_list[[derived]])) return(derived)
+      p <- private$panel_list[[nm]]
+      g <- p$genotype
+      idx <- matrix(NA_integer_, nrow(g), ncol(g), dimnames = dimnames(g))
+      idx[!is.na(g) & g == 0L] <- 0L
+      idx[!is.na(g) & g == 2L] <- 1L
+      private$panel_list[[derived]] <- list(
+        genotype = idx, allele = p$allele, pruned = p$pruned,
+        encoding = "allele_index", sites = p$sites)
+      derived
+    },
+
+    # An allele-index view derived from an allele-set panel. A cell's code is an index into that
+    # column's states; a singleton state is the one allele the sample carries (its integer
+    # index), and a state with more than one allele is a mixed infection an index cannot name,
+    # so it becomes missing -- the same reading a directly loaded allele_index panel takes of a
+    # het. The result is column-for-column identical to that panel, so every analysis reads what
+    # it always did; the set panel keeps the mixed identity only for the plot.
+    index_from_sets = function(nm) {
+      derived <- paste0("allele_index", if (identical(nm, private$primary)) "" else
+                        paste0("_", nm))
+      if (!is.null(private$panel_list[[derived]])) return(derived)
+      p <- private$panel_list[[nm]]
+      sets <- p$state_sets
+      if (is.null(sets))
+        stop("panel \"", nm, "\" holds allele sets but carries no state-set decomposition, so ",
+             "an allele index cannot be derived from it. Rebuild it with ",
+             "`load_genotypes(vcf, variants = \"all\", encoding = \"allele_set\")`.",
+             call. = FALSE)
+      idx <- .index_matrix_from_sets(p$genotype, sets)
+      private$panel_list[[derived]] <- list(
+        genotype = idx, allele = p$allele, pruned = p$pruned,
+        encoding = "allele_index", sites = p$sites)
+      if (!derived %in% private$told) {
+        private$told <- c(private$told, derived)
+        message("derived an allele-index panel (\"", derived, "\") from the allele-set panel \"",
+                nm, "\": each mixed call becomes missing, as it is in an allele-index panel.")
+      }
+      derived
+    },
+
+    # A biallelic dosage derived straight from an allele-set panel, so a mixed call keeps the
+    # intermediate 1 a direct `encoding = "dosage"` load gives it: {ref} -> 0, a {ref, alt} mix
+    # -> 1, {alt} -> 2. Multiallelic columns are dropped, exactly as a dosage load drops them,
+    # since a dosage cannot say which alternate a non-reference call carries. This is what makes
+    # the derived dosage equal to a direct dosage load column for column -- deriving it through
+    # the index (index_from_sets) would inherit that view's mixed -> NA and disagree at every het.
+    dosage_from_sets = function(nm) {
+      derived <- paste0("biallelic_dosage", if (identical(nm, private$primary)) "" else
+                        paste0("_", nm))
+      if (!is.null(private$panel_list[[derived]])) return(derived)
+      p <- private$panel_list[[nm]]
+      sets <- p$state_sets
+      sites <- p$sites
+      if (is.null(sets) || is.null(sites))
+        stop("panel \"", nm, "\" holds allele sets but carries no state-set / sites table, so ",
+             "a dosage cannot be derived from it. Rebuild it with ",
+             "`load_genotypes(vcf, variants = \"all\", encoding = \"allele_set\")`.",
+             call. = FALSE)
+      keep <- which(sites$n_alt_real == 1L)
+      if (!length(keep))
+        stop("panel \"", nm, "\" has no biallelic site in it, so no dosage view exists.",
+             call. = FALSE)
+      g <- p$genotype[, keep, drop = FALSE]
+      cols <- colnames(g)
+      d <- matrix(NA_integer_, nrow(g), ncol(g), dimnames = dimnames(g))
+      for (j in seq_len(ncol(g))) {
+        s <- sets[[cols[j]]]
+        if (is.null(s) || !length(s)) next
+        # a biallelic site's set is one of {ref}, {alt}, {ref, alt}: a pure alternate is 2, the
+        # ref+alt mix is 1, the reference is 0. (`*` was already dropped at encode, so no set
+        # here holds two non-reference alleles.)
+        val <- vapply(s, function(v)
+          if (length(v) == 1L) (if (v[1] == 0L) 0L else 2L)
+          else if (0L %in% v) 1L else NA_integer_, integer(1))
+        code <- g[, j]
+        ok <- !is.na(code)
+        d[ok, j] <- val[code[ok] + 1L]
+      }
+      private$panel_list[[derived]] <- list(
+        genotype = d, allele = "alt", pruned = p$pruned, encoding = "dosage",
+        sites = sites[keep, , drop = FALSE])
+      if (!derived %in% private$told) {
+        private$told <- c(private$told, derived)
+        message("derived a biallelic dosage panel (\"", derived, "\") from the allele-set ",
+                "panel \"", nm, "\": a mixed call keeps its intermediate dosage (1), the ",
+                ncol(p$genotype) - length(keep),
+                " multiallelic site(s) left out because a dosage cannot carry them")
+      }
+      derived
+    },
+
+    # One column per (site, ALT), value 2 where the sample carries that allele and 0 where it
+    # carries another, NA where it has no call. Values are 0/2 rather than 0/1 so the scale
+    # matches the dosage matrix a biallelic panel would give.
+    #
+    # Worth knowing before reading a PCA off it: a site with k alternates contributes k
+    # columns, so it carries more of the total variance than a biallelic one. That is a real
+    # property of a more informative site rather than an artefact, but it means a panel with
+    # a few very multiallelic loci is not weighted the way the same panel of biallelic loci
+    # would be.
+    onehot_panel = function(nm) {
+      derived <- paste0("onehot", if (identical(nm, private$primary)) "" else paste0("_", nm))
+      if (!is.null(private$panel_list[[derived]])) return(derived)
+      p <- private$panel_list[[nm]]
+      sites <- p$sites
+      if (is.null(sites))
+        stop("panel \"", nm, "\" holds allele indices but carries no `sites` table, so its ",
+             "columns cannot be named by allele. Rebuild it with `load_genotypes()`.",
+             call. = FALSE)
+      g <- p$genotype
+      cols <- list(); keys <- character(0); rows <- list()
+      for (j in seq_len(ncol(g))) {
+        alts <- sites$alt[[j]]
+        real <- which(alts != "*")
+        if (!length(real)) next
+        for (k in real) {
+          v <- rep(NA_integer_, nrow(g))
+          ok <- !is.na(g[, j])
+          v[ok] <- ifelse(g[ok, j] == k, 2L, 0L)
+          cols[[length(cols) + 1L]] <- v
+          # A site with one real ALT keeps its plain `chr:pos` name, because that column *is*
+          # the alt-dosage column and everything downstream keys on `chr:pos`. Only a site
+          # that needed splitting gets the widened `chr:pos:allele` key, which is the one
+          # place a column name has to name an allele.
+          key <- if (length(real) == 1L) sites$site_key[j]
+                 else paste0(sites$site_key[j], ":", alts[k])
+          keys <- c(keys, key)
+          # the row describes THIS column, so its `site_key` has to be this column's name.
+          # Leaving the parent `chr:pos` there makes the table look aligned while any join
+          # on `site_key` silently merges a split site's alleles back together -- the exact
+          # collapse the one-hot expansion exists to undo. `parent_key` keeps the link.
+          r <- sites[j, , drop = FALSE]
+          r$parent_key <- sites$site_key[j]
+          r$allele <- alts[k]
+          r$site_key <- key
+          rows[[length(rows) + 1L]] <- r
+        }
+      }
+      if (!length(cols)) stop("panel \"", nm, "\" has no real ALT allele to expand.",
+                              call. = FALSE)
+      m <- do.call(cbind, cols)
+      dimnames(m) <- list(rownames(g), keys)
+      private$panel_list[[derived]] <- list(
+        genotype = m, allele = "alt", pruned = p$pruned, encoding = "dosage",
+        sites = do.call(rbind, rows))
+      if (!derived %in% private$told) {
+        private$told <- c(private$told, derived)
+        message("expanded \"", nm, "\" to a one-hot panel (\"", derived, "\"): ",
+                ncol(g), " sites -> ", ncol(m), " allele columns, one per ALT. On a ",
+                "biallelic site that is the alt-dosage column, so nothing biallelic moves.")
+      }
+      derived
+    },
+
+    # One field off one panel. Two statements on purpose: `pick_panel()` may *build*
+    # `panel_list` (a legacy or freshly-loaded object has none), and R evaluates the
+    # object of `[[` before the index, so `panel_list[[pick_panel()]]` reads the list as
+    # it was *before* the build and silently returns NULL.
+    panel_field = function(panel, field) {
+      nm <- private$pick_panel(panel)
+      private$panel_list[[nm]][[field]]
+    },
     pick_panel = function(panel = NULL, prefer = NULL) {
       private$ensure_panels()
       if (!is.null(panel)) {
@@ -1756,17 +2495,29 @@ load_pop_structure <- function(file) {
 #' ps <- example_pop_structure(umap = FALSE)
 #' ps
 #' @export
-example_pop_structure <- function(dataset = c("ghana_cambodia", "africa"),
+example_pop_structure <- function(dataset = c("ghana_cambodia", "africa", "multiallelic"),
                                   umap = TRUE, seed = 42) {
   dataset <- match.arg(dataset)
   file <- switch(dataset,
                  ghana_cambodia = "pop_structure_ghana_cambodia.rds",
-                 africa = "pop_structure_africa.rds")
+                 africa = "pop_structure_africa.rds",
+                 multiallelic = "pop_structure_multiallelic.rds")
   f <- system.file("extdata", file, package = "plasgenomicsutilsR")
   if (!nzchar(f)) stop("example genotype data not found in the installed package",
                        call. = FALSE)
   d <- readRDS(f)
-  # The shipped fixtures are alt dosage (load_genotypes()'s default). `ghana_cambodia` also
+  if (identical(dataset, "multiallelic")) {
+    # The one fixture with multiallelic SNPs in it, and the only one built by a script
+    # (`data-raw/pop_structure_multiallelic.R`). Its primary panel holds allele indices, so
+    # a dosage analysis derives its own biallelic view on demand rather than being handed a
+    # panel that quietly cannot carry the sites it was asked about.
+    ps <- PopStructure$new(d$index, meta = d$meta)
+    if (umap) message("the multiallelic fixture is for encoding tests; ",
+                      "UMAP wants the dosage panel, so ask for it with ",
+                      "`$genotype(needs = \"dosage\")`")
+    return(ps)
+  }
+  # The other two fixtures are alt dosage (load_genotypes()'s default). `ghana_cambodia` also
   # carries a `full` panel: the same sparse genome-wide SNPs plus every biallelic SNP around
   # pfcrt / pfdhps / pfkelch13, so the locus, haplotype and EHH examples have real density
   # while PCA / UMAP / admixture keep reading the thinned set they were tuned on.

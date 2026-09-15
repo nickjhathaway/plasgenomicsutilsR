@@ -17,7 +17,8 @@ pop_diversity(
   max_missing = 0.1,
   min_samples = 4,
   genotype = NULL,
-  meta = NULL
+  meta = NULL,
+  alleles = c("dosage", "index")
 )
 }
 \arguments{
@@ -57,6 +58,10 @@ pass the \strong{full, unpruned} set, since LD-pruning removes the very sites di
 is measured over.}
 
 \item{meta}{When \code{x} is a matrix, a data frame with \code{sample} plus \code{group}.}
+
+\item{alleles}{Which genotype view to read: \code{"dosage"} (default) counts alternate copies,
+collapsing a multiallelic site to one number; \code{"index"} reads allele indices so every
+allele contributes to the k-allele heterozygosity terms. Derived from the panel as needed.}
 }
 \value{
 A tibble with one row per group x unit: \code{group}, the unit's identity, then

@@ -22,11 +22,18 @@ plot_ibd_tugofwar(
   label_genes = NULL,
   draw_threshold = TRUE,
   top_quantile = NULL,
+  shade = FALSE,
+  shade_wash = 0.55,
+  ribbon = FALSE,
+  peak_quantile = 0.99,
+  peak_gap = 50000,
+  ribbon_colours = NULL,
   metric_label = NULL,
   top_percent = NULL,
   centre_gap = 0.08,
   selection_colour = "#fd8d3c",
-  ibd_colour = "#2166ac"
+  ibd_colour = "#2166ac",
+  ribbon_colors = NULL
 )
 }
 \arguments{
@@ -109,6 +116,53 @@ the fraction. The quantile is taken on the table as passed in, before \code{chro
 its own peaks are then judged against; and per group when the track has a group
 column, so each panel's line is that region's genome-wide quantile whether or not the
 other regions are drawn. Stacks with \code{draw_threshold}, in its own colour.}
+
+\item{shade}{Draw the stretch of each track that sits below its bar in a washed-out
+version of its own colour, so the peaks that clear the bar carry the full one
+(default \code{FALSE}). It is one hue at two strengths per track, not a second hue, so it
+survives every dichromacy and reproduces in grey. The bar is \code{peak_quantile}.}
+
+\item{shade_wash}{How far towards white \code{shade} takes the below-bar stretch, from 0 (no
+change) to 1 (invisible); default 0.55. Worth turning down for print, where a wash that
+reads on a screen can drop out altogether.}
+
+\item{ribbon}{Draw a strip along the centre line saying, for each peak, whether both
+halves called it or only one (default \code{FALSE}). This is the comparison the mirror is
+for, and reading it off two bars either side of a gap is exactly what the eye is bad
+at. Both halves are cut at \code{peak_quantile}.
+
+The unit is a peak, not a window, and that is the whole reason this is worth a function
+rather than a colour mapped per row. A sliding window puts many overlapping rows over
+one peak and the two halves seldom summit on the same row, so a row-by-row rule paints
+a fringe of "only this half" around the shoulders of every peak they agree on. Runs
+above the bar are merged into peaks first (joining across gaps up to \code{peak_gap}), the
+two halves' peaks are then unioned, and each resulting peak is labelled by which halves
+reach into it.
+
+Read it knowing what the halves can and cannot see. A peak only the IBD half calls is
+as likely to be a sweep near fixation, where a statistic contrasting two alleles has
+nothing left to contrast, as it is to be nothing. A peak only the top half calls is
+consistent with several origins of the same allele, and equally with low recombination
+or unmodelled structure -- it is a screen, not a test, and counting haplotype
+backgrounds among the carriers is what settles it.}
+
+\item{peak_quantile}{Quantile of each half's own genome-wide distribution that \code{shade}
+and \code{ribbon} treat as the bar (default \code{0.99}). Taken per group and before \code{chroms},
+\code{skip_chr} and \code{zoom} crop anything, as \code{\link[=plot_ibd_tugofwar]{plot_ibd_tugofwar()}}'s \code{top_quantile} is.
+Matched quantiles are the defensible choice here because neither half then borrows the
+other's stringency; giving one half a nominal cutoff and the other an empirical one can
+reverse which half looks the more sensitive, and the ribbon would report that as
+biology. It cuts both halves at the same place by construction, so the count of
+top-only and bottom-only peaks is close to matched -- it is \emph{which} loci fall in each
+that carries the information, not how many.}
+
+\item{peak_gap}{Distance in base pairs within which two runs above the bar are treated as
+one peak (default 50 kb). Also the distance at which the two halves' peaks are taken to
+be the same peak.}
+
+\item{ribbon_colours, ribbon_colors}{Fills for the ribbon, named \code{both}, \code{top} and
+\code{bottom}. The default gives each single-half cell its own track's colour, so two of the
+three need no legend lookup, and \code{both} the darkest of the three.}
 
 \item{metric_label}{Name for the top metric on the shared axis. \code{NULL} (default) uses
 the column name, except for a column the plot knows how to write -- \code{frac_extreme}

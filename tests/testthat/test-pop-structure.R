@@ -725,15 +725,22 @@ test_that("variants = 'all' keeps every record, warns, and does not reuse the ot
   bi <- load_genotypes(vcf, gds = gds, prune = FALSE)
   expect_equal(ncol(bi$genotype), 2L)
 
-  # the same gds path must be rebuilt, not reused, or "all" would hand back the biallelic panel
+  # One GDS now serves every reading: SeqArray stores every record and the selection happens
+  # in R, so `variants` is no longer a property of the cached file. Under the SNPRelate
+  # backend the same path had to be *rebuilt* or "all" would hand back the biallelic panel.
   expect_warning(all_v <- load_genotypes(vcf, gds = gds, prune = FALSE, variants = "all"),
-                 "copy number of the reference allele")
+                 "a dosage cannot say which one")
   expect_equal(ncol(all_v$genotype), 5L)
   expect_equal(all_v$variants, "all")
   # the indel and the ALT="." site are there now
   expect_true(all(c("Pf3D7_01_v3:199", "Pf3D7_01_v3:299") %in% colnames(all_v$genotype)))
-  # and the reason nothing downstream can read it: at C -> T,G, 1/1 and 2/2 collapse together
+  # and the reason a dosage cannot carry them: at C -> T,G, 1/1 and 2/2 land on one number
   expect_equal(unname(all_v$genotype[c("s2", "s3"), "Pf3D7_01_v3:399"]), c(2L, 2L))
+
+  # which is what `encoding = "allele_index"` is for, off the very same GDS
+  idx <- load_genotypes(vcf, gds = gds, prune = FALSE, variants = "all",
+                        encoding = "allele_index")
+  expect_equal(unname(idx$genotype[c("s2", "s3"), "Pf3D7_01_v3:399"]), c(1L, 2L))
 
   # and back again
   expect_equal(ncol(load_genotypes(vcf, gds = gds, prune = FALSE)$genotype), 2L)
@@ -901,4 +908,136 @@ test_that("merge_genotypes realigns samples given in a different order", {
   # each sample keeps its own call, not the one sitting in that row of the other matrix
   expect_equal(unname(m$genotype[, "1:649"]),
                unname(extra$genotype[main$sample.id, 1]))
+})
+
+# --- the sites table: allele identity recovered from what SNPRelate already returns ----
+
+.sites_vcf <- function() {
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(
+    "##fileformat=VCFv4.2",
+    "##contig=<ID=Pf3D7_01_v3,length=640851>",
+    '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\ts1\ts2\ts3",
+    "Pf3D7_01_v3\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0/0\t1/1\t0/1",   # biallelic SNV
+    "Pf3D7_01_v3\t300\t.\tAT\tA\t.\tPASS\t.\tGT\t0/0\t1/1\t0/0",  # indel
+    "Pf3D7_01_v3\t400\t.\tC\tT,G\t.\tPASS\t.\tGT\t0/0\t1/1\t2/2", # multiallelic
+    "Pf3D7_01_v3\t500\t.\tG\tA\t.\tPASS\t.\tGT\t1/1\t1/1\t1/1"), vcf)
+  vcf
+}
+
+test_that("load_genotypes carries a sites table naming each record's alleles", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  # `snpgdsSNPList()` already returns the alleles as "A/G"; the package read only the
+  # chromosome and position off it and threw the rest away. That one discard is where allele
+  # identity left the R session, and nothing downstream could ask what it had lost.
+  g <- load_genotypes(.sites_vcf(), gds = tempfile(fileext = ".gds"), prune = FALSE)
+  expect_true(!is.null(g$sites))
+  expect_equal(g$sites$site_key, colnames(g$genotype))
+  expect_equal(g$sites$ref, c("A", "G"))
+  expect_equal(g$sites$alt, list("G", "A"))
+  expect_equal(g$sites$n_alt, c(1L, 1L))
+  expect_equal(g$sites$pos, c(99, 499))            # 0-based, like every id in the package
+})
+
+test_that("under variants = 'all' the sites table says which records are multiallelic", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  # the dosage matrix still collapses the alternates -- that is Phase 3's problem -- but
+  # `n_alt > 1` is now answerable, so a statistic can refuse or warn instead of quietly
+  # computing a wrong number on a collapsed column
+  suppressWarnings(
+    g <- load_genotypes(.sites_vcf(), gds = tempfile(fileext = ".gds"), prune = FALSE,
+                        variants = "all"))
+  multi <- g$sites[g$sites$n_alt > 1L, ]
+  expect_equal(nrow(multi), 1L)
+  expect_equal(multi$site_key, "Pf3D7_01_v3:399")
+  expect_equal(multi$ref, "C")
+  expect_equal(multi$alt[[1]], c("T", "G"))
+  # and the indel is nameable too, which the biallelic panel could not do at all
+  expect_equal(g$sites$ref[g$sites$site_key == "Pf3D7_01_v3:299"], "AT")
+})
+
+test_that("a PopStructure built from load_genotypes carries the sites table through", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  g <- load_genotypes(.sites_vcf(), gds = tempfile(fileext = ".gds"), prune = FALSE)
+  ps <- PopStructure$new(g, meta = data.frame(sample = g$sample.id, country = "X"))
+  s <- ps$sites()
+  expect_false(is.null(s))
+  expect_equal(s$site_key, colnames(ps$genotype()))
+  expect_equal(s$ref, c("A", "G"))
+})
+
+test_that("an object built before sites existed returns NULL rather than erroring", {
+  # `example_pop_structure()` is a saved object from before this table, and there is no
+  # build script to regenerate it (see inst/extdata/README.md) -- so the accessor has to
+  # degrade rather than fail. Rebuilding the shipped fixtures belongs with the Phase 3
+  # backend work, where the object changes shape anyway.
+  testthat::skip_if_not_installed("SNPRelate")
+  ps <- example_pop_structure(umap = FALSE)
+  expect_null(ps$sites())
+  expect_null(ps$sites(panel = "full"))
+})
+
+test_that("a sites table that does not match the matrix is refused, not silently kept", {
+  # a table describing different columns is worse than none: it would answer questions
+  # about a panel it is not describing
+  g <- list(genotype = matrix(0L, 2, 2,
+                              dimnames = list(c("s1", "s2"), c("c1:1", "c1:2"))),
+            sites = data.frame(site_key = c("c1:1", "c1:999"), chr = "c1", pos = c(1, 999),
+                               ref = c("A", "A"), n_alt = c(1L, 1L),
+                               stringsAsFactors = FALSE))
+  ps <- PopStructure$new(g, samples = c("s1", "s2"), n_pcs = 1)
+  expect_null(ps$sites())
+})
+
+test_that("subset_genotypes keeps the sites table, since it only drops samples", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  g <- load_genotypes(.sites_vcf(), gds = tempfile(fileext = ".gds"), prune = FALSE)
+  sub <- subset_genotypes(g, samples = c("s1", "s2"))
+  expect_equal(sub$sites, g$sites)
+})
+
+test_that("load_genotypes says how many records the biallelic panel left behind", {
+  testthat::skip_if_not_installed("SNPRelate")
+  testthat::skip_if_not_installed("gdsfmt")
+  # The message already said multiallelic sites are "not read". That is the fact; the number
+  # is what makes it actionable -- and it matters more now that the shipped filter chain can
+  # be told to keep multiallelic records, so a panel can be a small fraction of its callset
+  # without anything looking wrong.
+  msgs <- testthat::capture_messages(
+    load_genotypes(.sites_vcf(), gds = tempfile(fileext = ".gds"), prune = FALSE))
+  joined <- paste(msgs, collapse = " ")
+  expect_match(joined, "2 biallelic SNVs")
+  expect_match(joined, "1 multiallelic")
+  expect_match(joined, "1 indel")
+})
+
+test_that("the skipped tally needs no external tool and no guessing", {
+  testthat::skip_if_not_installed("SeqArray")
+  # It used to be taken by shelling out to bcftools, and went unstated when bcftools was
+  # absent. SeqArray has already read every record by the time the selection happens, so the
+  # classification that chose the panel is the classification reported -- exact, and free.
+  expect_equal(plasgenomicsutilsR:::.skipped_note(list()), "every record in the callset was read")
+  expect_equal(plasgenomicsutilsR:::.skipped_note(list(multiallelic = 3L, indel = 1L)),
+               "not read: 3 multiallelic, 1 indel")
+})
+
+test_that("an all-biallelic callset reports no skips at all", {
+  testthat::skip_if_not_installed("SeqArray")
+  vcf <- tempfile(fileext = ".vcf")
+  writeLines(c(
+    "##fileformat=VCFv4.2",
+    "##contig=<ID=Pf3D7_01_v3,length=640851>",
+    '##FORMAT=<ID=GT,Number=1,Type=String,Description="GT">',
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\ts1\ts2\ts3",
+    "Pf3D7_01_v3\t100\t.\tA\tG\t.\tPASS\t.\tGT\t0/0\t1/1\t0/1",
+    "Pf3D7_01_v3\t500\t.\tG\tA\t.\tPASS\t.\tGT\t1/1\t1/1\t1/1"), vcf)
+  msgs <- paste(testthat::capture_messages(
+    load_genotypes(vcf, gds = tempfile(fileext = ".gds"), prune = FALSE)), collapse = " ")
+  expect_match(msgs, "2 biallelic SNVs")
+  expect_false(grepl("multiallelic", msgs))
 })

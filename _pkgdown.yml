@@ -22,6 +22,7 @@ reference:
   - plot_ibd_pair_network
   - ibd_pair_clusters
   - ibd_pair_links
+  - ibd_unrelated_set
 - title: Genome-wide IBD between groups
   desc: >
     The per-pair IBD fraction reduced to one row per pair of metadata groups, over every
@@ -36,6 +37,18 @@ reference:
   - gene_ibd_overlap
   - gene_ibd_pairs
   - add_ibd_clusters
+- title: IBD segment length at a locus
+  desc: >
+    Whether IBD segments spanning a locus are longer than the sharing pairs carry
+    elsewhere, each pair measured against its own genome-wide background so that
+    differences in outcrossing between groups cancel.
+  contents:
+  - ibd_block_extension_test
+  - ibd_block_extension_scan
+  - ibd_block_extension_by_allele
+  - carrier_genome_wide_relatedness
+  - locus_ibs_by_allele
+  - plot_pairwise_block_extension
 - title: Selection genes
   desc: Genes hit by an above-threshold IBD selection signal.
   contents:
@@ -45,6 +58,7 @@ reference:
   contents:
   - PopStructure
   - load_genotypes
+  - allele_states
   - merge_genotypes
   - run_ld_prune
   - pop_structure
