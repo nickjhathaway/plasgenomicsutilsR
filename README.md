@@ -5,7 +5,7 @@
 [![R-CMD-check](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nickjhathaway/plasgenomicsutilsR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-> **Version 0.5.0** — early development; APIs, defaults, and outputs may change
+> **Version 0.5.1.9000** — early development; APIs, defaults, and outputs may change
 > between versions.
 
 R utilities for **visualizing and analyzing Plasmodium genomics data** — the
@@ -43,7 +43,7 @@ Bioconductor deps together:
 pak::pak("nickjhathaway/plasgenomicsutilsR", dependencies = TRUE)
 ```
 
-A release is pinned with its tag: `pak::pak("nickjhathaway/plasgenomicsutilsR@v0.4.1", ...)`.
+A release is pinned with its tag: `pak::pak("nickjhathaway/plasgenomicsutilsR@v0.5.0", ...)`.
 Leave `dependencies` out to install the hard dependencies only (dplyr, tibble, rlang, R6 --
 nothing from Bioconductor); `dependencies = FALSE` installs *no* dependencies at all and the
 build fails.
