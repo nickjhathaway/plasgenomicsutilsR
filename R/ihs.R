@@ -739,6 +739,11 @@ print.parasite_haplotypes <- function(x, ...) {
 #'   -- if EHH never decays before the data runs out, every marker is at a border -- so a
 #'   scan that comes back mostly `NA` says so.
 #' @param threads Threads for \pkg{rehh}.
+#' @param contrast For a multiallelic marker, which allele pairs to score. `"ref"` (default)
+#'   contrasts each alternate against the reference -- one `"0>k"` row per alternate, kept in
+#'   the returned `contrast` column; `"pairwise"` scores every pair of alleles; `"none"` takes
+#'   the single major-versus-minor value \pkg{rehh} reports and drops the multiallelic
+#'   distinction. A biallelic marker has one contrast, so all three agree there.
 #' @return A tibble with `group`, `chr`, `pos`, `snp_id`, `freq_minor`, `unihs`, `ihs` and
 #'   `neg_log10_p`.
 #'

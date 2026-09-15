@@ -63,6 +63,9 @@ window's span, either side (default \code{2}; \code{NULL} or \code{0} to not bou
 locus removed from both strata, which separates "a lineage moved across the border" from
 "the carrier populations share a background". Pass an \link{IbdResults} (its blocks name the
 IBD pairs), or \code{TRUE} to use \code{x} if it is one. Adds a second result row.}
+
+\item{map}{When \code{x} is a bare genotype matrix, a data frame of \code{chr}/\code{pos} with one row per
+SNP column giving each marker's position; ignored when \code{x} carries its own \verb{$map}.}
 }
 \value{
 A tibble, one row per pair set (\code{"all pairs"}, and \code{"IBD pairs dropped"} when

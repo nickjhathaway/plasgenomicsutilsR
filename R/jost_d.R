@@ -172,6 +172,9 @@ STATISTIC_LABELS <- c(jost_d = "Jost's D", gst_hedrick = "Hedrick's G'st",
 #'   use **instead** of a `PopStructure`'s stored matrix -- pass the **full, unpruned**
 #'   set here (e.g. `load_genotypes(vcf, prune = FALSE)`) so differentiation is measured on
 #'   every SNP while PCA/UMAP keep using the pruned matrix. Ignored when `x` is a matrix.
+#' @param alleles Which genotype view to read: `"dosage"` (default) counts alternate copies,
+#'   collapsing a multiallelic site; `"index"` reads allele indices so every allele contributes
+#'   to the differentiation terms. Derived from the panel as needed.
 #' @return A `pop_diff` object: a list with `D` (a SNP x pair matrix of the statistic),
 #'   `snp`, `groups`, `pairs`, `statistic`, and the group `freqs`.
 #' @references

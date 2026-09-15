@@ -67,6 +67,10 @@ an \code{allele_index} (or, through it, a \code{dosage}) view from it on demand
 (\verb{$genotype(needs = )}), so one stored panel serves both the haplotype plot and every
 analysis. See \emph{Which encoding to ask for}.}
 
+\item{star}{How to treat the \code{*} spanning-deletion allele: \code{"missing"} (default) records it
+as \code{has_spanning_del} and leaves it out of the allele count, so a call naming it becomes
+missing; \code{"allele"} keeps it as a literal allele.}
+
 \item{refresh}{What to do with a derived file older than what it was built from -- the
 text VCF beside a BCF, and the GDS beside either. \code{"stale"} (default) rebuilds it,
 \code{"always"} rebuilds regardless, \code{"never"} reuses it and warns. The default is a

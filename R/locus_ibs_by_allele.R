@@ -173,6 +173,8 @@
 #'   locus removed from both strata, which separates "a lineage moved across the border" from
 #'   "the carrier populations share a background". Pass an [IbdResults] (its blocks name the
 #'   IBD pairs), or `TRUE` to use `x` if it is one. Adds a second result row.
+#' @param map When `x` is a bare genotype matrix, a data frame of `chr`/`pos` with one row per
+#'   SNP column giving each marker's position; ignored when `x` carries its own `$map`.
 #' @return A tibble, one row per pair set (`"all pairs"`, and `"IBD pairs dropped"` when
 #'   `drop_ibd` is given), carrying the per-window null on the `null` attribute:
 #'   \describe{

@@ -403,6 +403,9 @@
 #' diploid genotype, and one index cannot name two clones. Those calls are missing under
 #' `allele_index`, which is the same reading `pop_diversity(het = "missing")` takes.
 #'
+#' @param star How to treat the `*` spanning-deletion allele: `"missing"` (default) records it
+#'   as `has_spanning_del` and leaves it out of the allele count, so a call naming it becomes
+#'   missing; `"allele"` keeps it as a literal allele.
 #' @return A list with `genotype` (matrix; sample row names and `chr:pos0` column names --
 #'   0-based, like every other position in the package),
 #'   `sample.id`, `snp.id`, and the facts the matrix itself cannot carry: `allele` (which

@@ -78,6 +78,12 @@ telomeres are still scored), on when one is. On sparse markers this can empty th
 scan that comes back mostly \code{NA} says so.}
 
 \item{threads}{Threads for \pkg{rehh}.}
+
+\item{contrast}{For a multiallelic marker, which allele pairs to score. \code{"ref"} (default)
+contrasts each alternate against the reference -- one \code{"0>k"} row per alternate, kept in
+the returned \code{contrast} column; \code{"pairwise"} scores every pair of alleles; \code{"none"} takes
+the single major-versus-minor value \pkg{rehh} reports and drops the multiallelic
+distinction. A biallelic marker has one contrast, so all three agree there.}
 }
 \value{
 A tibble with \code{group}, \code{chr}, \code{pos}, \code{snp_id}, \code{freq_minor}, \code{unihs}, \code{ihs} and

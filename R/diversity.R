@@ -310,6 +310,9 @@ tajima_d_pvalue <- function(D, n, S, method = c("beta", "normal")) {
 #'   pass the **full, unpruned** set, since LD-pruning removes the very sites diversity
 #'   is measured over.
 #' @param meta When `x` is a matrix, a data frame with `sample` plus `group`.
+#' @param alleles Which genotype view to read: `"dosage"` (default) counts alternate copies,
+#'   collapsing a multiallelic site to one number; `"index"` reads allele indices so every
+#'   allele contributes to the k-allele heterozygosity terms. Derived from the panel as needed.
 #' @return A tibble with one row per group x unit: `group`, the unit's identity, then
 #'   `n_samples`, `n_snps`, `n_sites`, `seg_sites`, `he`, `pi`, `theta_w`, `tajima_d`,
 #'   `n_hap`, `hap_div`, `shannon_h`, `simpson_lambda`, `evenness`. `tajima_p` is the

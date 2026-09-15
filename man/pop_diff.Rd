@@ -35,6 +35,10 @@ genome-wide in \emph{P. falciparum}); its standardized form G'st is provided ins
 use \strong{instead} of a \code{PopStructure}'s stored matrix -- pass the \strong{full, unpruned}
 set here (e.g. \code{load_genotypes(vcf, prune = FALSE)}) so differentiation is measured on
 every SNP while PCA/UMAP keep using the pruned matrix. Ignored when \code{x} is a matrix.}
+
+\item{alleles}{Which genotype view to read: \code{"dosage"} (default) counts alternate copies,
+collapsing a multiallelic site; \code{"index"} reads allele indices so every allele contributes
+to the differentiation terms. Derived from the panel as needed.}
 }
 \value{
 A \code{pop_diff} object: a list with \code{D} (a SNP x pair matrix of the statistic),
