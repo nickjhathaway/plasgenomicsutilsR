@@ -95,8 +95,11 @@
 #'   is therefore an error to give both `border` and `shape_group`.
 #' @param border_width Outline width when `border` is set.
 #' @param weight_range Narrowest and widest edge, in `linewidth` units.
-#' @param weight_breaks Legend breaks; defaults to powers of two spanning the data, since
-#'   sharing runs over orders of magnitude.
+#' @param weight_breaks Legend breaks. The default keys the smallest and largest edge
+#'   actually drawn and fills in powers of two between them, since sharing runs over
+#'   orders of magnitude. Keying the ends matters: a fully shared pair scores just under
+#'   1 against the callable map, so an octave-only legend leaves the thickest edges
+#'   unlabelled, and a high `min_ibd` can span no octave at all.
 #' @param title Plot title; `NULL` (default) writes one, `FALSE` or `NA` drops it.
 #' @param subtitle `TRUE` (default) counts samples, edges and unconnected samples; a string
 #'   replaces it, `FALSE` drops it.

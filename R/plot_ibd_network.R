@@ -293,24 +293,35 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
 # override per plot with `+ guides(linewidth = guide_legend(order = 1))`.
 .LEGEND_ORDER <- c(colour = 1L, shape = 2L, weight = 3L)
 
-# Powers of two spanning the observed weights. IBD fraction runs over orders of magnitude --
-# most pairs share a little, a few share almost everything -- so a linear legend collapses the
-# interesting end into a single key.
+# Legend breaks for the edge width. IBD fraction runs over orders of magnitude -- most pairs
+# share a little, a few share almost everything -- so the interior keys are octaves and a
+# linear legend would collapse the interesting end into one key.
+#
+# The two ends are the observed minimum and maximum themselves, not the octaves outside them.
+# ggplot censors a break that falls past the data, so anchoring on octaves loses the widest
+# edge whenever the data stops just short of one: a fully shared pair scores 0.9995 against the
+# callable map, which is under the 1 break, so the thickest lines on the plot had no key. The
+# same rounding at the bottom could empty the set entirely -- `min_ibd = 0.5` leaves data in
+# [0.500015, 0.9995], which contains no octave at all -- and then the width legend vanished
+# even though the edges plainly varied in thickness.
 .ibd_weight_breaks <- function(w, max_breaks = 6L) {
   w <- w[is.finite(w) & w > 0]
   if (!length(w)) return(ggplot2::waiver())
   lo <- min(w); hi <- max(w)
-  # Keep the powers of two that fall *inside* the data rather than rounding the ends outwards.
-  # An IBD fraction of 1.0000006 -- the callable map rounds a fully-shared pair a hair over 1 --
-  # otherwise rounds up to a 2 break, which ggplot censors for being past the data, and the
-  # octave it added pushed the smallest real break off the bottom of the legend.
-  br <- 2^seq(floor(log2(lo)), ceiling(log2(hi)))
-  br <- br[br >= lo & br <= hi]
-  if (length(br) < 2L) return(ggplot2::waiver())      # too narrow a range to label this way
-  # thin from the dense end but always keep the largest, so the legend still spans the range
-  if (length(br) > max_breaks)
-    br <- rev(rev(br)[seq(1L, length(br), by = ceiling(length(br) / max_breaks))])
-  br
+  if (!isTRUE(hi > lo)) return(signif(hi, 3L))       # one distinct weight: one key
+
+  inner <- 2^seq(floor(log2(lo)), ceiling(log2(hi)))
+  inner <- inner[inner > lo & inner < hi]
+  # an octave sitting within a fifth of an octave of an anchor would draw a second key of
+  # visibly the same width, so let the anchor stand for it
+  near_anchor <- function(x) abs(log2(x) - log2(lo)) < 0.2 | abs(log2(x) - log2(hi)) < 0.2
+  if (length(inner)) inner <- inner[!near_anchor(inner)]
+  # thin from the dense end, never from the anchors, so the legend still spans the range
+  room <- max(0L, max_breaks - 2L)
+  if (length(inner) > room)
+    inner <- if (!room) numeric(0)
+             else rev(rev(inner)[seq(1L, length(inner), by = ceiling(length(inner) / room))])
+  sort(unique(c(lo, inner, hi)))
 }
 
 # Shared drawing half of the IBD networks: layout, the grid of unconnected samples underneath,
@@ -409,7 +420,10 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
         ggplot2::scale_linewidth_continuous(
           name = weight_name, range = weight_range, transform = weight_trans,
           breaks = weight_breaks %||% .ibd_weight_breaks(edf$weight),
-          labels = function(v) format(round(v, 3), trim = TRUE),
+          # the end keys are the observed extremes, so a fixed 3 decimals can print two
+          # small breaks as the same number; significant digits keep them distinct
+          labels = function(v) format(signif(v, 3), trim = TRUE, scientific = FALSE,
+                                      drop0trailing = TRUE),
           guide = ggplot2::guide_legend(order = .LEGEND_ORDER[["weight"]]))
     } else {
       p <- p + ggplot2::geom_segment(

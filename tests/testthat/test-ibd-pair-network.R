@@ -59,11 +59,14 @@ test_that("edge width maps to the IBD fraction", {
 
   s <- ggplot2::ggplot_build(p)$plot$scales$get_scales("linewidth")
   expect_equal(s$name, "IBD")
-  # breaks come back in log2 space; in data space they are powers of two
+  # breaks come back in log2 space; in data space the ends are the smallest and largest edge
+  # drawn and the interior is powers of two, so the thickest edge always has a key
   br <- 2^s$get_breaks()
   br <- br[is.finite(br)]
   expect_true(all(br > 0))
-  expect_equal(br, 2^round(log2(br)))
+  expect_equal(range(br), range(kept))
+  inner <- br[-c(1, length(br))]
+  expect_equal(inner, 2^round(log2(inner)))
 })
 
 test_that("colour and shape groups, the title and the subtitle all toggle", {
@@ -178,31 +181,42 @@ test_that("the per-gene network stacks colour above shape, whatever the data", {
   }
 })
 
-test_that("legend breaks are the powers of two inside the data, not rounded past it", {
+test_that("legend breaks span the data instead of rounding to octaves past it", {
   f <- plasgenomicsutilsR:::.ibd_weight_breaks
 
-  # the case from a real run: the callable-map denominator puts a fully-shared pair a hair
-  # over 1, and rounding the top outwards used to add a censored `2` break whose octave
-  # pushed the smallest real break off the bottom of the legend
-  expect_equal(f(c(0.03001, 1.000000615142868)),
-               c(0.03125, 0.0625, 0.125, 0.25, 0.5, 1))
+  # the ends are the observed extremes, with octaves in between
+  br <- f(c(0.03001, 1.000000615142868))
+  expect_equal(br[1], 0.03001)
+  expect_equal(br[length(br)], 1.000000615142868)
+  expect_true(all(br[-c(1, length(br))] %in% 2^(-5:0)))
 
-  # every break lies within the data
-  for (w in list(c(0.031, 0.9), c(0.002, 0.5), c(0.03001, 1.0000006))) {
+  # every break lies within the data, and the widest edge always has a key
+  for (w in list(c(0.031, 0.9), c(0.002, 0.5), c(0.03001, 1.0000006),
+                 c(0.500014668, 0.999468338))) {
     br <- f(w)
-    expect_true(all(br >= min(w) & br <= max(w)),
-                info = paste(range(w), collapse = ".."))
+    expect_true(all(br >= min(w) & br <= max(w)), info = paste(range(w), collapse = ".."))
+    expect_equal(max(br), max(w))
+    expect_equal(min(br), min(w))
   }
+
+  # the real failure: a whole-genome network cut at min_ibd = 0.5 spans no octave at all, and
+  # octave-only breaks left the linewidth legend empty, so ggplot dropped it entirely even
+  # though the edges on the plot plainly varied in width
+  narrow <- f(c(0.500014668, 0.999468338))
+  expect_equal(narrow, c(0.500014668, 0.999468338))
+  expect_gte(length(f(c(0.4, 0.6))), 2L)
 
   # a wide range is thinned but still spans it, keeping the largest break
   wide <- f(c(0.0005, 1))
   expect_lte(length(wide), 6L)
   expect_equal(max(wide), 1)
-  expect_true(min(wide) < 0.01)
+  expect_true(min(wide) <= 0.01)
+  # ... and no two breaks are close enough to print as the same width
+  expect_true(all(diff(log2(wide)) > 0.2))
 
-  # too narrow to label in octaves -> let ggplot choose rather than invent one key
-  expect_s3_class(f(c(0.4, 0.6)), "waiver")
+  # nothing to label, and a single distinct weight
   expect_s3_class(f(numeric(0)), "waiver")
+  expect_equal(f(c(0.42, 0.42)), 0.42)
 })
 
 test_that("the class exposes the pair network the same way it exposes the per-gene one", {
