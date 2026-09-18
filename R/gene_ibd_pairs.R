@@ -47,6 +47,21 @@
 #' @param within Pad each gene interval by this many bp on both sides when deciding
 #'   whether a block overlaps it (default `0`). Coverage is always measured against the
 #'   gene's own span, so a block that reaches only into the padding covers `0`.
+#' @param sharing Which blocks make it into the table, and so which edges the clusters are
+#'   built from -- the same choice [plot_ibd_network()] and [add_ibd_clusters()] offer:
+#'   \describe{
+#'     \item{`"overlap"`}{(default) every block that touches the gene, whether it spans the
+#'       whole of it or only part -- so the table holds both `coverage` values.}
+#'     \item{`"complete"`}{only blocks that span the whole gene, so every row has
+#'       `coverage == "complete"` and `gene_cluster_id` is the complete-sharing clustering.}
+#'   }
+#'   Filtering here is not the same as filtering the returned table: the clusters are
+#'   recomputed over the blocks that survive, whereas `subset(pairs, coverage ==
+#'   "complete")` keeps cluster ids that partial blocks helped merge. With `within > 0`
+#'   `"complete"` asks the block to span the *padded* interval, matching
+#'   [plot_ibd_network()]; `coverage` is still measured against the gene alone, so a few
+#'   `coverage == "complete"` rows can fall outside it. The two rules coincide at the
+#'   default `within = 0`.
 #' @param add_meta_cols Metadata columns to attach to both ends of each pair. Each `col`
 #'   becomes `sample1_col` and `sample2_col`, in the order asked for -- so a sharing pair can
 #'   be read as within- or between-group without a second join. A sample missing from `meta`
@@ -67,10 +82,15 @@
 #'     \item{`gene_cluster_id`, `gene_cluster_size`}{single-linkage cluster of samples
 #'       sharing at this gene, and how many samples are in it. A sample joins a cluster if
 #'       it shares with **any** member, so a chain of pairs is one cluster even where its
-#'       ends never share directly -- which is what [plot_ibd_network()] draws as a
-#'       connected component. Ids run largest first, so `1` is the biggest group at that
-#'       gene; they are per gene, so cluster 1 at `pfcrt` and cluster 1 at `pfdhps` are
-#'       unrelated.}
+#'       ends never share directly. The edges are exactly the rows in the table, i.e.
+#'       whichever blocks `sharing` selected: under the default `"overlap"` partial blocks
+#'       merge clusters too, so the ids match the components
+#'       `plot_ibd_network(sharing = "overlap")` draws and **not** those of
+#'       `sharing = "complete"`. Filtering the returned table by `coverage` does not
+#'       recompute them -- ask for `sharing = "complete"` (or re-cluster the filtered pairs
+#'       yourself) rather than reading these columns off a filtered subset. Ids run largest
+#'       first, so `1` is the biggest group at that gene; they are per gene, so cluster 1 at
+#'       `pfcrt` and cluster 1 at `pfdhps` are unrelated.}
 #'     \item{`covered_bp`, `percent_covered`}{width of that portion, and it as a percentage
 #'       of the gene's length.}
 #'   }
@@ -81,14 +101,19 @@
 #' \dontrun{
 #' ibd <- ibd_results(blocks = "hmm.txt", genes = PF_EXAMPLE_DRUG_GENES)
 #' pairs <- gene_ibd_pairs(ibd, genes = c("pfcrt", "pfdhps"))
-#' subset(pairs, coverage == "complete")
+#' subset(pairs, coverage == "complete")   # rows only: gene_cluster_id still the overlap one
+#'
+#' # the whole-gene sharers, with clusters built from just those blocks
+#' whole <- gene_ibd_pairs(ibd, genes = "pfcrt", sharing = "complete")
 #'
 #' # labelled with where each end came from, to split sharing within a site from between
 #' p <- gene_ibd_pairs(ibd, genes = "pfcrt", add_meta_cols = "region")
 #' table(within_region = p$sample1_region == p$sample2_region)
 #' }
 #' @export
-gene_ibd_pairs <- function(x, genes = NULL, within = 0, add_meta_cols = NULL, meta = NULL) {
+gene_ibd_pairs <- function(x, genes = NULL, within = 0, sharing = c("overlap", "complete"),
+                           add_meta_cols = NULL, meta = NULL) {
+  sharing <- match.arg(sharing)
   if (!is.null(add_meta_cols) && is.null(meta) && inherits(x, "IbdResults"))
     meta <- x$get_meta()
   meta <- .normalise_meta(meta)
@@ -113,6 +138,13 @@ gene_ibd_pairs <- function(x, genes = NULL, within = 0, add_meta_cols = NULL, me
     m <- d$start < (ge + within) & d$end > (gs - within)
     if (!any(m)) next
     d <- d[m, , drop = FALSE]
+    if (sharing == "complete") {
+      # the same rule plot_ibd_network() draws an edge on, applied before the clustering
+      # below, so the ids describe the complete-sharing graph rather than the overlap one
+      keep <- d$start <= (gs - within) & d$end >= (ge + within)
+      if (!any(keep)) next
+      d <- d[keep, , drop = FALSE]
+    }
 
     cs <- pmax(d$start, gs)                       # intersection with the gene itself
     ce <- pmin(d$end, ge)

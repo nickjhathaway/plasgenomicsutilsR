@@ -89,10 +89,12 @@
 #'   reproducible.
 #' @param node_size,node_alpha,edge_colour,edge_color,edge_alpha Node and edge aesthetics.
 #' @param border Outline colour for the nodes, or `NA` (default) for none. An outline makes
-#'   a dark category legible where it sits over the grey edge bundles, at the cost of the
-#'   shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
-#'   this on draws every node as a filled circle and maps the colour group to the fill. It
-#'   is therefore an error to give both `border` and `shape_group`.
+#'   a dark category legible where it sits over the grey edge bundles. Only shapes 21-25
+#'   carry a fill separate from their outline, so turning this on moves the colour group to
+#'   the fill and gives `colour` to the outline; with no `shape_group` every node becomes a
+#'   filled circle. A `shape_group` can be kept alongside it, but then `shapes` must be given
+#'   from 21-25 (and `na_shape` too, if any sample has no value there), since any other shape
+#'   draws itself in `colour` and would lose the colour group.
 #' @param border_width Outline width when `border` is set.
 #' @param weight_range Narrowest and widest edge, in `linewidth` units.
 #' @param weight_breaks Legend breaks. The default keys the smallest and largest edge
@@ -128,13 +130,11 @@ plot_ibd_pair_network <- function(pairs, meta = NULL, weight = NULL, min_ibd = 0
   colors <- .alias_arg("colors", "colours")
   na_colour <- .alias_arg("na_colour", "na_color")
   edge_colour <- .alias_arg("edge_colour", "edge_color")
-  # An outline needs a shape that has one, and only 21-25 do. Honouring `border` alongside
-  # `shape_group` would mean silently replacing the caller's shapes with circles, so it is
-  # refused instead: the two encodings want the same property of the mark.
+  # An outline needs a shape that has one. Combining it with `shape_group` is allowed as long
+  # as the shapes asked for are all fill-capable (21-25); anything else would have to be
+  # replaced with circles to honour the outline, so it is refused rather than done silently.
   if (!is.null(border) && !is.na(border) && !is.null(shape_group))
-    stop("`border` cannot be combined with `shape_group`: an outline needs a filled shape ",
-         "(21-25), and only those carry a fill separate from the outline, so the shapes you ",
-         "asked for would have to be discarded. Drop one of the two.", call. = FALSE)
+    .check_bordered_shapes(shapes)
   .need_package("ggplot2", "plot_ibd_pair_network()")
   .need_package("igraph", "plot_ibd_pair_network()")
   .need_package("ggraph", "plot_ibd_pair_network()")

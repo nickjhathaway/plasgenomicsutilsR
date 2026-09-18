@@ -257,13 +257,58 @@ test_that("border outlines the nodes, and refuses to fight the shape encoding", 
   # the same categories, still one legend, just keyed on fill now
   expect_equal(sort(unique(nl$fill)), sort(unique(node_layer(plain)$colour)))
 
-  # only shapes 21-25 have an outline separate from a fill, so honouring both would mean
-  # throwing the caller's shapes away -- refuse instead of choosing for them
+  # a shape group can ride along, but only on shapes that have a fill of their own
+  n_lev <- length(unique(meta[[grp]]))
+  both <- plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp,
+                                shape_group = grp, shapes = (21:25)[seq_len(n_lev)],
+                                border = "black")
+  nb <- node_layer(both)
+  expect_setequal(unique(nb$shape), (21:25)[seq_len(n_lev)])   # the caller's shapes, kept
+  expect_equal(unique(nb$colour), "black")                     # outline still the outline
+  expect_gt(length(unique(nb$fill)), 1)                        # and the colour group survives
+
+  # the two legends have to override the aesthetic the other one owns, or the colour keys draw
+  # as identical unfilled marks and the shape keys as empty outlines
+  gd <- ggplot2::ggplot_build(both)$plot$guides$get_params("fill")
+  expect_equal(gd$override.aes$shape, 21L)
+
+  # every other shape draws itself in `colour`, which the outline has taken, so those are out
   expect_error(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp,
-                                       shape_group = grp, border = "black"),
-               "cannot be combined with `shape_group`")
+                                     shape_group = grp, border = "black"),
+               "needs `shapes` given as values from 21-25")
+  expect_error(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp,
+                                     shape_group = grp, shapes = c(16, 17), border = "black"),
+               "needs every shape in 21-25")
+  # a named vector that leaves some levels on the default palette is caught too
+  part <- setNames(c(21), unique(as.character(meta[[grp]]))[1])
+  expect_error(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp,
+                                     shape_group = grp, shapes = part, border = "black"),
+               "needs every shape in 21-25")
+
   # and with the border off, shapes behave exactly as before
   expect_s3_class(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, shape_group = grp), "ggplot")
+})
+
+test_that("a bordered shape group needs a fill-capable na_shape only when something is missing", {
+  skip_if_no_graph()
+  pairs <- make_pairs(); meta <- make_meta()
+  grp <- names(meta)[!names(meta) %in% "sample"][1]
+  n_lev <- length(unique(meta[[grp]]))
+  shp <- (21:25)[seq_len(n_lev)]
+
+  # nothing missing: the default hollow-circle na_shape is never drawn, so it is not an error
+  expect_s3_class(plot_ibd_pair_network(pairs, meta = meta, min_ibd = 0.01, color_group = grp,
+                                        shape_group = grp, shapes = shp, border = "black"),
+                  "ggplot")
+
+  gappy <- meta; gappy[[grp]][1] <- NA
+  expect_error(plot_ibd_pair_network(pairs, meta = gappy, min_ibd = 0.01, color_group = grp,
+                                     shape_group = grp, shapes = shp, border = "black"),
+               "needs `na_shape` in 21-25")
+  expect_s3_class(plot_ibd_pair_network(pairs, meta = gappy, min_ibd = 0.01, color_group = grp,
+                                        shape_group = grp, shapes = shp, na_shape = 25,
+                                        border = "black"),
+                  "ggplot")
 })
 
 

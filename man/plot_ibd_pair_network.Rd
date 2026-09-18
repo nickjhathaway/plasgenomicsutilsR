@@ -70,17 +70,22 @@ reproducible.}
 \item{node_size, node_alpha, edge_colour, edge_color, edge_alpha}{Node and edge aesthetics.}
 
 \item{border}{Outline colour for the nodes, or \code{NA} (default) for none. An outline makes
-a dark category legible where it sits over the grey edge bundles, at the cost of the
-shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
-this on draws every node as a filled circle and maps the colour group to the fill. It
-is therefore an error to give both \code{border} and \code{shape_group}.}
+a dark category legible where it sits over the grey edge bundles. Only shapes 21-25
+carry a fill separate from their outline, so turning this on moves the colour group to
+the fill and gives \code{colour} to the outline; with no \code{shape_group} every node becomes a
+filled circle. A \code{shape_group} can be kept alongside it, but then \code{shapes} must be given
+from 21-25 (and \code{na_shape} too, if any sample has no value there), since any other shape
+draws itself in \code{colour} and would lose the colour group.}
 
 \item{border_width}{Outline width when \code{border} is set.}
 
 \item{weight_range}{Narrowest and widest edge, in \code{linewidth} units.}
 
-\item{weight_breaks}{Legend breaks; defaults to powers of two spanning the data, since
-sharing runs over orders of magnitude.}
+\item{weight_breaks}{Legend breaks. The default keys the smallest and largest edge
+actually drawn and fills in powers of two between them, since sharing runs over
+orders of magnitude. Keying the ends matters: a fully shared pair scores just under
+1 against the callable map, so an octave-only legend leaves the thickest edges
+unlabelled, and a high \code{min_ibd} can span no octave at all.}
 
 \item{title}{Plot title; \code{NULL} (default) writes one, \code{FALSE} or \code{NA} drops it.}
 

@@ -4,7 +4,14 @@
 \alias{gene_ibd_pairs}
 \title{Sample pairs sharing IBD over each gene}
 \usage{
-gene_ibd_pairs(x, genes = NULL, within = 0, add_meta_cols = NULL, meta = NULL)
+gene_ibd_pairs(
+  x,
+  genes = NULL,
+  within = 0,
+  sharing = c("overlap", "complete"),
+  add_meta_cols = NULL,
+  meta = NULL
+)
 }
 \arguments{
 \item{x}{An \link{IbdResults} built with \verb{blocks =}.}
@@ -15,6 +22,21 @@ frame (\code{name}, \code{chr}/\code{chrom}, \code{start}, \code{end}). Several 
 \item{within}{Pad each gene interval by this many bp on both sides when deciding
 whether a block overlaps it (default \code{0}). Coverage is always measured against the
 gene's own span, so a block that reaches only into the padding covers \code{0}.}
+
+\item{sharing}{Which blocks make it into the table, and so which edges the clusters are
+built from -- the same choice \code{\link[=plot_ibd_network]{plot_ibd_network()}} and \code{\link[=add_ibd_clusters]{add_ibd_clusters()}} offer:
+\describe{
+\item{\code{"overlap"}}{(default) every block that touches the gene, whether it spans the
+whole of it or only part -- so the table holds both \code{coverage} values.}
+\item{\code{"complete"}}{only blocks that span the whole gene, so every row has
+\code{coverage == "complete"} and \code{gene_cluster_id} is the complete-sharing clustering.}
+}
+Filtering here is not the same as filtering the returned table: the clusters are
+recomputed over the blocks that survive, whereas \code{subset(pairs, coverage == "complete")} keeps cluster ids that partial blocks helped merge. With \code{within > 0}
+\code{"complete"} asks the block to span the \emph{padded} interval, matching
+\code{\link[=plot_ibd_network]{plot_ibd_network()}}; \code{coverage} is still measured against the gene alone, so a few
+\code{coverage == "complete"} rows can fall outside it. The two rules coincide at the
+default \code{within = 0}.}
 
 \item{add_meta_cols}{Metadata columns to attach to both ends of each pair. Each \code{col}
 becomes \code{sample1_col} and \code{sample2_col}, in the order asked for -- so a sharing pair can
@@ -39,10 +61,15 @@ own bounds when \code{coverage} is \code{"complete"}.}
 \item{\code{gene_cluster_id}, \code{gene_cluster_size}}{single-linkage cluster of samples
 sharing at this gene, and how many samples are in it. A sample joins a cluster if
 it shares with \strong{any} member, so a chain of pairs is one cluster even where its
-ends never share directly -- which is what \code{\link[=plot_ibd_network]{plot_ibd_network()}} draws as a
-connected component. Ids run largest first, so \code{1} is the biggest group at that
-gene; they are per gene, so cluster 1 at \code{pfcrt} and cluster 1 at \code{pfdhps} are
-unrelated.}
+ends never share directly. The edges are exactly the rows in the table, i.e.
+whichever blocks \code{sharing} selected: under the default \code{"overlap"} partial blocks
+merge clusters too, so the ids match the components
+\code{plot_ibd_network(sharing = "overlap")} draws and \strong{not} those of
+\code{sharing = "complete"}. Filtering the returned table by \code{coverage} does not
+recompute them -- ask for \code{sharing = "complete"} (or re-cluster the filtered pairs
+yourself) rather than reading these columns off a filtered subset. Ids run largest
+first, so \code{1} is the biggest group at that gene; they are per gene, so cluster 1 at
+\code{pfcrt} and cluster 1 at \code{pfdhps} are unrelated.}
 \item{\code{covered_bp}, \code{percent_covered}}{width of that portion, and it as a percentage
 of the gene's length.}
 }
@@ -62,7 +89,10 @@ spanning it.
 \dontrun{
 ibd <- ibd_results(blocks = "hmm.txt", genes = PF_EXAMPLE_DRUG_GENES)
 pairs <- gene_ibd_pairs(ibd, genes = c("pfcrt", "pfdhps"))
-subset(pairs, coverage == "complete")
+subset(pairs, coverage == "complete")   # rows only: gene_cluster_id still the overlap one
+
+# the whole-gene sharers, with clusters built from just those blocks
+whole <- gene_ibd_pairs(ibd, genes = "pfcrt", sharing = "complete")
 
 # labelled with where each end came from, to split sharing within a site from between
 p <- gene_ibd_pairs(ibd, genes = "pfcrt", add_meta_cols = "region")

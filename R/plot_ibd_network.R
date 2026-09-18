@@ -20,6 +20,28 @@
   .SHAPE_PALETTE[seq_len(n)]
 }
 
+# Shapes 21-25 are the only ones whose fill is separate from their outline. Every other shape
+# draws itself in `colour`, which an outline has already claimed, so a bordered node could not
+# also show its colour group. That is the whole constraint: `border` and `shape_group` can be
+# combined exactly when the shapes asked for are drawn from 21-25.
+.FILL_SHAPES <- 21:25
+
+.check_bordered_shapes <- function(shapes) {
+  if (is.null(shapes))
+    stop("`border` with `shape_group` needs `shapes` given as values from 21-25. Only those ",
+         "carry a fill separate from their outline, so only they can show the colour group ",
+         "inside an outline; the default shape palette is solid marks that draw themselves in ",
+         "`colour`, which the outline owns. Pass e.g. `shapes = c(21, 22)`, or drop `border`.",
+         call. = FALSE)
+  bad <- unique(shapes[!shapes %in% .FILL_SHAPES])
+  if (length(bad))
+    stop("`border` with `shape_group` needs every shape in 21-25, but `shapes` has ",
+         paste(bad, collapse = ", "), ". Only 21-25 carry a fill separate from their outline, ",
+         "so any other shape loses the colour group. Pick from 21-25, or drop `border`.",
+         call. = FALSE)
+  invisible(TRUE)
+}
+
 # Values for a manual scale. A *named* vector maps level -> value in any order and may
 # cover only some levels; an unnamed one is taken positionally against `levels`. Anything
 # missing falls back to the automatic palette, so a partial mapping is allowed.
@@ -189,10 +211,12 @@
 #'   (`"fr"`, `"kk"`, `"drl"`, `"stress"`, ...); others are unaffected.
 #' @param node_size,node_alpha Node point aesthetics.
 #' @param border Outline colour for the nodes, or `NA` (default) for none. An outline makes
-#'   a dark category legible where it sits over the grey edge bundles, at the cost of the
-#'   shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
-#'   this on draws every node as a filled circle and maps the colour group to the fill. It
-#'   is therefore an error to give both `border` and `shape_group`.
+#'   a dark category legible where it sits over the grey edge bundles. Only shapes 21-25
+#'   carry a fill separate from their outline, so turning this on moves the colour group to
+#'   the fill and gives `colour` to the outline; with no `shape_group` every node becomes a
+#'   filled circle. A `shape_group` can be kept alongside it, but then `shapes` must be given
+#'   from 21-25 (and `na_shape` too, if any sample has no value there), since any other shape
+#'   draws itself in `colour` and would lose the colour group.
 #' @param border_width Outline width when `border` is set.
 #' @param edge_colour,edge_color,edge_width Edge aesthetics (default width `1`).
 #' @param edge_alpha Edge opacity (default `0.5`). `NULL` instead scales opacity down with
@@ -232,13 +256,11 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
   colors <- .alias_arg("colors", "colours")
   na_colour <- .alias_arg("na_colour", "na_color")
   edge_colour <- .alias_arg("edge_colour", "edge_color")
-  # An outline needs a shape that has one, and only 21-25 do. Honouring `border` alongside
-  # `shape_group` would mean silently replacing the caller's shapes with circles, so it is
-  # refused instead: the two encodings want the same property of the mark.
+  # An outline needs a shape that has one. Combining it with `shape_group` is allowed as long
+  # as the shapes asked for are all fill-capable (21-25); anything else would have to be
+  # replaced with circles to honour the outline, so it is refused rather than done silently.
   if (!is.null(border) && !is.na(border) && !is.null(shape_group))
-    stop("`border` cannot be combined with `shape_group`: an outline needs a filled shape ",
-         "(21-25), and only those carry a fill separate from the outline, so the shapes you ",
-         "asked for would have to be discarded. Drop one of the two.", call. = FALSE)
+    .check_bordered_shapes(shapes)
   .need_package("ggplot2", "plot_ibd_network()")
   .need_package("igraph", "plot_ibd_network()")
   .need_package("ggraph", "plot_ibd_network()")
@@ -433,17 +455,20 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
   }
   # nodes: colour and shape are independent, so either, both or neither can be mapped.
   # An outline is a third thing again, and it is not free: only shapes 21-25 carry a fill
-  # separate from their outline, so drawing one means using shape 21 and moving the group
-  # from `colour` (the mark) to `fill` (its inside). That is why `border` and `shape_group`
-  # cannot both be on -- the caller's shapes would have to be thrown away to honour it.
+  # separate from their outline, so drawing one moves the colour group from `colour` (the
+  # mark) to `fill` (its inside) and leaves `colour` for the outline. With no shape mapped
+  # that is a fixed shape 21; with one mapped the caller's shapes are used as they are, which
+  # works because they were already required to come from 21-25.
   bordered <- !is.null(border) && !is.na(border)
+  shape_mapped <- !is.null(shp_of)
   aes_args <- list(x = quote(.data$x), y = quote(.data$y))
   if (!is.null(col_of)) aes_args[[if (bordered) "fill" else "colour"]] <- quote(.data$.colour)
-  if (!is.null(shp_of)) aes_args$shape <- quote(.data$.shape)
+  if (shape_mapped) aes_args$shape <- quote(.data$.shape)
   fixed <- list(data = nodes, mapping = do.call(ggplot2::aes, aes_args),
                 size = node_size, alpha = node_alpha)
   if (bordered) {
-    fixed$shape <- 21L
+    # a fixed shape here would override the mapped one, so only set it when nothing is mapped
+    if (!shape_mapped) fixed$shape <- 21L
     fixed$colour <- border
     fixed$stroke <- border_width
     if (is.null(col_of)) fixed$fill <- "#2166ac"
@@ -459,7 +484,11 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
                                                              levels = col_of$levels)))[["g"]])
     p <- p + ggplot2::scale_fill_manual(
       values = node_cols, name = color_group, na.value = na_colour, drop = FALSE,
-      guide = ggplot2::guide_legend(order = .LEGEND_ORDER[["colour"]]))
+      # with a shape also mapped, this guide's keys have no shape of their own and fall back
+      # to one with no fill, so every key would draw the same and the colours vanish
+      guide = ggplot2::guide_legend(
+        order = .LEGEND_ORDER[["colour"]],
+        override.aes = if (shape_mapped) list(shape = 21L) else list()))
   }
   if (!is.null(col_of) && !bordered) {
     node_cols <- .match_scale_values(colors, col_of$levels, "colors",
@@ -480,9 +509,26 @@ plot_ibd_network <- function(x, gene = NULL, locus = NULL, genes = NULL,
       warning("`na_shape` (", na_shape, ") is also used by ", paste(clash, collapse = ", "),
               ", so missing values look like that group. Pick another `na_shape`, or set ",
               "`shapes` to avoid ", na_shape, ".", call. = FALSE)
+    if (bordered) {
+      # catches what the caller-facing check cannot: a named `shapes` that leaves some levels
+      # on the default palette, which would draw those nodes with no fill and no colour
+      .check_bordered_shapes(node_shapes)
+      # `na_shape` only has to be fill-capable when something actually uses it, so this is
+      # checked against the data rather than up front
+      if (anyNA(nodes$.shape) && !na_shape %in% .FILL_SHAPES)
+        stop("`border` with `shape_group` needs `na_shape` in 21-25 too: ",
+             sum(is.na(nodes$.shape)), " sample(s) have no ", shape_group,
+             ", and shape ", na_shape, " has no fill, so they would lose their colour. Set ",
+             "`na_shape` to one of ", paste(setdiff(.FILL_SHAPES, node_shapes), collapse = ", "),
+             ".", call. = FALSE)
+    }
     p <- p + ggplot2::scale_shape_manual(
       values = node_shapes, name = shape_group, na.value = na_shape, drop = FALSE,
-      guide = ggplot2::guide_legend(order = .LEGEND_ORDER[["shape"]]))
+      # the shape keys carry no fill of their own once the colour group owns `fill`, so give
+      # them one: otherwise they draw as empty outlines and the shapes are hard to compare
+      guide = ggplot2::guide_legend(
+        order = .LEGEND_ORDER[["shape"]],
+        override.aes = if (bordered) list(fill = "grey70") else list()))
   }
   # dashed separator + label between the connected component (y >= 0) and the isolated grid
   if (!is.null(iso)) {

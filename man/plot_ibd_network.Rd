@@ -113,10 +113,12 @@ the cost of them taking up more of the canvas. Applies to weight-aware layouts
 \item{node_size, node_alpha}{Node point aesthetics.}
 
 \item{border}{Outline colour for the nodes, or \code{NA} (default) for none. An outline makes
-a dark category legible where it sits over the grey edge bundles, at the cost of the
-shape encoding: only shapes 21-25 carry a fill separate from their outline, so turning
-this on draws every node as a filled circle and maps the colour group to the fill. It
-is therefore an error to give both \code{border} and \code{shape_group}.}
+a dark category legible where it sits over the grey edge bundles. Only shapes 21-25
+carry a fill separate from their outline, so turning this on moves the colour group to
+the fill and gives \code{colour} to the outline; with no \code{shape_group} every node becomes a
+filled circle. A \code{shape_group} can be kept alongside it, but then \code{shapes} must be given
+from 21-25 (and \code{na_shape} too, if any sample has no value there), since any other shape
+draws itself in \code{colour} and would lose the colour group.}
 
 \item{border_width}{Outline width when \code{border} is set.}
 
